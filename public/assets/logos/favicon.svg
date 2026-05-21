@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs></defs>
+  <rect width="32" height="32" rx="6" fill="#4E6E8C"></rect>
+  <text x="16" y="22" text-anchor="middle" font-family="Geist, sans-serif" font-weight="500" font-size="16" letter-spacing="-0.6" fill="#FAF6EC">g<tspan font-family="Instrument Serif, serif" font-style="italic" font-weight="400" fill="#C9A961">2</tspan>g</text>
+</svg>

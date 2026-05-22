@@ -49,8 +49,21 @@ export async function POST(_req: NextRequest, { params }: Params) {
     })
     .eq("id", sessionId);
 
-  // TODO (P1): Send confirmation email via Resend
-  // TODO (P1): Post summary to #intake Slack channel
+  // Auto-create client portal account from intake contact info
+  if (notionPageId) {
+    const contact = (state as Record<string, Record<string,string>>).contact ?? {};
+    if (contact.email) {
+      await supabaseAdmin.from("clients").upsert(
+        {
+          intake_session_id: sessionId,
+          name: contact.name || null,
+          email: contact.email,
+          company: contact.company || null,
+        },
+        { onConflict: "email", ignoreDuplicates: true }
+      );
+    }
+  }
 
   return NextResponse.json({
     ok: true,

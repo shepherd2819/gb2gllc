@@ -1,0 +1,197 @@
+import { withAuth } from "@workos-inc/authkit-nextjs";
+import { supabaseAdmin } from "@/lib/supabase";
+import { redirect } from "next/navigation";
+import { CounterAnimation } from "./CounterAnimation";
+
+async function getClientData(workosUserId: string) {
+  const { data: client } = await supabaseAdmin
+    .from("clients")
+    .select("id, name, company, created_at")
+    .eq("workos_user_id", workosUserId)
+    .single();
+
+  if (!client) return null;
+
+  const [
+    { data: products },
+    { data: heraldMetrics },
+    { data: stewardMetrics },
+    { data: atriumStages },
+    { data: tickets },
+  ] = await Promise.all([
+    supabaseAdmin.from("client_products").select("*").eq("client_id", client.id).eq("active", true),
+    supabaseAdmin.from("herald_metrics").select("*").eq("client_id", client.id),
+    supabaseAdmin.from("steward_metrics").select("*").eq("client_id", client.id),
+    supabaseAdmin.from("atrium_progress").select("*").eq("client_id", client.id).order("stage"),
+    supabaseAdmin.from("tickets").select("status").eq("client_id", client.id),
+  ]);
+
+  const herald = (heraldMetrics ?? []).reduce(
+    (acc, row) => ({
+      messages: acc.messages + (row.messages_answered ?? 0),
+      hours: acc.hours + Number(row.hours_saved ?? 0),
+      tasks: acc.tasks + (row.tasks_completed ?? 0),
+    }),
+    { messages: 0, hours: 0, tasks: 0 }
+  );
+
+  const steward = (stewardMetrics ?? []).reduce(
+    (acc, row) => ({
+      hours: acc.hours + Number(row.hours_saved ?? 0),
+      tasks: acc.tasks + (row.tasks_completed ?? 0),
+    }),
+    { hours: 0, tasks: 0 }
+  );
+
+  const totalHours = herald.hours + steward.hours;
+  const daysActive = Math.floor(
+    (Date.now() - new Date(client.created_at).getTime()) / (1000 * 60 * 60 * 24)
+  );
+  const openTickets = (tickets ?? []).filter((t) => t.status !== "resolved").length;
+
+  return { client, products: products ?? [], herald, steward, totalHours, daysActive, atriumStages: atriumStages ?? [], openTickets };
+}
+
+export default async function DashboardPage() {
+  const { user } = await withAuth({ ensureSignedIn: true });
+  if (!user) redirect("/auth/signin");
+
+  const data = await getClientData(user.id);
+  if (!data) redirect("/auth/no-account");
+
+  const { client, products, herald, steward, totalHours, daysActive, atriumStages, openTickets } = data;
+  const hasHerald  = products.some((p) => p.product === "herald");
+  const hasAtrium  = products.some((p) => p.product === "atrium");
+  const hasSteward = products.some((p) => p.product === "steward");
+  const atriumCompleted = atriumStages.filter((s) => s.completed).length;
+  const atriumTotal = atriumStages.length || 5;
+  const atriumPct = Math.round((atriumCompleted / atriumTotal) * 100);
+  const hourValue = Math.round(totalHours * 45);
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
+  return (
+    <>
+      <CounterAnimation />
+
+      <div className="dash-hero">
+        <div className="dash-greeting">
+          <span className="dash-greeting-label">{greeting},</span>
+          <h1 className="dash-name">{client.name?.split(" ")[0] || client.company}.</h1>
+        </div>
+        <p className="dash-sub">
+          Your AI has been running for <strong>{daysActive} day{daysActive !== 1 ? "s" : ""}</strong>. Here is what it built while you weren&apos;t watching.
+        </p>
+      </div>
+
+      <div className="stat-grid">
+        <div className="stat-card stat-hero">
+          <div className="stat-num" data-count={totalHours.toFixed(1)}>{totalHours.toFixed(1)}</div>
+          <div className="stat-label">hours saved</div>
+          <div className="stat-sub">&asymp; ${hourValue.toLocaleString()} in staff time</div>
+        </div>
+        {hasHerald && (
+          <div className="stat-card">
+            <div className="stat-num" data-count={String(herald.messages)}>{herald.messages.toLocaleString()}</div>
+            <div className="stat-label">conversations handled</div>
+            <div className="stat-sub">by Herald &middot; no wait, no script</div>
+          </div>
+        )}
+        {(hasHerald || hasSteward) && (
+          <div className="stat-card">
+            <div className="stat-num" data-count={String(herald.tasks + steward.tasks)}>{(herald.tasks + steward.tasks).toLocaleString()}</div>
+            <div className="stat-label">tasks completed</div>
+            <div className="stat-sub">while you slept</div>
+          </div>
+        )}
+        <div className="stat-card">
+          <div className="stat-num">{daysActive}</div>
+          <div className="stat-label">days running</div>
+          <div className="stat-sub">no sick days, no PTO</div>
+        </div>
+      </div>
+
+      <div className="product-section">
+        <h2 className="section-title">Your products</h2>
+        <div className="product-grid">
+
+          {hasHerald && (
+            <div className="product-card">
+              <div className="product-card-head">
+                <span className="product-name">Herald</span>
+                <span className="product-badge active">Active</span>
+              </div>
+              <p className="product-desc">AI agent handling conversations 24/7</p>
+              <div className="product-stats-row">
+                <div className="product-stat"><span className="ps-num">{herald.messages.toLocaleString()}</span><span className="ps-label">conversations</span></div>
+                <div className="product-stat"><span className="ps-num">{herald.hours.toFixed(0)}h</span><span className="ps-label">saved</span></div>
+                <div className="product-stat"><span className="ps-num">{herald.tasks.toLocaleString()}</span><span className="ps-label">tasks</span></div>
+              </div>
+            </div>
+          )}
+
+          {hasSteward && (
+            <div className="product-card">
+              <div className="product-card-head">
+                <span className="product-name">Steward</span>
+                <span className="product-badge active">Active</span>
+              </div>
+              <p className="product-desc">AI employees running your internal ops</p>
+              <div className="product-stats-row">
+                <div className="product-stat"><span className="ps-num">{steward.tasks.toLocaleString()}</span><span className="ps-label">tasks done</span></div>
+                <div className="product-stat"><span className="ps-num">{steward.hours.toFixed(0)}h</span><span className="ps-label">saved</span></div>
+              </div>
+            </div>
+          )}
+
+          {hasAtrium && (
+            <div className="product-card">
+              <div className="product-card-head">
+                <span className="product-name">Atrium</span>
+                <span className="product-badge in-progress">In progress</span>
+              </div>
+              <p className="product-desc">Your site is being built</p>
+              <div className="atrium-progress-wrap">
+                <div className="atrium-bar-track">
+                  <div className="atrium-bar-fill" style={{ width: `${atriumPct}%` }}></div>
+                </div>
+                <span className="atrium-pct">{atriumPct}%</span>
+              </div>
+              {atriumStages.length > 0 && (
+                <div className="atrium-stages">
+                  {atriumStages.map((s) => (
+                    <div key={s.id} className={"atrium-stage" + (s.completed ? " done" : "")}>
+                      <span className="stage-dot">{s.completed ? "✓" : "○"}</span>
+                      <span className="stage-label">{s.label}</span>
+                      {s.note && <span className="stage-note">{s.note}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+        </div>
+      </div>
+
+      <div className="quick-actions">
+        <a href="/connections" className="qa-card">
+          <span className="qa-icon">&#9097;</span>
+          <span className="qa-label">Manage connections</span>
+          <span className="qa-arrow">&rarr;</span>
+        </a>
+        <a href="/tickets" className={"qa-card" + (openTickets > 0 ? " qa-alert" : "")}>
+          <span className="qa-icon">&#9678;</span>
+          <span className="qa-label">Support{openTickets > 0 ? ` · ${openTickets} open` : ""}</span>
+          <span className="qa-arrow">&rarr;</span>
+        </a>
+        <a href="/account" className="qa-card">
+          <span className="qa-icon">&#9671;</span>
+          <span className="qa-label">Account settings</span>
+          <span className="qa-arrow">&rarr;</span>
+        </a>
+      </div>
+    </>
+  );
+}

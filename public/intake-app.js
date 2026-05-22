@@ -965,9 +965,9 @@ function renderDone() {
         <div class="ref">Colossians 3:23 · our anchor</div>
       </div>
 
-      <div class="actions" style="border-top:none;padding-top:24px;margin-top:32px;">
+      <div class="actions" style="border-top:none;padding-top:24px;margin-top:32px;justify-content:center;gap:16px;">
+        <a href="/" class="btn btn-ghost">&#8592; Back to GB2GLLC</a>
         <button class="btn btn-link" id="start-over">Start a new intake</button>
-        <div></div>
       </div>
     </div>
   `);

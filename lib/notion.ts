@@ -57,16 +57,15 @@ export async function createIntakePage(sessionId: string, state: IntakeState) {
           },
         ],
       },
-      "Session ID": { rich_text: [{ text: { content: sessionId } }] },
-      Status: { select: { name: "New" } },
+      Status: { status: { name: "New" } },
       "Contact Name": {
         rich_text: [{ text: { content: contact.name || "" } }],
       },
-      Email: { email: contact.email || null },
+      Email: { rich_text: [{ text: { content: contact.email || "" } }] },
       Company: {
         rich_text: [{ text: { content: contact.company || "" } }],
       },
-      Website: { url: contact.website || null },
+      Website: { rich_text: [{ text: { content: contact.website || "" } }] },
       Role: { rich_text: [{ text: { content: about.role || "" } }] },
       Industry: about.industry
         ? { select: { name: about.industry } }
@@ -80,14 +79,20 @@ export async function createIntakePage(sessionId: string, state: IntakeState) {
       Goals: {
         multi_select: goalsList.map((g: string) => ({ name: g.slice(0, 100) })),
       },
-      "Kickoff Call": {
-        rich_text: [{ text: { content: slotLabel } }],
-      },
       "Submitted At": {
         date: { start: new Date().toISOString() },
       },
     },
     children: [
+      {
+        object: "block",
+        type: "paragraph",
+        paragraph: {
+          rich_text: [
+            { type: "text", text: { content: `Session: ${sessionId}  ·  Kickoff: ${slotLabel}` } },
+          ],
+        },
+      },
       {
         object: "block",
         type: "heading_2",

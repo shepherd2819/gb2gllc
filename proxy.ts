@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, NextFetchEvent } from "next/server";
 import { authkitMiddleware } from "@workos-inc/authkit-nextjs";
 
 const HOME_URL = process.env.NEXT_PUBLIC_HOME_URL ?? "https://home.gb2gllc.com";
 
 const authkit = authkitMiddleware({ redirectUri: `${HOME_URL}/auth/callback` });
 
-export default function proxy(req: NextRequest) {
+export default function proxy(req: NextRequest, evt: NextFetchEvent) {
   const host = req.headers.get("host") ?? "";
   const { pathname } = req.nextUrl;
 
@@ -18,7 +18,7 @@ export default function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL("/admin", req.url));
   }
 
-  return authkit(req);
+  return authkit(req, evt);
 }
 
 export const config = {

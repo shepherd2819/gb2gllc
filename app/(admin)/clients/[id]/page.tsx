@@ -4,6 +4,7 @@ import { ClientControls } from "./ClientControls";
 import { AtriumManager } from "./AtriumManager";
 import { EditClientForm } from "./EditClientForm";
 import { AnnouncementManager } from "./AnnouncementManager";
+import { StewardManager } from "./StewardManager";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -16,12 +17,16 @@ export default async function ClientDetailPage({ params }: Params) {
     { data: atriumStages },
     { data: heraldTotals },
     { data: announcements },
+    { data: stewardAssignments },
+    { data: stewardPlatforms },
   ] = await Promise.all([
     supabaseAdmin.from("clients").select("*, client_products(*), invoices(id, amount_cents, description, status, sent_at, created_at)").eq("id", id).single(),
     supabaseAdmin.from("client_logs").select("*").eq("client_id", id).order("created_at", { ascending: false }).limit(50),
     supabaseAdmin.from("atrium_progress").select("*").eq("client_id", id).order("stage"),
     supabaseAdmin.from("herald_metrics").select("messages_answered, hours_saved, tasks_completed").eq("client_id", id),
     supabaseAdmin.from("announcements").select("*").or(`client_id.eq.${id},client_id.is.null`).order("created_at", { ascending: false }),
+    supabaseAdmin.from("client_steward_assignments").select("*, steward_platform_agents(id, display_name, icon, description)").eq("client_id", id).order("created_at", { ascending: true }),
+    supabaseAdmin.from("steward_platform_agents").select("id, display_name, icon, description").eq("available", true).order("display_name"),
   ]);
 
   if (!client) notFound();
@@ -85,6 +90,13 @@ export default async function ClientDetailPage({ params }: Params) {
           <AtriumManager clientId={client.id} stages={atriumStages ?? []} />
 
           <AnnouncementManager clientId={client.id} initialAnnouncements={announcements ?? []} />
+
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          <StewardManager
+            clientId={client.id}
+            initialAssignments={(stewardAssignments ?? []) as any}
+            platforms={(stewardPlatforms ?? []) as any}
+          />
 
           <div className="admin-card">
             <div className="admin-card-head">

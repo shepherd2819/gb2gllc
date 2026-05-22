@@ -785,8 +785,10 @@ function renderTasks() {
               <span class="num">Task ${String(i + 1).padStart(2, '0')}</span>
               ${state.tasks.length > 1 ? `<button class="remove-task" data-idx="${i}">× remove</button>` : ''}
             </div>
-            <input type="text" class="task-name" placeholder="Task name (e.g. Draft weekly team update)" value="${esc(t.name)}" data-field="name" data-idx="${i}" />
-            <textarea class="task-desc" placeholder="What does this task look like today? Who does it, what data do they pull from, how often?" data-field="desc" data-idx="${i}">${esc(t.desc)}</textarea>
+            <label class="task-name-label">Task name <span class="req">*</span></label>
+            <input type="text" class="task-name ${t.name ? '' : 'empty'}" placeholder="e.g. Draft weekly team update from Slack + Linear" value="${esc(t.name)}" data-field="name" data-idx="${i}" />
+            <label class="task-desc-label">Describe it</label>
+            <textarea class="task-desc" placeholder="What does it look like today? Who does it, where does the data come from, how often?" data-field="desc" data-idx="${i}">${esc(t.desc)}</textarea>
             <div class="task-meta-row">
               <div class="col">
                 <label>How often</label>
@@ -800,13 +802,14 @@ function renderTasks() {
               </div>
               <div class="col">
                 <label>Tools involved</label>
-                <input type="text" data-field="tools" data-idx="${i}" placeholder="Linear, Slack, Gmail" value="${esc(t.tools)}" />
+                <input type="text" data-field="tools" data-idx="${i}" placeholder="e.g. Linear, Slack, Gmail" value="${esc(t.tools)}" />
               </div>
             </div>
           </div>
         `).join('')}
       </div>
 
+      ${!canAdvance() ? '<p class="task-hint">Name at least one task to continue</p>' : ''}
       <button class="add-task-btn" id="add-task">+ Add another task</button>
 
       ${actionsHtml()}
@@ -818,8 +821,11 @@ function renderTasks() {
     if (!f || isNaN(i)) return;
     field.addEventListener('input', () => {
       state.tasks[i][f] = field.value;
+      if (f === 'name') field.classList.toggle('empty', !field.value.trim());
       saveState();
       const b = node.querySelector('#btn-next'); if (b) b.disabled = !canAdvance();
+      const hint = node.querySelector('.task-hint');
+      if (hint) hint.style.display = canAdvance() ? 'none' : '';
     });
     field.addEventListener('change', () => {
       state.tasks[i][f] = field.value;

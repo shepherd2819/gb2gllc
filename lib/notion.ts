@@ -97,6 +97,8 @@ export async function createIntakePage(
       .filter(Boolean)
       .join(" · ") || "None provided";
 
+  console.log("[Notion] Creating page for session:", sessionId);
+
   // Step 1: create the page with DB column properties
   const page = await notion.pages.create({
     parent: { database_id: DB_ID },
@@ -117,7 +119,10 @@ export async function createIntakePage(
     },
   });
 
+  console.log("[Notion] Page created:", page.id, "— now appending blocks");
+
   // Step 2: append all content blocks
+  try {
   await notion.blocks.children.append({
     block_id: page.id,
     children: [
@@ -163,6 +168,12 @@ export async function createIntakePage(
       para(`Submitted: ${new Date().toLocaleString("en-US")}`),
     ],
   });
+  console.log("[Notion] Blocks appended successfully");
+  } catch (blockErr) {
+    const msg = blockErr instanceof Error ? blockErr.message : String(blockErr);
+    console.error("[Notion] blocks.children.append failed:", msg);
+    throw blockErr;
+  }
 
   return page.id;
 }

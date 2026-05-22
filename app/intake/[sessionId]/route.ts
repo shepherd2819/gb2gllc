@@ -27,10 +27,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   let html = readFileSync(join(process.cwd(), "public", "intake.html"), "utf-8");
 
-  // Inject session ID before </head>
+  // Inject session ID and Calendly URL before </head>
+  const calendlyUrl = process.env.NEXT_PUBLIC_CALENDLY_URL ?? "";
   html = html.replace(
     "</head>",
-    `<script>window.GB2G_SESSION_ID = ${JSON.stringify(sessionId)};</script>\n</head>`
+    `<script>window.GB2G_SESSION_ID = ${JSON.stringify(sessionId)};window.GB2G_CALENDLY_URL = ${JSON.stringify(calendlyUrl)};</script>\n</head>`
   );
 
   return new Response(html, {

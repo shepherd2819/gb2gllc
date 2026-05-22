@@ -25,11 +25,13 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   // Create Notion page
   let notionPageId: string | null = null;
+  let notionError: string | null = null;
   try {
     notionPageId = await createIntakePage(sessionId, state);
   } catch (err) {
-    console.error("Notion page creation failed:", err);
-    // Don't block submission if Notion is down — log and continue
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Notion page creation failed:", msg);
+    notionError = msg;
   }
 
   // Mark submitted in DB
@@ -47,6 +49,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
   return NextResponse.json({
     ok: true,
     notionPageId,
+    notionError,
     submittedAt: new Date().toISOString(),
   });
 }

@@ -57,7 +57,6 @@ export async function createIntakePage(sessionId: string, state: IntakeState) {
           },
         ],
       },
-      Status: { status: { name: "New" } },
       "Contact Name": {
         rich_text: [{ text: { content: contact.name || "" } }],
       },

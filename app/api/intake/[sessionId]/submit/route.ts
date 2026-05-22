@@ -23,11 +23,17 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   const state = session.state as Record<string, unknown>;
 
+  // Fetch uploaded files for this session
+  const { data: files } = await supabaseAdmin
+    .from("intake_files")
+    .select("name, size, storage_path")
+    .eq("session_id", sessionId);
+
   // Create Notion page
   let notionPageId: string | null = null;
   let notionError: string | null = null;
   try {
-    notionPageId = await createIntakePage(sessionId, state);
+    notionPageId = await createIntakePage(sessionId, state, files ?? []);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("Notion page creation failed:", msg);

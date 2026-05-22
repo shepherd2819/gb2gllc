@@ -17,13 +17,12 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   const state = session.state as Record<string, Record<string, string>>;
   const contact = state.contact ?? {};
-  const about = state.about ?? {};
 
   const email = contact.email;
   if (!email) return NextResponse.json({ error: "No email on this submission" }, { status: 400 });
 
   // Upsert client — won't overwrite if they already exist
-  const { data: client, error: dbErr } = await supabaseAdmin
+  const { data: inserted, error: dbErr } = await supabaseAdmin
     .from("clients")
     .upsert(
       {
@@ -34,21 +33,22 @@ export async function POST(_req: NextRequest, { params }: Params) {
       },
       { onConflict: "email", ignoreDuplicates: true }
     )
-    .select()
-    .single();
+    .select("id");
 
-  if (dbErr && dbErr.code !== "23505") {
-    return NextResponse.json({ error: dbErr.message }, { status: 500 });
+  if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
+
+  // ignoreDuplicates returns 0 rows on conflict — fall back to fetching the existing record
+  let clientId: string | null = inserted?.[0]?.id ?? null;
+  if (!clientId) {
+    const { data: existing } = await supabaseAdmin
+      .from("clients")
+      .select("id")
+      .eq("email", email)
+      .single();
+    clientId = existing?.id ?? null;
   }
 
-  // Fetch the existing client if upsert ignored (already exists)
-  const { data: existing } = await supabaseAdmin
-    .from("clients")
-    .select("id, email")
-    .eq("email", email)
-    .single();
-
-  const clientId = client?.id ?? existing?.id;
+  if (!clientId) return NextResponse.json({ error: "Could not find or create client" }, { status: 500 });
 
   // Send WorkOS invite
   try {

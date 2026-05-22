@@ -9,12 +9,12 @@ export default function proxy(req: NextRequest, evt: NextFetchEvent) {
   const host = req.headers.get("host") ?? "";
   const { pathname } = req.nextUrl;
 
-  // home.gb2gllc.com/ → /dashboard
-  if ((host === "home.gb2gllc.com" || host.startsWith("home.gb2gllc.com:")) && pathname === "/") {
+  // home.gb2gllc.com (with or without www) / → /dashboard
+  if (/^(www\.)?home\.gb2gllc\.com(:\d+)?$/.test(host) && pathname === "/") {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
-  // admin.gb2gllc.com/ → /admin
-  if ((host === "admin.gb2gllc.com" || host.startsWith("admin.gb2gllc.com:")) && pathname === "/") {
+  // admin.gb2gllc.com (with or without www) / → /admin
+  if (/^(www\.)?admin\.gb2gllc\.com(:\d+)?$/.test(host) && pathname === "/") {
     return NextResponse.redirect(new URL("/admin", req.url));
   }
 

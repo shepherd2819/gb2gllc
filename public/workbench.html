@@ -1094,11 +1094,47 @@
     </div>
 
     <!-- DEMO VIDEO -->
-    <div class="demo" style="aspect-ratio:16/10;">
-      <video autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;display:block;">
+    <div class="demo demo-video-hero" id="hero-video-wrap" style="aspect-ratio:16/10;position:relative;cursor:pointer;" title="Watch the demo">
+      <video id="hero-video" preload="metadata" playsinline style="width:100%;height:100%;object-fit:cover;display:block;">
         <source src="/web-demo.mp4" type="video/mp4">
       </video>
+      <div id="hero-play-btn" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:rgba(28,30,27,0.45);transition:background 0.2s;">
+        <div style="width:72px;height:72px;border-radius:50%;background:var(--warm-gold);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 32px rgba(201,169,97,0.4);transition:transform 0.15s;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="#1C1E1B"><polygon points="6,4 20,12 6,20"/></svg>
+        </div>
+        <span style="font-family:var(--mono);font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#EDE7D7;opacity:0.9;">Watch the demo · 41s</span>
+      </div>
     </div>
+    <script>
+      (function() {
+        var wrap = document.getElementById('hero-video-wrap');
+        var vid = document.getElementById('hero-video');
+        var btn = document.getElementById('hero-play-btn');
+        wrap.addEventListener('mouseenter', function() { btn.style.background = 'rgba(28,30,27,0.3)'; btn.querySelector('div').style.transform = 'scale(1.08)'; });
+        wrap.addEventListener('mouseleave', function() { btn.style.background = 'rgba(28,30,27,0.45)'; btn.querySelector('div').style.transform = 'scale(1)'; });
+        wrap.addEventListener('click', function() {
+          vid.muted = false;
+          vid.currentTime = 0;
+          vid.play();
+          var fs = vid.requestFullscreen || vid.webkitRequestFullscreen || vid.mozRequestFullScreen;
+          if (fs) fs.call(vid);
+        });
+        function onFsChange() {
+          var fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement;
+          if (!fsEl) {
+            vid.pause();
+            vid.currentTime = 0;
+            vid.muted = true;
+            btn.style.display = '';
+          } else {
+            btn.style.display = 'none';
+          }
+        }
+        document.addEventListener('fullscreenchange', onFsChange);
+        document.addEventListener('webkitfullscreenchange', onFsChange);
+        document.addEventListener('mozfullscreenchange', onFsChange);
+      })();
+    </script>
   </div>
 </section>
 

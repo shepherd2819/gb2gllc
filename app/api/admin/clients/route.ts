@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 
     // Send WorkOS invitation
     const workos = getWorkOS();
-    await workos.userManagement.createInvitation({ email });
+    await workos.userManagement.sendInvitation({ email });
 
     return NextResponse.json({ client }, { status: 201 });
   } catch (err) {

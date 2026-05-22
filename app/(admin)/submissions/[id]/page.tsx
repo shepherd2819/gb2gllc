@@ -40,7 +40,7 @@ export default async function SubmissionDetailPage({ params }: Params) {
   const about = (state.about ?? {}) as Record<string, string>;
   const goals = (state.goals ?? {}) as { selected?: string[] };
   const software = (state.software ?? {}) as { selected?: string[]; other?: string };
-  const tasks = (state.tasks ?? []) as { name?: string; frequency?: string; desc?: string }[];
+  const tasks = (state.tasks as unknown as { name?: string; frequency?: string; desc?: string }[]) ?? [];
   const sops = (state.sops ?? {}) as { text?: string; links?: string };
   const access = (state.access ?? {}) as Record<string, { connected?: boolean; access?: string }>;
   const schedule = (state.schedule ?? {}) as { slot?: string };

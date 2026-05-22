@@ -92,7 +92,7 @@ export default function WelcomePage() {
           <h1>Your AI employees<br />are ready.</h1>
           <p>Sign in to view your dashboard,<br />track your agents, and submit support requests.</p>
 
-          <a href="/auth/signin" className="btn">Sign in to your account →</a>
+          <a href="/dashboard" className="btn">Sign in to your account →</a>
 
           <div className="footer">GloryBe2God LLC · gb2gllc.com</div>
         </div>

@@ -1,12 +1,29 @@
+import { NextRequest, NextResponse } from "next/server";
 import { authkitMiddleware } from "@workos-inc/authkit-nextjs";
 
-export default authkitMiddleware({
-  // Redirect unauthenticated users to WorkOS sign-in
-  redirectUri: `${process.env.NEXT_PUBLIC_HOME_URL ?? "https://home.gb2gllc.com"}/auth/callback`,
-});
+const HOME_URL = process.env.NEXT_PUBLIC_HOME_URL ?? "https://home.gb2gllc.com";
+
+const authkit = authkitMiddleware({ redirectUri: `${HOME_URL}/auth/callback` });
+
+export default function proxy(req: NextRequest) {
+  const host = req.headers.get("host") ?? "";
+  const { pathname } = req.nextUrl;
+
+  // home.gb2gllc.com/ → /dashboard
+  if ((host === "home.gb2gllc.com" || host.startsWith("home.gb2gllc.com:")) && pathname === "/") {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
+  }
+  // admin.gb2gllc.com/ → /admin
+  if ((host === "admin.gb2gllc.com" || host.startsWith("admin.gb2gllc.com:")) && pathname === "/") {
+    return NextResponse.redirect(new URL("/admin", req.url));
+  }
+
+  return authkit(req);
+}
 
 export const config = {
   matcher: [
+    "/",
     "/dashboard/:path*",
     "/connections/:path*",
     "/tickets/:path*",

@@ -1436,7 +1436,7 @@
     });
   })();
 
-  // ============= LIVE HERALD CHAT (HERO) =============
+  // ============= LIVE HERALD CHAT (HERO) — kept for reference, skipped if element absent =============
   const chatEl = document.getElementById('chat');
   const responseTimeEl = document.getElementById('response-time');
 
@@ -1506,13 +1506,14 @@
     await delay(3500);
     runHeroChat();
   }
-  runHeroChat();
-
-  document.getElementById('replay-chat').addEventListener('click', () => {
-    // Just restart by reloading the cycle
-    chatEl.innerHTML = '';
-    setTimeout(runHeroChat, 200);
-  });
+  if (chatEl) {
+    runHeroChat();
+    var replayBtn = document.getElementById('replay-chat');
+    if (replayBtn) replayBtn.addEventListener('click', function() {
+      chatEl.textContent = '';
+      setTimeout(runHeroChat, 200);
+    });
+  }
 
   // ============= LIVE HERALD CHAT (PRODUCT CARD) =============
   const herald2 = document.getElementById('herald-2-body');

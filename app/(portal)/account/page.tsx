@@ -1,6 +1,7 @@
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
+import { AccountForm } from "./AccountForm";
 
 export default async function AccountPage() {
   const { user } = await withAuth({ ensureSignedIn: true });
@@ -17,14 +18,11 @@ export default async function AccountPage() {
     <>
       <div className="page-header">
         <h1 className="page-title">Account</h1>
+        <p className="page-sub">Member since {new Date(client.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}</p>
       </div>
 
-      <div className="account-card">
-        <div className="account-row"><span className="account-label">Name</span><span>{client.name || "—"}</span></div>
-        <div className="account-row"><span className="account-label">Email</span><span>{client.email}</span></div>
-        <div className="account-row"><span className="account-label">Company</span><span>{client.company || "—"}</span></div>
-        <div className="account-row"><span className="account-label">Member since</span><span>{new Date(client.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}</span></div>
-      </div>
+      <div className="account-section-title">Profile</div>
+      <AccountForm name={client.name} company={client.company} email={client.email} />
 
       <div className="danger-zone">
         <h2 className="danger-title">Close account</h2>

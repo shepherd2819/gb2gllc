@@ -259,16 +259,44 @@ a { color: inherit; text-decoration: none; }
 .empty-state a { color: var(--dusty-blue); text-decoration: underline; }
 
 /* ===== ACCOUNT ===== */
-.account-card {
+.account-section-title {
+  font-size: 11px; font-family: var(--mono); letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--ink-mute); margin-bottom: 10px;
+}
+.account-edit-card {
   background: var(--parchment-2); border: 1px solid var(--rule);
-  border-radius: var(--radius); overflow: hidden; margin-bottom: 40px;
+  border-radius: var(--radius); overflow: hidden; margin-bottom: 32px;
 }
-.account-row {
-  display: flex; gap: 24px; padding: 14px 20px;
-  border-bottom: 1px solid var(--rule); font-size: 14px;
+.ae-row {
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 20px; border-bottom: 1px solid var(--rule);
 }
-.account-row:last-child { border-bottom: none; }
-.account-label { color: var(--ink-mute); min-width: 120px; font-size: 13px; }
+.ae-label {
+  color: var(--ink-mute); font-size: 13px; min-width: 110px; flex-shrink: 0;
+}
+.ae-input {
+  flex: 1; background: none; border: none; outline: none;
+  font-family: var(--sans); font-size: 14px; color: var(--ink);
+  padding: 2px 0;
+}
+.ae-input::placeholder { color: var(--ink-mute); }
+.ae-input:focus { color: var(--ink); }
+.ae-footer {
+  display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+  padding: 12px 20px; border-top: 1px solid var(--rule);
+}
+.ae-save {
+  background: var(--ink); color: var(--parchment);
+  border: none; border-radius: 8px; padding: 8px 20px;
+  font-size: 13px; font-family: var(--sans); cursor: pointer;
+  transition: opacity .15s;
+}
+.ae-save:hover:not(:disabled) { opacity: 0.8; }
+.ae-save:disabled { opacity: 0.5; cursor: default; }
+.ae-msg { font-size: 13px; }
+.ae-ok { color: #4A7C59; }
+.ae-err { color: var(--red); }
+.page-sub { font-size: 13px; color: var(--ink-mute); margin: -8px 0 24px; }
 .danger-zone {
   border: 1px solid rgba(201,123,92,0.3); border-radius: var(--radius);
   padding: 24px; background: rgba(201,123,92,0.04);

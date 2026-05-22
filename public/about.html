@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>About — GB2GLLC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --abs-dark: #1C1E1B;
+    --abs-dark-2: #232523;
+    --abs-light: #FAF6EC;
+    --parchment: #F4EEE2;
+    --parchment-2: #FAF6EC;
+    --parchment-3: #EDE3CC;
+    --ink: #1C1E1B;
+    --ink-soft: #4A4D47;
+    --ink-mute: #8A8C85;
+    --rule: #E4DDCC;
+    --rule-soft: #EDE7D7;
+    --dusty-blue: #7F9DB9;
+    --dusty-blue-deep: #4E6E8C;
+    --warm-gold: #C9A961;
+    --warm-gold-deep: #9B7E3F;
+    --sage: #A6B49B;
+    --terracotta: #C97B5C;
+    --sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+    --mono: "Geist Mono", ui-monospace, monospace;
+    --serif: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  }
+  [data-theme="dark"] {
+    --parchment: #131512;
+    --parchment-2: #1F2120;
+    --parchment-3: #2C2E2B;
+    --ink: #EDE7D7;
+    --ink-soft: #B9B6AB;
+    --ink-mute: #7A776E;
+    --rule: #2C2E2B;
+    --rule-soft: #232523;
+    --dusty-blue: #A8C0DC;
+    --dusty-blue-deep: #7F9DB9;
+    --warm-gold: #E8C892;
+    --warm-gold-deep: #C9A961;
+    --sage: #BFCDB4;
+    --terracotta: #E89878;
+  }
+  body, nav { transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: var(--sans); color: var(--ink); background: var(--parchment); -webkit-font-smoothing: antialiased; line-height: 1.55; overflow-x: hidden; }
+  a { color: inherit; }
+
+  /* NAV */
+  nav { position: sticky; top: 0; z-index: 50; padding: 16px 36px; display: flex; justify-content: space-between; align-items: center; backdrop-filter: blur(12px); background: color-mix(in srgb, var(--parchment) 85%, transparent); border-bottom: 1px solid var(--rule); }
+  nav .mark { display: flex; align-items: center; gap: 10px; font-size: 26px; font-weight: 500; letter-spacing: -0.035em; text-decoration: none; color: var(--ink); }
+  nav .mark .two { font-family: var(--serif); font-style: italic; color: var(--warm-gold-deep); font-weight: 400; }
+  nav .mark .llc { font-family: var(--mono); font-size: 12px; color: var(--ink-mute); vertical-align: 11px; margin-left: 4px; letter-spacing: 0; font-weight: 400; }
+  nav .links { display: flex; gap: 4px; font-family: var(--mono); font-size: 11px; color: var(--ink-soft); }
+  nav .links a { text-decoration: none; padding: 6px 12px; border-radius: 100px; transition: background .15s; letter-spacing: 0.04em; }
+  nav .links a:hover { background: var(--rule-soft); }
+  nav .links a.active { color: var(--ink); background: var(--rule-soft); }
+  nav .live-indicator { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 10px; color: var(--ink-mute); letter-spacing: 0.06em; text-transform: uppercase; margin-right: 16px; }
+  nav .live-indicator .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--sage); box-shadow: 0 0 0 0 rgba(166,180,155,0.6); animation: live-pulse 2s infinite; }
+  @keyframes live-pulse { 0% { box-shadow: 0 0 0 0 rgba(166,180,155,0.6); } 100% { box-shadow: 0 0 0 10px rgba(166,180,155,0); } }
+  nav .cta { padding: 8px 14px; background: var(--ink); color: var(--parchment-2); border-radius: 100px; font-size: 12px; font-weight: 500; text-decoration: none; transition: background .15s; font-family: var(--sans); white-space: nowrap; }
+  nav .cta:hover { background: var(--dusty-blue-deep); }
+  .theme-toggle { background: none; border: 1px solid var(--rule); border-radius: 100px; padding: 6px 10px; cursor: pointer; color: var(--ink-soft); display: flex; align-items: center; margin-right: 12px; transition: border-color .15s; }
+  .theme-toggle:hover { border-color: var(--ink-mute); }
+  .theme-toggle svg { width: 16px; height: 16px; }
+  .theme-toggle .sun { display: none; }
+  .theme-toggle .moon { display: block; }
+  [data-theme="dark"] .theme-toggle .sun { display: block; }
+  [data-theme="dark"] .theme-toggle .moon { display: none; }
+  [data-theme="dark"] .mark .two { color: var(--warm-gold); }
+
+  /* LAYOUT */
+  .page { max-width: 760px; margin: 0 auto; padding: 80px 36px 120px; }
+
+  /* HERO */
+  .about-eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-mute); display: flex; align-items: center; gap: 8px; margin-bottom: 28px; }
+  .about-eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--warm-gold); flex-shrink: 0; }
+  .about-hero h1 { font-size: clamp(42px, 6vw, 72px); font-weight: 400; letter-spacing: -0.04em; line-height: 0.95; margin: 0 0 28px; }
+  .about-hero h1 em { font-family: var(--serif); font-style: italic; color: var(--dusty-blue-deep); font-weight: 400; }
+  [data-theme="dark"] .about-hero h1 em { color: var(--dusty-blue); }
+  .about-hero .lead { font-size: 20px; color: var(--ink-soft); max-width: 52ch; line-height: 1.5; margin: 0 0 48px; }
+
+  /* DIVIDER */
+  .rule { border: none; border-top: 1px solid var(--rule); margin: 48px 0; }
+
+  /* STORY */
+  .story { display: grid; gap: 32px; }
+  .story p { font-size: 18px; line-height: 1.7; color: var(--ink-soft); margin: 0; }
+  .story p strong { color: var(--ink); font-weight: 500; }
+  .story .pull { font-family: var(--serif); font-style: italic; font-size: clamp(22px, 3vw, 30px); color: var(--ink); line-height: 1.35; border-left: 3px solid var(--warm-gold); padding-left: 24px; margin: 8px 0; }
+
+  /* PRODUCTS STRIP */
+  .products-strip { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 48px; }
+  .product-chip { display: flex; flex-direction: column; gap: 4px; background: var(--parchment-2); border: 1px solid var(--rule); border-radius: 12px; padding: 16px 20px; flex: 1; min-width: 160px; text-decoration: none; color: var(--ink); transition: border-color .15s, transform .15s; }
+  .product-chip:hover { border-color: var(--dusty-blue); transform: translateY(-2px); }
+  .product-chip .name { font-weight: 500; font-size: 15px; }
+  .product-chip .desc { font-family: var(--mono); font-size: 10px; color: var(--ink-mute); letter-spacing: 0.04em; }
+  .product-chip .price { font-family: var(--mono); font-size: 11px; color: var(--warm-gold-deep); margin-top: 8px; }
+  [data-theme="dark"] .product-chip { background: var(--parchment-2); }
+  [data-theme="dark"] .product-chip .price { color: var(--warm-gold); }
+
+  /* VERSE */
+  .verse-block { background: var(--abs-dark); border-radius: 16px; padding: 40px 48px; margin-top: 64px; }
+  .verse-block .verse { font-family: var(--serif); font-style: italic; font-size: 20px; color: #EDE7D7; line-height: 1.5; margin: 0 0 12px; }
+  .verse-block .ref { font-family: var(--mono); font-size: 11px; color: #8A8C85; letter-spacing: 0.08em; text-transform: uppercase; }
+
+  /* CTA */
+  .about-cta { margin-top: 56px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .btn { padding: 12px 20px; border-radius: 100px; font-size: 13px; font-weight: 500; text-decoration: none; border: 1px solid transparent; transition: all .15s; display: inline-flex; align-items: center; gap: 8px; font-family: var(--sans); cursor: pointer; }
+  .btn-primary { background: var(--ink); color: var(--parchment-2); }
+  .btn-primary:hover { background: var(--dusty-blue-deep); }
+  .btn-ghost { border-color: var(--rule); color: var(--ink); background: none; }
+  .btn-ghost:hover { border-color: var(--ink); }
+  .btn .arrow { font-family: var(--mono); }
+  [data-theme="dark"] .btn-primary { background: var(--warm-gold); color: var(--abs-dark); }
+  [data-theme="dark"] .btn-ghost { border-color: var(--rule); }
+
+  /* FOOTER */
+  footer { background: var(--abs-dark); padding: 48px 36px; margin-top: 0; }
+  .footer-inner { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 24px; }
+  footer .mark-block .word { font-family: var(--sans); font-size: 16px; font-weight: 500; color: var(--parchment-2); letter-spacing: -0.03em; }
+  footer .mark-block .word .two { font-family: var(--serif); font-style: italic; color: var(--warm-gold); }
+  footer .links { display: flex; gap: 24px; font-family: var(--mono); font-size: 11px; color: #8A8C85; letter-spacing: 0.04em; }
+  footer .links a { color: inherit; text-decoration: none; transition: color .15s; }
+  footer .links a:hover { color: #EDE7D7; }
+  footer .copy { font-family: var(--mono); font-size: 10px; color: #5A5C57; letter-spacing: 0.04em; }
+
+  /* MOBILE */
+  @media (max-width: 640px) {
+    nav { padding: 14px 20px; }
+    nav .links { display: none; }
+    .page { padding: 48px 20px 80px; }
+    .verse-block { padding: 28px 24px; }
+    .products-strip { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<script>
+  (function() {
+    var saved = localStorage.getItem('gb2g-theme');
+    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (saved === 'dark' || (!saved && prefersDark)) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  })();
+</script>
+
+<nav>
+  <a href="/" class="mark">
+    <div class="word">gb<span class="two">2</span>g<span class="llc">LLC</span></div>
+  </a>
+  <div class="links">
+    <a href="/">home</a>
+    <a href="/about" class="active">about</a>
+    <a href="/intake">onboarding</a>
+  </div>
+  <div style="display:flex;align-items:center;">
+    <div class="live-indicator">
+      <span class="pulse"></span>
+      <span>agents working</span>
+    </div>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">
+      <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+    </button>
+    <a href="/intake" class="cta">Start a project</a>
+  </div>
+</nav>
+
+<main class="page">
+
+  <div class="about-hero">
+    <div class="about-eyebrow"><span class="dot"></span>About GB2GLLC</div>
+    <h1>Built by someone who's<br>run <em>the floor</em>.</h1>
+    <p class="lead">Not a VC-backed lab. Not an agency that discovered AI last year. A practitioner who learned it the hard way — and built tools for people like him.</p>
+  </div>
+
+  <hr class="rule">
+
+  <div class="story">
+    <p>
+      <strong>John</strong> spent five years at Chick-fil-A, finishing as a Drive Thru Director. That's hundreds of orders an hour, a team to manage in real time, and no patience for systems that slow things down. He learned early what it costs when operations break — in dollars, in time, and in the people who have to carry the load.
+    </p>
+    <p>
+      He moved into banking next. Different pace, same problem underneath: too many hours spent on work that should be handled automatically. Too many capable people doing what a well-built system could do better, faster, without complaint.
+    </p>
+    <div class="pull">"I didn't go back to school for this. I just kept running into the same wall — and eventually decided to build the door."</div>
+    <p>
+      He taught himself AI the way most people learn what they actually need: out of necessity, one problem at a time. GB2GLLC is the result. Three products built for the same operator he used to be — someone running a real business, who knows exactly what's broken, and just needs it fixed.
+    </p>
+    <p>
+      Every client gets the same thing: software built with the care you bring to your own work. No hand-wavy roadmaps. No six-month timelines for a chatbot. The job gets done, it gets done right, and you're not left holding the bag when it's over.
+    </p>
+  </div>
+
+  <div class="products-strip">
+    <a href="/#products" class="product-chip">
+      <span class="name">Herald</span>
+      <span class="desc">Website AI agents</span>
+      <span class="price">From $2,400 / mo</span>
+    </a>
+    <a href="/#products" class="product-chip">
+      <span class="name">Atrium</span>
+      <span class="desc">AI website design + build</span>
+      <span class="price">From $18,000 / site</span>
+    </a>
+    <a href="/#products" class="product-chip">
+      <span class="name">Steward</span>
+      <span class="desc">Internal AI employees</span>
+      <span class="price">Q2 2026</span>
+    </a>
+  </div>
+
+  <div class="verse-block">
+    <p class="verse">"Whatever you do, work at it with all your heart, as working for the Lord."</p>
+    <span class="ref">Colossians 3:23 &nbsp;·&nbsp; our anchor</span>
+  </div>
+
+  <div class="about-cta">
+    <a href="/intake" class="btn btn-primary">Start your project <span class="arrow">→</span></a>
+    <a href="/" class="btn btn-ghost">Back to home</a>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div class="mark-block">
+      <div class="word">gb<span class="two">2</span>g<span style="font-family:var(--mono);font-size:12px;color:#5A5C57;vertical-align:9px;margin-left:3px;font-weight:400;">LLC</span></div>
+    </div>
+    <div class="links">
+      <a href="/">home</a>
+      <a href="/about">about</a>
+      <a href="/intake">onboarding</a>
+    </div>
+    <div class="copy">Software founded in Faith. &copy; 2026 GB2GLLC</div>
+  </div>
+</footer>
+
+<script>
+  // Theme persistence
+  var toggle = document.getElementById('theme-toggle');
+  toggle.addEventListener('click', function() {
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (isDark) {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('gb2g-theme', 'light');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('gb2g-theme', 'dark');
+    }
+  });
+</script>
+
+</body>
+</html>

@@ -58,6 +58,7 @@ export async function createIntakePage(
   const about = state.about ?? {};
   const goals = state.goals ?? {};
   const software = state.software ?? {};
+  const access = state.access ?? {};
   const tasks: IntakeState[] = state.tasks ?? [];
   const sops = state.sops ?? {};
   const schedule = state.schedule ?? {};
@@ -116,6 +117,14 @@ export async function createIntakePage(
       "Contact Name": { rich_text: [{ text: { content: contact.name || "" } }] },
       "Email": { rich_text: [{ text: { content: contact.email || "" } }] },
       "Company": { rich_text: [{ text: { content: contact.company || "" } }] },
+      "Website": { rich_text: [{ text: { content: contact.website || "" } }] },
+      "Role": { rich_text: [{ text: { content: about.role || "" } }] },
+      "Team Size": { rich_text: [{ text: { content: about.teamSize || "" } }] },
+      ...(about.industry ? { "Industry": { select: { name: about.industry } } } : {}),
+      ...(about.urgency ? { "Urgency": { select: { name: about.urgency } } } : {}),
+      ...((goals.selected ?? []).length > 0 ? {
+        "Goals": { multi_select: (goals.selected as string[]).map((g: string) => ({ name: g.slice(0, 100) })) },
+      } : {}),
     },
   });
 
@@ -153,9 +162,24 @@ export async function createIntakePage(
       para(softwareList),
       divider(),
 
+      h2("Platform Access"),
+      ...(() => {
+        const selected: string[] = software.selected ?? [];
+        if (!selected.length) return [para("No platforms selected")];
+        return selected.flatMap((id: string) => {
+          const a = access[id] ?? {};
+          return [bullet(
+            `${id} — ${a.granted ? "✅ Access granted" : "⏳ Pending"}`
+            + (a.method ? ` · Method: ${a.method}` : "")
+            + (a.notes ? ` · Notes: ${a.notes}` : "")
+          )];
+        });
+      })(),
+      divider(),
+
       h2("SOPs & Docs"),
       ...fileBlocks,
-      ...(sops.pastedText ? [para(`Pasted notes:\n${sops.pastedText}`)] : []),
+      ...(sops.pastedText ? [para(`Pasted notes:\n${sops.pastedText.slice(0, 2000)}`)] : []),
       ...(sops.additionalLinks ? [para(`Links: ${sops.additionalLinks}`)] : []),
       divider(),
 

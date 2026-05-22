@@ -960,6 +960,9 @@
     .product-info .footer-row { flex-direction: column; align-items: flex-start; gap: 14px; }
     .product-info .footer-row .btn { width: 100%; justify-content: center; }
     .product-demo { aspect-ratio: 4/4; }
+    .product-demo .head { gap: 8px; }
+    .product-demo .head .title { min-width: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .product-demo .head .badge { flex-shrink: 0; }
     .approach-strip { padding: 56px 20px; }
     .approach-head h2 { font-size: 30px; }
     .principles { grid-template-columns: 1fr; gap: 10px; }
@@ -1392,7 +1395,7 @@
       <div class="line"><span class="cmd">gb2g</span> <span class="out">~/</span> $ new-project</div>
       <div class="line"><span class="out">⤷ start the onboarding intake →</span></div>
       <a href="/intake" class="input" style="display:block;text-decoration:none;color:var(--warm-gold);border-color:rgba(232,200,146,0.4);background:rgba(232,200,146,0.06);">Begin intake form →</a>
-      <div class="line" style="margin-top:14px;font-size:11px;opacity:0.6;">// 9 short stages · ~15 minutes · save & resume anytime<span class="term-cursor"></span></div>
+      <div class="line" style="margin-top:14px;font-size:11px;opacity:0.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">// 9 stages · ~15 min · save &amp; resume anytime<span class="term-cursor"></span></div>
     </div>
   </div>
 </section>

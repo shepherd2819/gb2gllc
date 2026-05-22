@@ -148,8 +148,24 @@
     transition: background .15s;
     font-family: var(--sans);
     white-space: nowrap;
+    border: none;
+    cursor: pointer;
   }
   nav .cta:hover { background: var(--dusty-blue-deep); }
+  nav .portal-link {
+    padding: 7px 13px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+    font-family: var(--sans);
+    white-space: nowrap;
+    border: 1px solid var(--rule);
+    color: var(--ink-mute);
+    transition: border-color .15s, color .15s;
+    margin-right: 10px;
+  }
+  nav .portal-link:hover { border-color: var(--ink); color: var(--ink); }
 
   /* ====== HERO ====== */
   .hero {
@@ -922,6 +938,7 @@
     nav { padding: 12px 20px; flex-wrap: wrap; gap: 8px; }
     nav .live-indicator { display: none; }
     nav .links { display: none; }
+    nav .portal-link { display: none; }
     .hero-grid, .product-row, .product-row.flip, .closing-inner { grid-template-columns: 1fr; }
     .product-row.flip .product-info { order: 0; }
     .product-info .specs { grid-template-columns: 1fr; }
@@ -1071,6 +1088,7 @@
     <a href="#contact">contact</a>
   </div>
   <div style="display:flex;align-items:center;">
+    <a href="https://home.gb2gllc.com" class="portal-link">Client portal</a>
     <div class="live-indicator">
       <span class="pulse"></span>
       <span>3 agents working</span>
@@ -1079,7 +1097,7 @@
       <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
       <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
     </button>
-    <a href="#contact" class="cta">Start a project</a>
+    <button class="cta" id="nav-start-project">Start a project</button>
   </div>
 </nav>
 
@@ -1438,6 +1456,19 @@
       }
     });
   })();
+
+  // ============= START PROJECT BUTTON =============
+  document.getElementById('nav-start-project').addEventListener('click', async function() {
+    this.textContent = 'Starting…';
+    this.disabled = true;
+    try {
+      const res = await fetch('/api/intake/new', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      const data = await res.json();
+      if (data.resumeUrl) { window.location.href = data.resumeUrl; return; }
+    } catch {}
+    this.textContent = 'Start a project';
+    this.disabled = false;
+  });
 
   // ============= LIVE HERALD CHAT (HERO) — kept for reference, skipped if element absent =============
   const chatEl = document.getElementById('chat');

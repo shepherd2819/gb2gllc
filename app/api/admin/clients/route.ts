@@ -28,8 +28,7 @@ export async function POST(req: NextRequest) {
 
     // Send WorkOS invitation
     const workos = getWorkOS();
-    const homeUrl = process.env.NEXT_PUBLIC_HOME_URL ?? "https://home.gb2gllc.com";
-    await workos.userManagement.sendInvitation({ email, redirectUri: `${homeUrl}/auth/callback` });
+    await workos.userManagement.sendInvitation({ email });
 
     return NextResponse.json({ client }, { status: 201 });
   } catch (err) {

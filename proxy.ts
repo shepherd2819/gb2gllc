@@ -3,7 +3,13 @@ import { authkitMiddleware } from "@workos-inc/authkit-nextjs";
 
 const HOME_URL = process.env.NEXT_PUBLIC_HOME_URL ?? "https://home.gb2gllc.com";
 
-const authkit = authkitMiddleware({ redirectUri: `${HOME_URL}/auth/callback` });
+const authkit = authkitMiddleware({
+  redirectUri: `${HOME_URL}/auth/callback`,
+  middlewareAuth: {
+    enabled: true,
+    unauthenticatedPaths: ["/auth/callback", "/auth/signout", "/auth/no-account"],
+  },
+});
 
 export default function proxy(req: NextRequest, evt: NextFetchEvent) {
   const host = req.headers.get("host") ?? "";

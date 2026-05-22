@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "john@gb2gllc.com";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user } = await withAuth({ ensureSignedIn: true });
+  const { user } = await withAuth();
   if (!user || user.email !== ADMIN_EMAIL) redirect("/auth/signin");
 
   return (

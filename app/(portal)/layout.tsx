@@ -7,7 +7,7 @@ export default async function PortalLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user } = await withAuth({ ensureSignedIn: true });
+  const { user } = await withAuth();
 
   if (!user) redirect("/auth/signin");
 

@@ -97,7 +97,7 @@ export async function createIntakePage(
       .filter(Boolean)
       .join(" · ") || "None provided";
 
-  // Step 1: create the page (title only — body blocks go in step 2)
+  // Step 1: create the page with DB column properties
   const page = await notion.pages.create({
     parent: { database_id: DB_ID },
     properties: {
@@ -110,6 +110,10 @@ export async function createIntakePage(
           },
         ],
       },
+      "SessionID": { rich_text: [{ text: { content: sessionId } }] },
+      "Contact Name": { rich_text: [{ text: { content: contact.name || "" } }] },
+      "Email": { rich_text: [{ text: { content: contact.email || "" } }] },
+      "Company": { rich_text: [{ text: { content: contact.company || "" } }] },
     },
   });
 

@@ -53,7 +53,8 @@ export async function POST(_req: NextRequest, { params }: Params) {
   // Send WorkOS invite
   try {
     const workos = getWorkOS();
-    await workos.userManagement.sendInvitation({ email });
+    const homeUrl = process.env.NEXT_PUBLIC_HOME_URL ?? "https://home.gb2gllc.com";
+    await workos.userManagement.sendInvitation({ email, redirectUri: `${homeUrl}/auth/callback` });
   } catch (e) {
     console.warn("WorkOS invite failed (may already exist):", e);
   }

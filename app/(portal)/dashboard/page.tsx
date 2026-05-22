@@ -2,6 +2,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { CounterAnimation } from "./CounterAnimation";
+import { AnnouncementBanner } from "./AnnouncementBanner";
 
 async function getClientData(workosUserId: string) {
   const { data: client } = await supabaseAdmin
@@ -18,13 +19,20 @@ async function getClientData(workosUserId: string) {
     { data: stewardMetrics },
     { data: atriumStages },
     { data: tickets },
+    { data: rawAnnouncements },
+    { data: dismissals },
   ] = await Promise.all([
     supabaseAdmin.from("client_products").select("*").eq("client_id", client.id).eq("active", true),
     supabaseAdmin.from("herald_metrics").select("*").eq("client_id", client.id),
     supabaseAdmin.from("steward_metrics").select("*").eq("client_id", client.id),
     supabaseAdmin.from("atrium_progress").select("*").eq("client_id", client.id).order("stage"),
     supabaseAdmin.from("tickets").select("status").eq("client_id", client.id),
+    supabaseAdmin.from("announcements").select("id, title, body, type").or(`client_id.eq.${client.id},client_id.is.null`).order("created_at", { ascending: false }),
+    supabaseAdmin.from("announcement_dismissals").select("announcement_id").eq("client_id", client.id),
   ]);
+
+  const dismissedIds = new Set((dismissals ?? []).map(d => d.announcement_id));
+  const announcements = (rawAnnouncements ?? []).filter(a => !dismissedIds.has(a.id));
 
   const herald = (heraldMetrics ?? []).reduce(
     (acc, row) => ({
@@ -49,17 +57,17 @@ async function getClientData(workosUserId: string) {
   );
   const openTickets = (tickets ?? []).filter((t) => t.status !== "resolved").length;
 
-  return { client, products: products ?? [], herald, steward, totalHours, daysActive, atriumStages: atriumStages ?? [], openTickets };
+  return { client, products: products ?? [], herald, steward, totalHours, daysActive, atriumStages: atriumStages ?? [], openTickets, announcements };
 }
 
 export default async function DashboardPage() {
-  const { user } = await withAuth({ ensureSignedIn: true });
+  const { user } = await withAuth();
   if (!user) redirect("/auth/signin");
 
   const data = await getClientData(user.id);
   if (!data) redirect("/auth/no-account");
 
-  const { client, products, herald, steward, totalHours, daysActive, atriumStages, openTickets } = data;
+  const { client, products, herald, steward, totalHours, daysActive, atriumStages, openTickets, announcements } = data;
   const hasHerald  = products.some((p) => p.product === "herald");
   const hasAtrium  = products.some((p) => p.product === "atrium");
   const hasSteward = products.some((p) => p.product === "steward");
@@ -74,6 +82,7 @@ export default async function DashboardPage() {
   return (
     <>
       <CounterAnimation />
+      <AnnouncementBanner announcements={announcements} />
 
       <div className="dash-hero">
         <div className="dash-greeting">

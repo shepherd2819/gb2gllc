@@ -1,5 +1,6 @@
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { redirect } from "next/navigation";
+import { AdminThemeToggle } from "./AdminThemeToggle";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "john@gb2gllc.com";
 
@@ -14,11 +15,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>GB2G · Admin</title>
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-        <meta name="theme-color" content="#0F1110" />
+        <meta name="theme-color" content="#F7F5F0" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
         <link rel="stylesheet" href="/admin/admin.css" />
+        <script src="/admin/theme-init.js" />
       </head>
       <body>
         <nav className="admin-nav">
@@ -31,7 +33,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <a href="/clients">Clients</a>
             <a href="/billing">Billing</a>
           </div>
-          <a href="/auth/signout" className="admin-signout">Sign out</a>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <AdminThemeToggle />
+            <a href="/auth/signout" className="admin-signout">Sign out</a>
+          </div>
         </nav>
         <main className="admin-main">{children}</main>
       </body>

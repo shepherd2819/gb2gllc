@@ -47,9 +47,8 @@ export function ClientControls({
   }
 
   return (
-    <div className="admin-card">
-      <div className="admin-card-head">
-        <h2>Products & Account</h2>
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
         {msg && <span className="save-msg">{msg}</span>}
         {saving && <span className="save-msg">Saving…</span>}
       </div>
@@ -83,12 +82,6 @@ export function ClientControls({
         </div>
       </div>
 
-      <div className="client-meta">
-        <div className="cm-row"><span>Name</span><span>{clientName || "—"}</span></div>
-        <div className="cm-row"><span>Company</span><span>{clientCompany || "—"}</span></div>
-        <div className="cm-row"><span>Email</span><span>{clientEmail}</span></div>
-        <div className="cm-row"><span>Stripe</span><span>{stripeCustomerId || <em>Not created yet</em>}</span></div>
-      </div>
     </div>
   );
 }

@@ -1,33 +1,87 @@
 /* ============================================================
    GB2G ADMIN PORTAL — admin.css
+   Light mode default + [data-theme="dark"] toggle
+   Fonts: Inter (--sans), JetBrains Mono (--mono), EB Garamond (--serif)
    ============================================================ */
+
+/* ── 1. DESIGN TOKENS ──────────────────────────────────────── */
 :root {
+  /* Backgrounds */
+  --bg:       #F7F5F0;
+  --bg-2:     #FFFFFF;
+  --bg-3:     #F0EDE5;
+
+  /* Borders */
+  --border:   #E3DDD3;
+
+  /* Text */
+  --text:     #1C1E1B;
+  --text-soft:#5C5E58;
+  --text-mute:#9A9C93;
+
+  /* Accent — Gold */
+  --gold:     #8A6B28;
+  --gold-dim: rgba(138,107,40,0.09);
+
+  /* Accent — Sage */
+  --sage:     #3D5E38;
+  --sage-dim: rgba(61,94,56,0.09);
+
+  /* Accent — Red */
+  --red:      #943220;
+  --red-dim:  rgba(148,50,32,0.09);
+
+  /* Accent — Blue */
+  --blue:     #2E5480;
+  --blue-dim: rgba(46,84,128,0.09);
+
+  /* Typography */
+  --sans:  "Inter", ui-sans-serif, system-ui, sans-serif;
+  --mono:  "JetBrains Mono", ui-monospace, monospace;
+  --serif: "EB Garamond", Georgia, serif;
+
+  /* Misc */
+  --r: 10px;
+}
+
+[data-theme="dark"] {
+  /* Backgrounds */
   --bg:       #0F1110;
   --bg-2:     #181A19;
   --bg-3:     #212321;
+
+  /* Borders */
   --border:   #2C2E2B;
+
+  /* Text */
   --text:     #EDE7D7;
   --text-soft:#8A8C85;
   --text-mute:#4A4D47;
+
+  /* Accent — Gold */
   --gold:     #C9A961;
   --gold-dim: rgba(201,169,97,0.15);
+
+  /* Accent — Sage */
   --sage:     #A6B49B;
   --sage-dim: rgba(166,180,155,0.12);
+
+  /* Accent — Red */
   --red:      #C97B5C;
   --red-dim:  rgba(201,123,92,0.12);
+
+  /* Accent — Blue */
   --blue:     #7F9DB9;
   --blue-dim: rgba(127,157,185,0.12);
-  --sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --mono: "JetBrains Mono", ui-monospace, monospace;
-  --serif: "EB Garamond", Georgia, serif;
-  --r: 10px;
 }
+
+/* ── 2. RESET & BASE ────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
 body { font-family: var(--sans); -webkit-font-smoothing: antialiased; line-height: 1.5; }
 a { color: inherit; text-decoration: none; }
 
-/* NAV */
+/* ── 3. NAV ─────────────────────────────────────────────────── */
 .admin-nav {
   display: flex; align-items: center; gap: 20px;
   padding: 0 28px; height: 52px;
@@ -43,7 +97,19 @@ a { color: inherit; text-decoration: none; }
 .admin-signout { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; color: var(--text-mute); transition: all .15s; }
 .admin-signout:hover { border-color: var(--text-soft); color: var(--text); }
 
-/* LAYOUT */
+/* Theme toggle button */
+.theme-toggle-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  background: none; border: 1px solid var(--border); border-radius: 6px;
+  cursor: pointer; color: var(--text-mute);
+  transition: border-color .15s, color .15s;
+  flex-shrink: 0;
+}
+.theme-toggle-btn:hover { border-color: var(--text-soft); color: var(--text); }
+.theme-toggle-btn svg { width: 14px; height: 14px; display: block; }
+
+/* ── 4. LAYOUT ──────────────────────────────────────────────── */
 .admin-main { max-width: 1100px; margin: 0 auto; padding: 36px 24px 80px; }
 .admin-page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 28px; }
 .admin-page-header h1 { font-size: 26px; font-weight: 400; letter-spacing: -0.03em; margin: 0; }
@@ -54,13 +120,37 @@ a { color: inherit; text-decoration: none; }
 .admin-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .admin-col-stack { display: flex; flex-direction: column; gap: 16px; }
 
-/* STAT ROW */
+/* ── 5. STAT ROW ────────────────────────────────────────────── */
 .admin-stat-row { display: flex; gap: 12px; margin-bottom: 28px; }
 .admin-stat { flex: 1; background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--r); padding: 20px; }
 .asn { font-size: 32px; font-weight: 300; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
 .asl { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-mute); margin-top: 4px; }
 
-/* CARDS */
+/* ── 6. KPI GRID (overview cards) ───────────────────────────── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.kpi-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--r); padding: 20px; }
+.kpi-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-mute); margin-bottom: 8px; }
+.kpi-value { font-size: 36px; font-weight: 300; letter-spacing: -0.04em; line-height: 1; }
+.kpi-sub { font-size: 12px; color: var(--text-mute); margin-top: 4px; }
+.kpi-card.warn .kpi-value { color: var(--gold); }
+.kpi-card.alert .kpi-value { color: var(--red); }
+
+/* ── 7. PRODUCT BREAKDOWN (status row) ──────────────────────── */
+.product-breakdown { display: flex; gap: 8px; margin-bottom: 28px; flex-wrap: wrap; }
+.pb-item { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
+.pb-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.pb-dot.herald  { background: var(--blue); }
+.pb-dot.atrium  { background: var(--gold); }
+.pb-dot.steward { background: var(--sage); }
+.pb-count { font-family: var(--mono); font-weight: 500; }
+.pb-name { color: var(--text-soft); }
+
+/* ── 8. CARDS ───────────────────────────────────────────────── */
 .admin-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--r); padding: 20px; }
 .admin-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .admin-card-head h2 { font-size: 14px; font-weight: 500; margin: 0; }
@@ -70,7 +160,7 @@ a { color: inherit; text-decoration: none; }
 .admin-section-title { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-mute); margin: 0 0 12px; }
 .admin-empty { font-size: 13px; color: var(--text-mute); padding: 12px 0; }
 
-/* FORM ELEMENTS */
+/* ── 9. FORM ELEMENTS ───────────────────────────────────────── */
 .admin-input, .admin-select {
   display: block; width: 100%; font-family: var(--sans); font-size: 13px;
   padding: 9px 12px; background: var(--bg-3); border: 1px solid var(--border);
@@ -79,6 +169,8 @@ a { color: inherit; text-decoration: none; }
 }
 .admin-input:focus, .admin-select:focus { border-color: var(--gold); }
 .admin-select option { background: var(--bg-2); }
+
+/* Primary button */
 .admin-btn {
   padding: 9px 18px; background: var(--gold); color: #1C1E1B;
   border: none; border-radius: 8px; font-size: 13px; font-weight: 500;
@@ -86,9 +178,41 @@ a { color: inherit; text-decoration: none; }
 }
 .admin-btn:hover { opacity: 0.85; }
 .admin-btn:disabled { opacity: 0.4; cursor: default; }
+
+/* Ghost button */
+.admin-btn-ghost {
+  padding: 9px 18px; background: transparent;
+  border: 1px solid var(--border); border-radius: 8px;
+  font-size: 13px; font-weight: 500; color: var(--text-soft);
+  cursor: pointer; transition: border-color .15s, color .15s;
+}
+.admin-btn-ghost:hover { border-color: var(--text); color: var(--text); }
+.admin-btn-ghost:disabled { opacity: 0.4; cursor: default; }
+
+/* Small button modifier (stacks with admin-btn or admin-btn-ghost) */
+.admin-btn-sm { padding: 6px 12px; font-size: 12px; }
+
 .save-msg { font-family: var(--mono); font-size: 10px; color: var(--sage); letter-spacing: 0.06em; }
 
-/* CLIENT TABLE */
+/* ── 10. INLINE EDIT FORM ────────────────────────────────────── */
+.edit-form {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.admin-input-row {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 0;
+}
+.admin-input-row label { font-size: 12px; color: var(--text-mute); }
+
+/* ── 11. CLIENT TABLE ────────────────────────────────────────── */
 .admin-table { background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
 .at-head { display: grid; grid-template-columns: 1.5fr 2fr 1.2fr 0.8fr 0.8fr 80px; gap: 12px; padding: 10px 16px; background: var(--bg-3); font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-mute); }
 .at-row { display: grid; grid-template-columns: 1.5fr 2fr 1.2fr 0.8fr 0.8fr 80px; gap: 12px; padding: 13px 16px; border-top: 1px solid var(--border); align-items: center; font-size: 13px; }
@@ -105,14 +229,14 @@ a { color: inherit; text-decoration: none; }
 .prod-chip.atrium  { background: var(--gold-dim); color: var(--gold); }
 .prod-chip.steward { background: var(--sage-dim); color: var(--sage); }
 
-/* STATUS CHIPS */
+/* ── 12. STATUS CHIPS ────────────────────────────────────────── */
 .status-chip { font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 100px; }
 .status-chip.active   { background: var(--sage-dim); color: var(--sage); }
 .status-chip.paused   { background: var(--gold-dim); color: var(--gold); }
 .status-chip.disabled { background: var(--red-dim);  color: var(--red); }
 .status-chip.large    { font-size: 11px; padding: 5px 12px; }
 
-/* PRODUCT TOGGLES */
+/* ── 13. PRODUCT TOGGLES ─────────────────────────────────────── */
 .product-toggles { display: flex; gap: 8px; margin-bottom: 16px; }
 .prod-toggle { flex: 1; display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--bg-3); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--text-soft); transition: all .15s; }
 .prod-toggle.on { background: var(--sage-dim); border-color: rgba(166,180,155,0.3); color: var(--text); }
@@ -122,7 +246,7 @@ a { color: inherit; text-decoration: none; }
 .pt-state { font-family: var(--mono); font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-mute); }
 .prod-toggle.on .pt-state { color: var(--sage); }
 
-/* STATUS CONTROLS */
+/* ── 14. STATUS CONTROLS ─────────────────────────────────────── */
 .status-controls { margin-bottom: 16px; }
 .ctrl-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-mute); display: block; margin-bottom: 8px; }
 .status-btns { display: flex; gap: 6px; }
@@ -131,12 +255,12 @@ a { color: inherit; text-decoration: none; }
 .status-btn.s-paused.selected  { background: var(--gold-dim); border-color: rgba(201,169,97,0.4); color: var(--gold); }
 .status-btn.s-disabled.selected{ background: var(--red-dim);  border-color: rgba(201,123,92,0.4); color: var(--red); }
 
-/* CLIENT META */
+/* ── 15. CLIENT META ─────────────────────────────────────────── */
 .client-meta { border-top: 1px solid var(--border); padding-top: 14px; }
 .cm-row { display: flex; gap: 12px; font-size: 12px; padding: 5px 0; }
 .cm-row span:first-child { color: var(--text-mute); min-width: 70px; }
 
-/* LOGS */
+/* ── 16. LOGS ────────────────────────────────────────────────── */
 .log-list { display: flex; flex-direction: column; gap: 4px; max-height: 500px; overflow-y: auto; }
 .log-full-list { display: flex; flex-direction: column; gap: 2px; }
 .log-row, .log-full-row { display: flex; align-items: baseline; gap: 10px; font-family: var(--mono); font-size: 11px; padding: 6px 8px; border-radius: 6px; }
@@ -154,14 +278,14 @@ a { color: inherit; text-decoration: none; }
 .lf-meta  { width: 100%; margin: 4px 0 0 0; padding: 8px; background: var(--bg-3); border-radius: 6px; font-size: 10px; color: var(--text-soft); overflow-x: auto; }
 .lf-session { font-size: 10px; color: var(--text-mute); }
 
-/* LOG FILTERS */
+/* ── 17. LOG FILTERS ─────────────────────────────────────────── */
 .log-filters { display: flex; gap: 6px; flex-wrap: wrap; }
 .filter-chip { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 10px; border: 1px solid var(--border); border-radius: 100px; color: var(--text-mute); transition: all .15s; }
 .filter-chip:hover { border-color: var(--text-soft); color: var(--text); }
 .filter-chip.active { border-color: var(--gold); color: var(--gold); background: var(--gold-dim); }
 .filter-chip.clear { border-color: var(--red-dim); color: var(--red); }
 
-/* INVOICES */
+/* ── 18. INVOICES ────────────────────────────────────────────── */
 .invoice-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
 .invoice-row:last-child { border-bottom: none; }
 .inv-desc { flex: 1; color: var(--text-soft); }
@@ -178,7 +302,7 @@ a { color: inherit; text-decoration: none; }
 .dollar-sign { font-family: var(--mono); color: var(--text-mute); }
 .amount-input { margin-bottom: 8px; }
 
-/* ATRIUM ADMIN */
+/* ── 19. ATRIUM ADMIN ────────────────────────────────────────── */
 .atrium-stage-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
 .atrium-admin-row { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 6px; }
 .atrium-admin-row:hover { background: var(--bg-3); }
@@ -191,7 +315,7 @@ a { color: inherit; text-decoration: none; }
 .ar-stage { font-family: var(--mono); font-size: 10px; color: var(--text-mute); }
 .atrium-add-form { display: flex; flex-direction: column; gap: 6px; padding-top: 14px; border-top: 1px solid var(--border); }
 
-/* ADMIN LIST */
+/* ── 20. ADMIN LIST ──────────────────────────────────────────── */
 .admin-list { background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
 .admin-list-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13px; }
 .admin-list-row:last-child { border-bottom: none; }
@@ -203,11 +327,66 @@ a { color: inherit; text-decoration: none; }
 .alr-badge.warn { background: var(--gold-dim); color: var(--gold); }
 .alr-date { font-family: var(--mono); font-size: 11px; color: var(--text-mute); }
 
-/* RESPONSIVE */
+/* ── 21. INVITE MODAL ────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px;
+  width: 420px;
+  max-width: 90vw;
+}
+.modal-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20px;
+}
+.modal-head h2 { font-size: 16px; font-weight: 500; margin: 0; }
+.modal-close {
+  background: none; border: none;
+  font-size: 20px; color: var(--text-mute);
+  cursor: pointer; line-height: 1; padding: 0;
+  transition: color .15s;
+}
+.modal-close:hover { color: var(--text); }
+.modal-footer {
+  display: flex; justify-content: flex-end; gap: 8px;
+  margin-top: 20px;
+}
+
+/* ── 22. ANNOUNCEMENTS CARD ──────────────────────────────────── */
+.announcement-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.announcement-row { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+.ann-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.ann-type {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em;
+  text-transform: uppercase; padding: 2px 7px; border-radius: 100px;
+}
+.ann-type.info            { background: var(--blue-dim); color: var(--blue); }
+.ann-type.update          { background: var(--gold-dim); color: var(--gold); }
+.ann-type.action_required { background: var(--red-dim);  color: var(--red); }
+.ann-title { font-size: 13px; font-weight: 500; flex: 1; }
+.ann-body { font-size: 12px; color: var(--text-soft); line-height: 1.5; }
+.ann-delete {
+  background: none; border: none;
+  color: var(--text-mute); cursor: pointer;
+  font-size: 16px; line-height: 1; padding: 0;
+  transition: color .15s;
+}
+.ann-delete:hover { color: var(--red); }
+.ann-meta { font-family: var(--mono); font-size: 10px; color: var(--text-mute); margin-top: 6px; }
+
+/* ── 23. RESPONSIVE ──────────────────────────────────────────── */
 @media (max-width: 768px) {
   .admin-two-col { grid-template-columns: 1fr; }
   .at-head, .at-row { grid-template-columns: 1.5fr 1fr 80px; }
   .at-head span:nth-child(2), .at-row span:nth-child(2),
   .at-head span:nth-child(4), .at-row span:nth-child(4),
   .at-head span:nth-child(5), .at-row span:nth-child(5) { display: none; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
 }

@@ -11,17 +11,27 @@ export default async function PortalLayout({
 
   if (!user) redirect("/auth/signin");
 
-  // Look up client record by WorkOS user ID
-  const { data: client } = await supabaseAdmin
+  // Look up client by WorkOS user ID, fall back to email (for invited clients on first login)
+  let { data: client } = await supabaseAdmin
     .from("clients")
     .select("id, name, email, company")
     .eq("workos_user_id", user.id)
     .single();
 
-  if (!client) {
-    // Account exists in WorkOS but not yet in our DB — edge case
-    redirect("/auth/no-account");
+  if (!client && user.email) {
+    const { data: byEmail } = await supabaseAdmin
+      .from("clients")
+      .select("id, name, email, company, workos_user_id")
+      .eq("email", user.email)
+      .single();
+
+    if (byEmail && !byEmail.workos_user_id) {
+      await supabaseAdmin.from("clients").update({ workos_user_id: user.id }).eq("id", byEmail.id);
+      client = byEmail;
+    }
   }
+
+  if (!client) redirect("/auth/no-account");
 
   return (
     <html lang="en">

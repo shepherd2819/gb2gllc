@@ -6,7 +6,7 @@ const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL ?? "https://admin.gb2gllc.co
 
 const MIDDLEWARE_AUTH = {
   enabled: true,
-  unauthenticatedPaths: ["/auth/callback", "/auth/signout", "/auth/no-account"],
+  unauthenticatedPaths: ["/auth/callback", "/auth/signout", "/auth/no-account", "/welcome"],
 };
 
 const homeAuthkit = authkitMiddleware({ redirectUri: `${HOME_URL}/auth/callback`, middlewareAuth: MIDDLEWARE_AUTH });
@@ -20,7 +20,7 @@ export default function proxy(req: NextRequest, evt: NextFetchEvent) {
 
   // root redirects
   if (/^(www\.)?home\.gb2gllc\.com(:\d+)?$/.test(host) && pathname === "/") {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+    return NextResponse.redirect(new URL("/welcome", req.url));
   }
   if (isAdmin && pathname === "/") {
     return NextResponse.redirect(new URL("/admin", req.url));
@@ -40,6 +40,7 @@ export const config = {
     "/clients/:path*",
     "/submissions/:path*",
     "/billing/:path*",
+    "/welcome",
     "/auth/:path*",
   ],
 };

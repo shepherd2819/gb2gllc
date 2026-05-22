@@ -7,11 +7,13 @@ export default authkitMiddleware({
 
 export const config = {
   matcher: [
-    // Run on portal pages only — skip static files, API routes, public pages
     "/dashboard/:path*",
     "/connections/:path*",
     "/tickets/:path*",
     "/account/:path*",
+    "/admin/:path*",
+    "/clients/:path*",
+    "/billing/:path*",
     "/auth/:path*",
   ],
 };

@@ -458,6 +458,25 @@ a { color: inherit; text-decoration: none; }
   margin-left: 30px;
 }
 
+.sa-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-left: 30px; margin-top: 4px;
+}
+.sa-connect-link {
+  font-family: var(--mono); font-size: 10px; color: var(--gold);
+  background: none; border: none; cursor: pointer; padding: 0;
+  text-decoration: none; letter-spacing: 0.04em;
+}
+.sa-connect-link.warn { color: var(--red); }
+.sa-connect-link:hover { opacity: 0.75; }
+.sa-run-msg {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em;
+  margin: 8px 0 0 30px;
+}
+.steward-connect-form {
+  border-top: 1px solid var(--border);
+  padding-top: 12px; margin-top: 12px;
+}
 .steward-add-form {
   border-top: 1px solid var(--border);
   padding-top: 16px;

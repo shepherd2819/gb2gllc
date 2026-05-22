@@ -19,6 +19,7 @@ export default async function ClientDetailPage({ params }: Params) {
     { data: announcements },
     { data: stewardAssignments },
     { data: stewardPlatforms },
+    { data: stewardTokens },
   ] = await Promise.all([
     supabaseAdmin.from("clients").select("*, client_products(*), invoices(id, amount_cents, description, status, sent_at, created_at)").eq("id", id).single(),
     supabaseAdmin.from("client_logs").select("*").eq("client_id", id).order("created_at", { ascending: false }).limit(50),
@@ -27,6 +28,7 @@ export default async function ClientDetailPage({ params }: Params) {
     supabaseAdmin.from("announcements").select("*").or(`client_id.eq.${id},client_id.is.null`).order("created_at", { ascending: false }),
     supabaseAdmin.from("client_steward_assignments").select("*, steward_platform_agents(id, display_name, icon, description)").eq("client_id", id).order("created_at", { ascending: true }),
     supabaseAdmin.from("steward_platform_agents").select("id, display_name, icon, description").eq("available", true).order("display_name"),
+    supabaseAdmin.from("steward_platform_tokens").select("platform").eq("client_id", id),
   ]);
 
   if (!client) notFound();
@@ -96,6 +98,7 @@ export default async function ClientDetailPage({ params }: Params) {
             clientId={client.id}
             initialAssignments={(stewardAssignments ?? []) as any}
             platforms={(stewardPlatforms ?? []) as any}
+            connectedPlatforms={(stewardTokens ?? []).map((t: { platform: string }) => t.platform)}
           />
 
           <div className="admin-card">

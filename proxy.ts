@@ -5,8 +5,8 @@ const HOME_URL = process.env.NEXT_PUBLIC_HOME_URL ?? "https://home.gb2gllc.com";
 const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL ?? "https://admin.gb2gllc.com";
 
 const MIDDLEWARE_AUTH = {
-  enabled: true,
-  unauthenticatedPaths: ["/auth/callback", "/auth/signin", "/auth/signout", "/auth/no-account", "/welcome"],
+  enabled: false,
+  unauthenticatedPaths: [] as string[],
 };
 
 const homeAuthkit = authkitMiddleware({ redirectUri: `${HOME_URL}/auth/callback`, middlewareAuth: MIDDLEWARE_AUTH });

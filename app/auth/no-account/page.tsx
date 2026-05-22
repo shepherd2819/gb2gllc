@@ -54,12 +54,12 @@ export default function NoAccountPage() {
         <div className="card">
           <div className="wordmark">gb<em>2</em>g</div>
           <div className="label">Client Portal</div>
-          <h1>No portal access yet.</h1>
+          <h1>Wrong account.</h1>
           <p>
-            Your account isn&apos;t linked to a GB2G client profile.<br />
-            If you believe this is an error, contact your GB2G account manager.
+            No client profile found for this email address.<br />
+            Sign out and try again with the correct email.
           </p>
-          <a href="/auth/signout" className="btn">Sign out →</a>
+          <a href="/auth/signout" className="btn">Sign in with a different account →</a>
         </div>
       </body>
     </html>

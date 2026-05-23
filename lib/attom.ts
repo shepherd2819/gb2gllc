@@ -20,19 +20,22 @@ export type AttomPropertyDetail = {
   }>;
 };
 
-export type SqftLookup = {
-  ok: true;
-  source: "attom";
-  normalizedAddress: string;
-  sqft: number | null;
-  beds: number | null;
-  baths: number | null;
-  yearBuilt: number | null;
-  propertyType: string | null;
-} | {
-  ok: false;
-  error: string;
-};
+export type SqftLookup =
+  | {
+      ok: true;
+      source: "attom";
+      normalizedAddress: string;
+      sqft: number | null;
+      beds: number | null;
+      baths: number | null;
+      yearBuilt: number | null;
+      propertyType: string | null;
+    }
+  | {
+      ok: false;
+      kind: "not_found" | "error";
+      reason: string;
+    };
 
 function parseAddress(input: string): { address1: string; address2: string } | null {
   // Accept "123 Main St, Denver, CO 80202" or "123 Main St Denver CO 80202".
@@ -68,7 +71,7 @@ function parseAddress(input: string): { address1: string; address2: string } | n
 
 export async function lookupProperty(address: string): Promise<SqftLookup> {
   const parsed = parseAddress(address);
-  if (!parsed) return { ok: false, error: "Could not parse address" };
+  if (!parsed) return { ok: false, kind: "error", reason: "Could not parse address" };
 
   const url = new URL(`${BASE}/property/detail`);
   url.searchParams.set("address1", parsed.address1);
@@ -80,26 +83,42 @@ export async function lookupProperty(address: string): Promise<SqftLookup> {
   try {
     res = await fetch(url, { headers: authHeaders(), cache: "no-store" });
   } catch (e) {
-    return { ok: false, error: `Network error reaching ATTOM: ${(e as Error).message}` };
+    return { ok: false, kind: "error", reason: `Network error reaching ATTOM: ${(e as Error).message}` };
   }
 
   const text = await res.text();
-  if (!res.ok) {
-    console.error("[attom] error", res.status, text.slice(0, 300));
-    return { ok: false, error: `ATTOM ${res.status}: ${text.slice(0, 200)}` };
-  }
 
-  let json: AttomPropertyDetail;
+  // Try to parse JSON regardless of HTTP status — ATTOM uses 400 for "no result"
+  // alongside a structured body, which is a "not found" not an error.
+  let json: AttomPropertyDetail | null = null;
   try {
     json = JSON.parse(text);
   } catch {
-    return { ok: false, error: "ATTOM returned non-JSON" };
+    // not JSON
+  }
+
+  // Auth/key issues: 401/403 with no parseable body
+  if (!json) {
+    console.error("[attom] non-JSON error", res.status, text.slice(0, 300));
+    return { ok: false, kind: "error", reason: `ATTOM ${res.status}: ${text.slice(0, 200)}` };
   }
 
   const code = json.status?.code;
-  // ATTOM uses status.code 0 = success, anything else = error/not-found
+  const msg = json.status?.msg ?? "";
+
+  // ATTOM "no result" signals:
+  //   - status.msg === "SuccessWithoutResult"
+  //   - or status.code !== 0 and property array missing/empty
+  if (msg === "SuccessWithoutResult" || msg === "no results" || (code !== 0 && !json.property?.[0])) {
+    return {
+      ok: false,
+      kind: "not_found",
+      reason: "No property found at that address in the public records",
+    };
+  }
+
   if (code !== 0 || !json.property?.[0]) {
-    return { ok: false, error: json.status?.msg || `Property not found (status code ${code ?? "?"})` };
+    return { ok: false, kind: "error", reason: msg || `ATTOM status code ${code ?? "?"}` };
   }
 
   const p = json.property[0];
@@ -123,8 +142,14 @@ export async function lookupProperty(address: string): Promise<SqftLookup> {
   };
 }
 
-export function formatSqftReply(lookup: SqftLookup): string {
-  if (!lookup.ok) return `⚠️ ${lookup.error}`;
+export function formatSqftReply(lookup: SqftLookup, originalInput?: string): string {
+  if (!lookup.ok) {
+    if (lookup.kind === "not_found") {
+      const addr = originalInput ? ` for *${originalInput}*` : "";
+      return `🤷 No match in public records${addr}.\nTry including the full city + state + ZIP, or double-check the spelling.`;
+    }
+    return `⚠️ ${lookup.reason}`;
+  }
   const lines: string[] = [];
   lines.push(`📍 *${lookup.normalizedAddress}*`);
   const facts: string[] = [];

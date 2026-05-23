@@ -66,7 +66,11 @@ async function runLookup(opts: {
   responseUrl: string;
 }) {
   const lookup = await lookupProperty(opts.address);
-  const reply = formatSqftReply(lookup);
+  const reply = formatSqftReply(lookup, opts.address);
+
+  const status = lookup.ok
+    ? (lookup.sqft != null ? "found" : "not_found")
+    : lookup.kind;
 
   await supabaseAdmin.from("mark_lookups").insert({
     client_id: opts.clientId,
@@ -80,8 +84,8 @@ async function runLookup(opts: {
     baths: lookup.ok ? lookup.baths : null,
     year_built: lookup.ok ? lookup.yearBuilt : null,
     property_type: lookup.ok ? lookup.propertyType : null,
-    status: lookup.ok ? (lookup.sqft != null ? "found" : "not_found") : "error",
-    error: lookup.ok ? null : lookup.error,
+    status,
+    error: lookup.ok ? null : lookup.reason,
     raw: lookup as unknown as object,
   });
 

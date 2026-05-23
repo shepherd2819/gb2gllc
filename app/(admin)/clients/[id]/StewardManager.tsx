@@ -97,9 +97,18 @@ export function StewardManager({
     setDeletingId(null);
   }
 
+  function startConnect(platformAgentId: string) {
+    if (platformAgentId === "slack") {
+      // Slack uses OAuth — install on behalf of this client
+      window.location.href = `/api/slack/install?clientId=${clientId}`;
+      return;
+    }
+    setConnectingFor(platformAgentId);
+  }
+
   async function handleRun(assignment: Assignment) {
     if (!connected.has(assignment.platform_agent_id)) {
-      setConnectingFor(assignment.platform_agent_id);
+      startConnect(assignment.platform_agent_id);
       return;
     }
     setRunningId(assignment.id);
@@ -239,7 +248,9 @@ export function StewardManager({
               {a.schedule && <span className="sa-schedule">⏱ {a.schedule}</span>}
               {isConnected
                 ? <button className="sa-connect-link" onClick={() => handleDisconnect(a.platform_agent_id)}>Disconnect {p.display_name}</button>
-                : <button className="sa-connect-link warn" onClick={() => setConnectingFor(a.platform_agent_id)}>Connect {p.display_name} →</button>
+                : <button className="sa-connect-link warn" onClick={() => startConnect(a.platform_agent_id)}>
+                    {a.platform_agent_id === "slack" ? `Install ${p.display_name} workspace →` : `Connect ${p.display_name} →`}
+                  </button>
               }
             </div>
 

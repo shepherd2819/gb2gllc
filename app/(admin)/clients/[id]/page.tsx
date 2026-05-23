@@ -29,7 +29,7 @@ export default async function ClientDetailPage({ params }: Params) {
     supabaseAdmin.from("announcements").select("*").or(`client_id.eq.${id},client_id.is.null`).order("created_at", { ascending: false }),
     supabaseAdmin.from("client_steward_assignments").select("*, steward_platform_agents(id, display_name, icon, description)").eq("client_id", id).order("created_at", { ascending: true }),
     supabaseAdmin.from("steward_platform_agents").select("id, display_name, icon, description").eq("available", true).order("display_name"),
-    supabaseAdmin.from("steward_platform_tokens").select("platform").eq("client_id", id),
+    supabaseAdmin.from("steward_platform_tokens").select("platform, token_data").eq("client_id", id),
   ]);
 
   if (!client) notFound();

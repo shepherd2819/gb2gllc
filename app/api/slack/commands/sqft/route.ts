@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { verifySlackSignature, respondToSlashCommand } from "@/lib/slack";
-import { lookupProperty, formatSqftReply } from "@/lib/attom";
+import { formatSqftReply } from "@/lib/attom";
+import { lookupPropertyAll } from "@/lib/property-lookup";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -65,7 +66,7 @@ async function runLookup(opts: {
   channelId: string;
   responseUrl: string;
 }) {
-  const lookup = await lookupProperty(opts.address);
+  const lookup = await lookupPropertyAll(opts.address);
 
   const status = lookup.ok
     ? (lookup.sqft != null ? "found" : "not_found")

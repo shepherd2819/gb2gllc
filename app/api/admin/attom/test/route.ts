@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { lookupProperty, formatSqftReply } from "@/lib/attom";
+import { formatSqftReply } from "@/lib/attom";
+import { lookupPropertyAll } from "@/lib/property-lookup";
 
 export async function POST(req: NextRequest) {
   const guard = await requireAdmin();
@@ -9,7 +10,7 @@ export async function POST(req: NextRequest) {
   const { address } = await req.json();
   if (!address) return NextResponse.json({ error: "address required" }, { status: 400 });
 
-  const result = await lookupProperty(address);
+  const result = await lookupPropertyAll(address);
   return NextResponse.json({
     ...result,
     preview: formatSqftReply(result),

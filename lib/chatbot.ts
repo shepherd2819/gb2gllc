@@ -10,15 +10,21 @@ async function get<T>(path: string, params?: Record<string, string | number | un
   const url = new URL(`${BASE}${path}`);
   if (params) {
     for (const [k, v] of Object.entries(params)) {
-      if (v !== undefined) url.searchParams.set(k, String(v));
+      if (v !== undefined && v !== "") url.searchParams.set(k, String(v));
     }
   }
+  console.log("[chatbot] GET", url.toString());
   const res = await fetch(url, { headers: authHeaders(), cache: "no-store" });
+  const text = await res.text();
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
+    console.error("[chatbot] error response", res.status, text.slice(0, 300));
     throw new Error(`chatbot.com ${path} ${res.status}: ${text.slice(0, 200)}`);
   }
-  return res.json() as Promise<T>;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(`chatbot.com ${path}: invalid JSON: ${text.slice(0, 200)}`);
+  }
 }
 
 export type ChatbotStory = {
@@ -29,48 +35,29 @@ export type ChatbotStory = {
 };
 
 export async function listStories() {
+  // Stories endpoint uses /v2 prefix per docs
   return get<{ data: ChatbotStory[] }>("/v2/stories");
 }
 
-// All reports endpoints accept ISO date range
-type DateRange = { date_from: string; date_to: string; story?: string };
+// Reports endpoints do NOT use /v2 prefix and accept ISO 8601 dates
+type ReportRange = { from: string; to: string; storyId?: string };
 
-export type ConversationsReport = {
-  data: Array<{ date: string; value: number }>;
-  total?: number;
-};
+type ReportPoint = { date: string; value: number };
+type ReportSummary = { total: number; min: number; max: number; avg: number };
+type ReportResponse = { data: ReportPoint[]; summary?: ReportSummary };
 
-export async function conversationsReport(range: DateRange) {
-  return get<ConversationsReport>("/v2/reports/conversations", range);
-}
+type BusiestPoint = { hour?: number; day_of_week?: number; value: number };
+type BusiestResponse = { data: BusiestPoint[]; summary?: ReportSummary };
 
-export async function paidConversationsReport(range: DateRange) {
-  return get<ConversationsReport>("/v2/reports/paid-conversations", range);
-}
+type InteractionPoint = { interaction: string; value: number };
+type InteractionResponse = { data: InteractionPoint[]; summary?: ReportSummary };
 
-export async function conversationMessagesReport(range: DateRange) {
-  return get<ConversationsReport>("/v2/reports/conversations-messages", range);
-}
-
-export async function averageConversationsReport(range: DateRange) {
-  return get<{ data: Array<{ date: string; value: number }>; average?: number }>(
-    "/v2/reports/average-conversations",
-    range
-  );
-}
-
-export async function busiestPeriodReport(range: DateRange) {
-  return get<{ data: Array<{ hour: number; day_of_week?: number; value: number }> }>(
-    "/v2/reports/busiest-period",
-    range
-  );
-}
-
-export async function interactionsPopularityReport(range: DateRange) {
-  return get<{ data: Array<{ interaction: string; value: number }> }>(
-    "/v2/reports/interactions-popularity",
-    range
-  );
+function buildRange(periodStart: Date, periodEnd: Date, storyId: string): ReportRange {
+  return {
+    from: periodStart.toISOString(),
+    to: periodEnd.toISOString(),
+    storyId,
+  };
 }
 
 export type WeeklyMetrics = {
@@ -83,31 +70,53 @@ export type WeeklyMetrics = {
 };
 
 export async function fetchWeeklyMetrics(storyId: string, periodStart: Date, periodEnd: Date): Promise<WeeklyMetrics> {
-  const range: DateRange = {
-    date_from: periodStart.toISOString().slice(0, 10),
-    date_to: periodEnd.toISOString().slice(0, 10),
-    story: storyId,
-  };
+  const range = buildRange(periodStart, periodEnd, storyId);
 
-  const [conv, msg, paid, avg, busy, pop] = await Promise.all([
-    conversationsReport(range).catch(() => ({ data: [], total: 0 })),
-    conversationMessagesReport(range).catch(() => ({ data: [], total: 0 })),
-    paidConversationsReport(range).catch(() => ({ data: [], total: 0 })),
-    averageConversationsReport(range).catch(() => ({ data: [], average: 0 })),
-    busiestPeriodReport(range).catch(() => ({ data: [] })),
-    interactionsPopularityReport(range).catch(() => ({ data: [] })),
+  const [conv, msg, paid, busy, pop] = await Promise.all([
+    get<ReportResponse>("/reports/conversations", range).catch((e) => {
+      console.error("[chatbot] conversations failed", e);
+      return { data: [], summary: undefined } as ReportResponse;
+    }),
+    get<ReportResponse>("/reports/conversations-messages", range).catch((e) => {
+      console.error("[chatbot] messages failed", e);
+      return { data: [], summary: undefined } as ReportResponse;
+    }),
+    get<ReportResponse>("/reports/paid-conversations", range).catch((e) => {
+      console.error("[chatbot] paid failed", e);
+      return { data: [], summary: undefined } as ReportResponse;
+    }),
+    get<BusiestResponse>("/reports/busiest-period", range).catch((e) => {
+      console.error("[chatbot] busiest failed", e);
+      return { data: [], summary: undefined } as BusiestResponse;
+    }),
+    get<InteractionResponse>("/reports/interactions-popularity", range).catch((e) => {
+      console.error("[chatbot] interactions failed", e);
+      return { data: [], summary: undefined } as InteractionResponse;
+    }),
   ]);
 
-  const sum = (rows: Array<{ value: number }>) => rows.reduce((a, r) => a + (r.value ?? 0), 0);
+  const totalFrom = (r: ReportResponse) =>
+    r.summary?.total ?? (r.data ?? []).reduce((a, p) => a + (p.value ?? 0), 0);
 
-  const busiest = (busy.data ?? []).slice().sort((a, b) => b.value - a.value)[0]?.hour ?? null;
+  const conversations = totalFrom(conv);
+  const messages = totalFrom(msg);
+  const paid_conversations = totalFrom(paid);
+  const avg_per_day = conv.summary?.avg ?? (conv.data?.length ? conversations / conv.data.length : 0);
+
+  const busiest = (busy.data ?? []).slice().sort((a, b) => b.value - a.value)[0];
+  const busiest_hour = typeof busiest?.hour === "number" ? busiest.hour : null;
+
+  const top_interactions = (pop.data ?? [])
+    .slice()
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
 
   return {
-    conversations: conv.total ?? sum(conv.data ?? []),
-    messages: msg.total ?? sum(msg.data ?? []),
-    paid_conversations: paid.total ?? sum(paid.data ?? []),
-    avg_per_day: avg.average ?? (avg.data?.length ? sum(avg.data) / avg.data.length : 0),
-    busiest_hour: busiest,
-    top_interactions: (pop.data ?? []).slice(0, 5),
+    conversations,
+    messages,
+    paid_conversations,
+    avg_per_day,
+    busiest_hour,
+    top_interactions,
   };
 }

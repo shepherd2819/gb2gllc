@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { verifySlackSignature, respondToSlashCommand } from "@/lib/slack";
 import { lookupProperty, formatSqftReply } from "@/lib/attom";
@@ -44,8 +44,12 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Kick off async work; ack immediately
-  void runLookup({ address: text, clientId, teamId, userId, channelId, responseUrl });
+  // Schedule the ATTOM lookup to run AFTER we send the ack. `after()` tells
+  // Vercel's runtime to keep this invocation alive until the callback completes,
+  // which a plain `void runLookup(...)` would not — the function would be killed
+  // as soon as we returned the response and the awaited ATTOM fetch would never
+  // resolve.
+  after(runLookup({ address: text, clientId, teamId, userId, channelId, responseUrl }));
 
   return NextResponse.json({
     response_type: "in_channel",

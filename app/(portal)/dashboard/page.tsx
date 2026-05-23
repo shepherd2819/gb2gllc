@@ -25,6 +25,8 @@ async function getClientData(workosUserId: string) {
     { data: tickets },
     { data: rawAnnouncements },
     { data: dismissals },
+    { count: markLookupCount },
+    { data: stewardAssignments },
   ] = await Promise.all([
     supabaseAdmin.from("client_products").select("*").eq("client_id", client.id).eq("active", true),
     supabaseAdmin.from("steward_metrics").select("*").eq("client_id", client.id),
@@ -32,6 +34,15 @@ async function getClientData(workosUserId: string) {
     supabaseAdmin.from("tickets").select("status").eq("client_id", client.id),
     supabaseAdmin.from("announcements").select("id, title, body, type").or(`client_id.eq.${client.id},client_id.is.null`).order("created_at", { ascending: false }),
     supabaseAdmin.from("announcement_dismissals").select("announcement_id").eq("client_id", client.id),
+    supabaseAdmin
+      .from("mark_lookups")
+      .select("id", { count: "exact", head: true })
+      .eq("client_id", client.id),
+    supabaseAdmin
+      .from("client_steward_assignments")
+      .select("id, preset_id, active")
+      .eq("client_id", client.id)
+      .eq("active", true),
   ]);
 
   const dismissedIds = new Set((dismissals ?? []).map(d => d.announcement_id));
@@ -57,7 +68,7 @@ async function getClientData(workosUserId: string) {
     }
   }
 
-  const steward = (stewardMetrics ?? []).reduce(
+  const baseSteward = (stewardMetrics ?? []).reduce(
     (acc, row) => ({
       hours: acc.hours + Number(row.hours_saved ?? 0),
       tasks: acc.tasks + (row.tasks_completed ?? 0),
@@ -65,13 +76,24 @@ async function getClientData(workosUserId: string) {
     { hours: 0, tasks: 0 }
   );
 
+  // Mark lookups (all-time). Each sqft lookup ≈ 5 min of manual research saved.
+  const markCount = markLookupCount ?? 0;
+  const markHours = (markCount * 5) / 60;
+
+  const steward = {
+    hours: baseSteward.hours + markHours,
+    tasks: baseSteward.tasks + markCount,
+    markCount,
+  };
+
   const totalHours = herald.hours + steward.hours;
   const daysActive = Math.floor(
     (Date.now() - new Date(client.created_at).getTime()) / (1000 * 60 * 60 * 24)
   );
   const openTickets = (tickets ?? []).filter((t) => t.status !== "resolved").length;
+  const hasActiveSteward = (stewardAssignments ?? []).length > 0;
 
-  return { client, products: products ?? [], herald, steward, totalHours, daysActive, atriumStages: atriumStages ?? [], openTickets, announcements };
+  return { client, products: products ?? [], herald, steward, totalHours, daysActive, atriumStages: atriumStages ?? [], openTickets, announcements, hasActiveSteward };
 }
 
 export default async function DashboardPage() {
@@ -81,10 +103,11 @@ export default async function DashboardPage() {
   const data = await getClientData(user.id);
   if (!data) redirect("/auth/no-account");
 
-  const { client, products, herald, steward, totalHours, daysActive, atriumStages, openTickets, announcements } = data;
+  const { client, products, herald, steward, totalHours, daysActive, atriumStages, openTickets, announcements, hasActiveSteward } = data;
   const hasHerald  = products.some((p) => p.product === "herald");
   const hasAtrium  = products.some((p) => p.product === "atrium");
-  const hasSteward = products.some((p) => p.product === "steward");
+  // Show Steward card if they have the product OR an active assignment (e.g., Mark)
+  const hasSteward = products.some((p) => p.product === "steward") || hasActiveSteward;
   const heraldName = client.chatbot_agent_name?.trim() || "Herald";
   const atriumCompleted = atriumStages.filter((s) => s.completed).length;
   const atriumTotal = atriumStages.length || 5;
@@ -171,7 +194,10 @@ export default async function DashboardPage() {
               <p className="product-desc">AI employees running your internal ops</p>
               <div className="product-stats-row">
                 <div className="product-stat"><span className="ps-num">{steward.tasks.toLocaleString()}</span><span className="ps-label">tasks done</span></div>
-                <div className="product-stat"><span className="ps-num">{steward.hours.toFixed(0)}h</span><span className="ps-label">saved</span></div>
+                <div className="product-stat"><span className="ps-num">{steward.hours.toFixed(1)}h</span><span className="ps-label">saved</span></div>
+                {steward.markCount > 0 && (
+                  <div className="product-stat"><span className="ps-num">{steward.markCount.toLocaleString()}</span><span className="ps-label">Mark lookups</span></div>
+                )}
               </div>
             </div>
           )}

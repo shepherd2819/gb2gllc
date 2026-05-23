@@ -66,11 +66,28 @@ async function runLookup(opts: {
   responseUrl: string;
 }) {
   const lookup = await lookupProperty(opts.address);
-  const reply = formatSqftReply(lookup, opts.address);
 
   const status = lookup.ok
     ? (lookup.sqft != null ? "found" : "not_found")
     : lookup.kind;
+
+  // For not-found results, escalate the message if the user has already tried
+  // a few times in the last 30 minutes (likely typing variations of the same address).
+  let recentNotFoundCount = 0;
+  if (status === "not_found" && opts.teamId && opts.userId) {
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    const { count } = await supabaseAdmin
+      .from("mark_lookups")
+      .select("id", { count: "exact", head: true })
+      .eq("slack_team_id", opts.teamId)
+      .eq("slack_user_id", opts.userId)
+      .eq("status", "not_found")
+      .gte("created_at", thirtyMinAgo);
+    // This run isn't inserted yet, so add 1 for the current attempt.
+    recentNotFoundCount = (count ?? 0) + 1;
+  }
+
+  const reply = formatSqftReply(lookup, opts.address, recentNotFoundCount);
 
   await supabaseAdmin.from("mark_lookups").insert({
     client_id: opts.clientId,

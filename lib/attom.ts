@@ -142,11 +142,20 @@ export async function lookupProperty(address: string): Promise<SqftLookup> {
   };
 }
 
-export function formatSqftReply(lookup: SqftLookup, originalInput?: string): string {
+export function formatSqftReply(
+  lookup: SqftLookup,
+  originalInput?: string,
+  recentNotFoundCount = 0,
+): string {
   if (!lookup.ok) {
     if (lookup.kind === "not_found") {
-      const addr = originalInput ? ` for *${originalInput}*` : "";
-      return `🤷 No match in public records${addr}.\nTry including the full city + state + ZIP, or double-check the spelling.`;
+      const addr = originalInput ? ` *${originalInput}*` : "";
+      // 3rd+ not-found from this user in a short window → give up gracefully
+      if (recentNotFoundCount >= 3) {
+        return `🛑 Couldn't find${addr} after ${recentNotFoundCount} tries.\nThis address doesn't appear in public-record data. It may be a new build, off-market, or in an area with sparse records. If you're sure it's right, the sqft may simply not be available.`;
+      }
+      const attemptHint = recentNotFoundCount === 2 ? " (try #2)" : "";
+      return `🤔 No match for${addr}${attemptHint}.\nPlease double-check the spelling and full address (street, city, state, ZIP) and try again.`;
     }
     return `⚠️ ${lookup.reason}`;
   }

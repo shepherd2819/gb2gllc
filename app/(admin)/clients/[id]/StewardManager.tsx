@@ -99,8 +99,11 @@ export function StewardManager({
 
   function startConnect(platformAgentId: string) {
     if (platformAgentId === "slack") {
-      // Slack uses OAuth — install on behalf of this client
       window.location.href = `/api/slack/install?clientId=${clientId}`;
+      return;
+    }
+    if (platformAgentId === "meta") {
+      window.location.href = `/api/meta/install?clientId=${clientId}`;
       return;
     }
     setConnectingFor(platformAgentId);
@@ -249,7 +252,11 @@ export function StewardManager({
               {isConnected
                 ? <button className="sa-connect-link" onClick={() => handleDisconnect(a.platform_agent_id)}>Disconnect {p.display_name}</button>
                 : <button className="sa-connect-link warn" onClick={() => startConnect(a.platform_agent_id)}>
-                    {a.platform_agent_id === "slack" ? `Install ${p.display_name} workspace →` : `Connect ${p.display_name} →`}
+                    {a.platform_agent_id === "slack"
+                      ? `Install ${p.display_name} workspace →`
+                      : a.platform_agent_id === "meta"
+                        ? `Connect Meta (FB + IG) →`
+                        : `Connect ${p.display_name} →`}
                   </button>
               }
             </div>

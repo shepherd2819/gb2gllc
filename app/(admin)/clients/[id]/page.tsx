@@ -6,6 +6,7 @@ import { EditClientForm } from "./EditClientForm";
 import { AnnouncementManager } from "./AnnouncementManager";
 import { StewardManager } from "./StewardManager";
 import { HeraldManager } from "./HeraldManager";
+import { MayaManager } from "./MayaManager";
 import { SendInviteButton } from "./SendInviteButton";
 
 type Params = { params: Promise<{ id: string }> };
@@ -24,6 +25,8 @@ export default async function ClientDetailPage({ params }: Params) {
     { data: stewardTokens },
     { count: markCount },
     { data: members },
+    { data: socialConfig },
+    { data: metaSubs },
   ] = await Promise.all([
     supabaseAdmin.from("clients").select("*, client_products(*), invoices(id, amount_cents, description, status, sent_at, created_at)").eq("id", id).single(),
     supabaseAdmin.from("client_logs").select("*").eq("client_id", id).order("created_at", { ascending: false }).limit(50),
@@ -35,6 +38,8 @@ export default async function ClientDetailPage({ params }: Params) {
     supabaseAdmin.from("steward_platform_tokens").select("platform, token_data").eq("client_id", id),
     supabaseAdmin.from("mark_lookups").select("id", { count: "exact", head: true }).eq("client_id", id),
     supabaseAdmin.from("client_members").select("email, joined_at, last_signed_in_at").eq("client_id", id),
+    supabaseAdmin.from("client_social_configs").select("*").eq("client_id", id).maybeSingle(),
+    supabaseAdmin.from("meta_page_subscriptions").select("page_id, page_name, instagram_username, active, installed_at").eq("client_id", id).order("installed_at", { ascending: true }),
   ]);
 
   if (!client) notFound();
@@ -156,6 +161,12 @@ export default async function ClientDetailPage({ params }: Params) {
             initialAgentName={client.chatbot_agent_name ?? null}
             initialEnabled={client.herald_digest_enabled ?? true}
             lastSentAt={client.herald_digest_last_sent_at ?? null}
+          />
+
+          <MayaManager
+            clientId={client.id}
+            initialConfig={socialConfig ?? null}
+            subscriptions={metaSubs ?? []}
           />
 
           <AtriumManager clientId={client.id} stages={atriumStages ?? []} />

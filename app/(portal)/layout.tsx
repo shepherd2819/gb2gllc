@@ -7,7 +7,8 @@ export default async function PortalLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user } = await withAuth({ ensureSignedIn: true });
+  const { user } = await withAuth();
+  if (!user) redirect("/auth/signin?next=/dashboard");
 
   // Look up client by WorkOS user ID, fall back to email (for invited clients on first login)
   let { data: client } = await supabaseAdmin

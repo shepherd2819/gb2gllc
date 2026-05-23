@@ -21,13 +21,22 @@ export function InviteClientModal({ onClose, onCreated }: { onClose: () => void;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() && !name.trim() && !company.trim()) {
+      setError("Provide at least an email, name, or company.");
+      return;
+    }
     setSaving(true);
     setError("");
     const res = await fetch("/api/admin/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, name, company, products: Array.from(products) }),
+      body: JSON.stringify({
+        email,
+        name,
+        company,
+        products: Array.from(products),
+        sendInvite: !!email.trim(),
+      }),
     });
     if (res.ok) {
       onCreated();
@@ -42,14 +51,14 @@ export function InviteClientModal({ onClose, onCreated }: { onClose: () => void;
     <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal">
         <div className="modal-head">
-          <h2>Invite new client</h2>
+          <h2>Add client</h2>
           <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
         </div>
 
         <form onSubmit={submit}>
           <div className="admin-input-row">
-            <label>Email</label>
-            <input className="admin-input" style={{ marginBottom: 0 }} type="email" required placeholder="client@company.com" value={email} onChange={e => setEmail(e.target.value)} />
+            <label>Email <span style={{ color: "var(--text-mute)", fontWeight: 400 }}>(optional — leave blank to defer invite)</span></label>
+            <input className="admin-input" style={{ marginBottom: 0 }} type="email" placeholder="client@company.com" value={email} onChange={e => setEmail(e.target.value)} />
           </div>
           <div className="admin-input-row" style={{ marginTop: 8 }}>
             <label>Name</label>
@@ -77,8 +86,10 @@ export function InviteClientModal({ onClose, onCreated }: { onClose: () => void;
 
           <div className="modal-footer">
             <button type="button" className="admin-btn-ghost admin-btn-sm" onClick={onClose}>Cancel</button>
-            <button type="submit" className="admin-btn admin-btn-sm" disabled={saving || !email.trim()}>
-              {saving ? "Sending invite…" : "Send invite"}
+            <button type="submit" className="admin-btn admin-btn-sm" disabled={saving}>
+              {saving
+                ? (email.trim() ? "Sending invite…" : "Creating…")
+                : (email.trim() ? "Create + send invite" : "Create draft")}
             </button>
           </div>
         </form>

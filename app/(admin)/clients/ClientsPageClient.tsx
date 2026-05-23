@@ -3,7 +3,7 @@ import { useState } from "react";
 import { InviteClientModal } from "./InviteClientModal";
 
 type Client = {
-  id: string; name: string | null; email: string; company: string | null;
+  id: string; name: string | null; email: string | null; company: string | null;
   status: string | null; created_at: string;
   client_products: { product: string; active: boolean }[];
 };
@@ -15,7 +15,7 @@ export function ClientsPageClient({ initialClients }: { initialClients: Client[]
 
   const filtered = clients.filter(c => {
     const q = search.toLowerCase();
-    return !q || (c.company || "").toLowerCase().includes(q) || (c.name || "").toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
+    return !q || (c.company || "").toLowerCase().includes(q) || (c.name || "").toLowerCase().includes(q) || (c.email || "").toLowerCase().includes(q);
   });
 
   async function refresh() {
@@ -62,7 +62,7 @@ export function ClientsPageClient({ initialClients }: { initialClients: Client[]
           return (
             <div key={c.id} className={`at-row status-${c.status ?? "active"}`}>
               <span className="at-company">{c.company || c.name || "—"}</span>
-              <span className="at-email">{c.email}</span>
+              <span className="at-email">{c.email || <em style={{ color: "var(--text-mute)" }}>no email yet</em>}</span>
               <span className="at-products">
                 {activeProds.length === 0
                   ? <span className="prod-none">none</span>

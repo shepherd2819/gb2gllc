@@ -6,6 +6,7 @@ import { EditClientForm } from "./EditClientForm";
 import { AnnouncementManager } from "./AnnouncementManager";
 import { StewardManager } from "./StewardManager";
 import { HeraldManager } from "./HeraldManager";
+import { SendInviteButton } from "./SendInviteButton";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -87,7 +88,26 @@ export default async function ClientDetailPage({ params }: Params) {
               company={client.company}
             />
             <div className="cm-row" style={{ marginTop: 8 }}><span>Stripe</span><span style={{ fontFamily: "var(--mono)", fontSize: 11 }}>{client.stripe_customer_id || <em style={{ color: "var(--text-mute)" }}>Not created</em>}</span></div>
-            <div className="cm-row"><span>Portal access</span><span>{client.workos_user_id ? <span style={{ color: "var(--sage)" }}>Active</span> : <span style={{ color: "var(--text-mute)" }}>Invite pending</span>}</span></div>
+            <div className="cm-row">
+              <span>Portal access</span>
+              <span>
+                {client.workos_user_id
+                  ? <span style={{ color: "var(--sage)" }}>Active</span>
+                  : (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                      <span style={{ color: "var(--text-mute)" }}>
+                        {client.invited_at ? "Invite pending" : client.email ? "Not invited" : "Draft (no email)"}
+                      </span>
+                      <SendInviteButton
+                        clientId={client.id}
+                        hasEmail={!!client.email}
+                        alreadyInvited={!!client.invited_at}
+                      />
+                    </span>
+                  )
+                }
+              </span>
+            </div>
           </div>
 
           <HeraldManager

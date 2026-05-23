@@ -4,9 +4,22 @@ import { InviteClientModal } from "./InviteClientModal";
 
 type Client = {
   id: string; name: string | null; email: string | null; company: string | null;
-  status: string | null; created_at: string;
+  status: string | null; created_at: string; last_signed_in_at: string | null;
   client_products: { product: string; active: boolean }[];
 };
+
+function relativeTime(iso: string | null): string {
+  if (!iso) return "Never";
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `${d}d ago`;
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" });
+}
 
 export function ClientsPageClient({ initialClients }: { initialClients: Client[] }) {
   const [clients, setClients] = useState(initialClients);
@@ -48,6 +61,7 @@ export function ClientsPageClient({ initialClients }: { initialClients: Client[]
           <span>Email</span>
           <span>Products</span>
           <span>Status</span>
+          <span>Last seen</span>
           <span>Since</span>
           <span></span>
         </div>
@@ -70,6 +84,9 @@ export function ClientsPageClient({ initialClients }: { initialClients: Client[]
                 }
               </span>
               <span><span className={`status-chip ${c.status ?? "active"}`}>{c.status ?? "active"}</span></span>
+              <span className="at-date" title={c.last_signed_in_at ?? "Never signed in"} style={{ color: c.last_signed_in_at ? undefined : "var(--text-mute)" }}>
+                {relativeTime(c.last_signed_in_at)}
+              </span>
               <span className="at-date">{new Date(c.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" })}</span>
               <span><a href={`/clients/${c.id}`} className="at-link">Manage →</a></span>
             </div>

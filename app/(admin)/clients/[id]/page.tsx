@@ -22,6 +22,8 @@ export default async function ClientDetailPage({ params }: Params) {
     { data: stewardAssignments },
     { data: stewardPlatforms },
     { data: stewardTokens },
+    { count: markCount },
+    { data: members },
   ] = await Promise.all([
     supabaseAdmin.from("clients").select("*, client_products(*), invoices(id, amount_cents, description, status, sent_at, created_at)").eq("id", id).single(),
     supabaseAdmin.from("client_logs").select("*").eq("client_id", id).order("created_at", { ascending: false }).limit(50),
@@ -31,14 +33,38 @@ export default async function ClientDetailPage({ params }: Params) {
     supabaseAdmin.from("client_steward_assignments").select("*, steward_platform_agents(id, display_name, icon, description)").eq("client_id", id).order("created_at", { ascending: true }),
     supabaseAdmin.from("steward_platform_agents").select("id, display_name, icon, description").eq("available", true).order("display_name"),
     supabaseAdmin.from("steward_platform_tokens").select("platform, token_data").eq("client_id", id),
+    supabaseAdmin.from("mark_lookups").select("id", { count: "exact", head: true }).eq("client_id", id),
+    supabaseAdmin.from("client_members").select("email, joined_at, last_signed_in_at").eq("client_id", id),
   ]);
 
   if (!client) notFound();
 
-  const totals = (heraldTotals ?? []).reduce(
+  const heraldRollup = (heraldTotals ?? []).reduce(
     (acc, r) => ({ messages: acc.messages + (r.messages_answered ?? 0), hours: acc.hours + Number(r.hours_saved ?? 0), tasks: acc.tasks + (r.tasks_completed ?? 0) }),
     { messages: 0, hours: 0, tasks: 0 }
   );
+  // Each Mark /sqft lookup ≈ 5 min of manual research saved
+  const markLookups = markCount ?? 0;
+  const markHours = (markLookups * 5) / 60;
+  const totals = {
+    messages: heraldRollup.messages,
+    hours: heraldRollup.hours + markHours,
+    tasks: heraldRollup.tasks + markLookups,
+    markLookups,
+  };
+
+  function rel(iso: string | null): string {
+    if (!iso) return "Never";
+    const diff = Date.now() - new Date(iso).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return "just now";
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    const d = Math.floor(h / 24);
+    if (d < 30) return `${d}d ago`;
+    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" });
+  }
 
   const products = (client.client_products as {id:string;product:string;active:boolean;started_at:string}[]) ?? [];
   const invoices = (client.invoices as {id:string;amount_cents:number;description:string;status:string;sent_at:string;created_at:string}[]) ?? [];
@@ -56,8 +82,11 @@ export default async function ClientDetailPage({ params }: Params) {
 
       <div className="admin-stat-row">
         <div className="admin-stat"><div className="asn">{totals.messages.toLocaleString()}</div><div className="asl">Herald conversations</div></div>
-        <div className="admin-stat"><div className="asn">{totals.hours.toFixed(0)}h</div><div className="asl">Hours saved</div></div>
+        <div className="admin-stat"><div className="asn">{totals.hours.toFixed(1)}h</div><div className="asl">Hours saved</div></div>
         <div className="admin-stat"><div className="asn">{totals.tasks.toLocaleString()}</div><div className="asl">Tasks completed</div></div>
+        {totals.markLookups > 0 && (
+          <div className="admin-stat"><div className="asn">{totals.markLookups.toLocaleString()}</div><div className="asl">Mark lookups</div></div>
+        )}
         <div className="admin-stat"><div className="asn">{invoices.length}</div><div className="asl">Invoices sent</div></div>
       </div>
 
@@ -88,6 +117,20 @@ export default async function ClientDetailPage({ params }: Params) {
               company={client.company}
             />
             <div className="cm-row" style={{ marginTop: 8 }}><span>Stripe</span><span style={{ fontFamily: "var(--mono)", fontSize: 11 }}>{client.stripe_customer_id || <em style={{ color: "var(--text-mute)" }}>Not created</em>}</span></div>
+            <div className="cm-row">
+              <span>Last sign-in (owner)</span>
+              <span title={client.last_signed_in_at ?? "Never"} style={{ color: client.last_signed_in_at ? undefined : "var(--text-mute)" }}>
+                {rel(client.last_signed_in_at)}
+              </span>
+            </div>
+            {(members ?? []).map((m, i) => (
+              <div className="cm-row" key={i}>
+                <span style={{ fontSize: 12 }}>Last sign-in ({m.email})</span>
+                <span title={m.last_signed_in_at ?? "Never"} style={{ color: m.last_signed_in_at ? undefined : "var(--text-mute)" }}>
+                  {rel(m.last_signed_in_at)}
+                </span>
+              </div>
+            ))}
             <div className="cm-row">
               <span>Portal access</span>
               <span>

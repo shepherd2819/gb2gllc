@@ -5,6 +5,7 @@ import { AtriumManager } from "./AtriumManager";
 import { EditClientForm } from "./EditClientForm";
 import { AnnouncementManager } from "./AnnouncementManager";
 import { StewardManager } from "./StewardManager";
+import { HeraldManager } from "./HeraldManager";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -88,6 +89,13 @@ export default async function ClientDetailPage({ params }: Params) {
             <div className="cm-row" style={{ marginTop: 8 }}><span>Stripe</span><span style={{ fontFamily: "var(--mono)", fontSize: 11 }}>{client.stripe_customer_id || <em style={{ color: "var(--text-mute)" }}>Not created</em>}</span></div>
             <div className="cm-row"><span>Portal access</span><span>{client.workos_user_id ? <span style={{ color: "var(--sage)" }}>Active</span> : <span style={{ color: "var(--text-mute)" }}>Invite pending</span>}</span></div>
           </div>
+
+          <HeraldManager
+            clientId={client.id}
+            initialBotId={client.chatbot_bot_id ?? null}
+            initialEnabled={client.herald_digest_enabled ?? true}
+            lastSentAt={client.herald_digest_last_sent_at ?? null}
+          />
 
           <AtriumManager clientId={client.id} stages={atriumStages ?? []} />
 

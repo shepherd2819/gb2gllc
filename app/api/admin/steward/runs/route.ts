@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { runStewardAgent } from "@/lib/steward/run-agent";
+import { requireAdmin } from "@/lib/admin-auth";
 
 // POST { assignmentId, inputText? } — trigger a manual run
 export async function POST(req: NextRequest) {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
   const { assignmentId, inputText } = await req.json();
   if (!assignmentId) return NextResponse.json({ error: "assignmentId required" }, { status: 400 });
 
@@ -17,6 +21,9 @@ export async function POST(req: NextRequest) {
 
 // GET ?assignmentId=X&limit=20 — list recent runs
 export async function GET(req: NextRequest) {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
   const assignmentId = req.nextUrl.searchParams.get("assignmentId");
   const clientId = req.nextUrl.searchParams.get("clientId");
   const limit = parseInt(req.nextUrl.searchParams.get("limit") ?? "20", 10);

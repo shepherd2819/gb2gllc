@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireAdmin } from "@/lib/admin-auth";
 
 // POST { clientId, platform, tokenData: { api_key: "..." } }
 export async function POST(req: NextRequest) {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
   const { clientId, platform, tokenData } = await req.json();
 
   if (!clientId || !platform || !tokenData) {
@@ -22,6 +26,9 @@ export async function POST(req: NextRequest) {
 
 // DELETE ?clientId=X&platform=Y
 export async function DELETE(req: NextRequest) {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
   const clientId = req.nextUrl.searchParams.get("clientId");
   const platform = req.nextUrl.searchParams.get("platform");
   if (!clientId || !platform) return NextResponse.json({ error: "clientId and platform required" }, { status: 400 });

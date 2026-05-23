@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
 
-  const { clientId, platformAgentId, mission, schedule } = await req.json();
+  const { clientId, platformAgentId, mission, schedule, presetId } = await req.json();
 
   if (!clientId || !platformAgentId || !mission?.trim()) {
     return NextResponse.json({ error: "clientId, platformAgentId, and mission are required" }, { status: 400 });
@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
       platform_agent_id: platformAgentId,
       mission: mission.trim(),
       schedule: schedule?.trim() || null,
+      preset_id: presetId || null,
     })
     .select("*, steward_platform_agents(id, display_name, icon, description)")
     .single();

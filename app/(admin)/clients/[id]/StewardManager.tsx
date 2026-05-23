@@ -1,11 +1,13 @@
 "use client";
 import { useState } from "react";
+import { AGENT_PRESETS, SCHEDULE_OPTIONS, presetById } from "@/lib/steward/presets";
 
 type Platform = { id: string; display_name: string; icon: string; description: string };
 
 type Assignment = {
   id: string;
   platform_agent_id: string;
+  preset_id: string | null;
   mission: string;
   active: boolean;
   schedule: string | null;
@@ -29,8 +31,7 @@ export function StewardManager({
   const [assignments, setAssignments]     = useState(initialAssignments);
   const [connected, setConnected]         = useState<Set<string>>(new Set(initialConnected));
   const [showForm, setShowForm]           = useState(false);
-  const [platformId, setPlatformId]       = useState("");
-  const [mission, setMission]             = useState("");
+  const [presetId, setPresetId]           = useState("");
   const [schedule, setSchedule]           = useState("");
   const [saving, setSaving]               = useState(false);
   const [togglingId, setTogglingId]       = useState<string | null>(null);
@@ -44,18 +45,38 @@ export function StewardManager({
   const [err, setErr]                     = useState("");
 
   async function handleAdd() {
-    if (!platformId || !mission.trim()) { setErr("Select a platform and describe the mission."); return; }
+    const preset = presetById(presetId);
+    if (!preset) { setErr("Select an agent."); return; }
     setSaving(true); setErr("");
     const res = await fetch("/api/admin/steward/assignments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientId, platformAgentId: platformId, mission, schedule }),
+      body: JSON.stringify({
+        clientId,
+        platformAgentId: preset.platform_agent_id,
+        mission: preset.mission,
+        schedule,
+        presetId: preset.id,
+      }),
     });
     const data = await res.json();
     setSaving(false);
     if (!res.ok) { setErr(data.error || "Error saving"); return; }
     setAssignments(prev => [...prev, data]);
-    setPlatformId(""); setMission(""); setSchedule(""); setShowForm(false);
+    setPresetId(""); setSchedule(""); setShowForm(false);
+  }
+
+  function openForm() {
+    setShowForm(true);
+    setPresetId("");
+    setSchedule("");
+    setErr("");
+  }
+
+  function onPresetChange(id: string) {
+    setPresetId(id);
+    const p = presetById(id);
+    if (p) setSchedule(p.default_schedule);
   }
 
   async function handleToggle(id: string, current: boolean) {
@@ -128,7 +149,7 @@ export function StewardManager({
       <div className="admin-card-head">
         <h2>Steward agents</h2>
         {!showForm && (
-          <button className="admin-card-action" onClick={() => setShowForm(true)}>+ Add agent</button>
+          <button className="admin-card-action" onClick={openForm}>+ Add agent</button>
         )}
       </div>
 
@@ -138,6 +159,9 @@ export function StewardManager({
 
       {assignments.map(a => {
         const p = a.steward_platform_agents;
+        const preset = a.preset_id ? presetById(a.preset_id) : undefined;
+        const displayIcon = preset?.icon ?? p.icon;
+        const displayName = preset?.name ?? p.display_name;
         const isConnected = connected.has(a.platform_agent_id);
         const isRunning = runningId === a.id;
         const msg = runMsg?.id === a.id ? runMsg : null;
@@ -145,9 +169,16 @@ export function StewardManager({
         return (
           <div key={a.id} className={`steward-assignment${a.active ? "" : " inactive"}`}>
             <div className="sa-header">
-              <span className="sa-icon" aria-hidden="true">{p.icon}</span>
+              <span className="sa-icon" aria-hidden="true">{displayIcon}</span>
               <div className="sa-info">
-                <span className="sa-platform">{p.display_name}</span>
+                <span className="sa-platform">
+                  {displayName}
+                  {preset && (
+                    <span style={{ fontSize: 11, color: "var(--text-mute, #8A8C85)", marginLeft: 6, fontFamily: "var(--mono, monospace)" }}>
+                      / {p.display_name}
+                    </span>
+                  )}
+                </span>
                 <span className="sa-last-run">
                   {a.last_run_at
                     ? `Last run ${new Date(a.last_run_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
@@ -243,44 +274,55 @@ export function StewardManager({
         );
       })}
 
-      {showForm && (
-        <div className="steward-add-form">
-          <div style={{ marginBottom: 10 }}>
-            <label className="sa-field-label">Platform</label>
-            <select value={platformId} onChange={e => setPlatformId(e.target.value)} className="admin-select" style={{ marginBottom: 0 }}>
-              <option value="">Select platform…</option>
-              {platforms.map(p => (
-                <option key={p.id} value={p.id}>{p.icon} {p.display_name}</option>
-              ))}
-            </select>
+      {showForm && (() => {
+        const preset = presetById(presetId);
+        const platform = preset ? platforms.find(p => p.id === preset.platform_agent_id) : null;
+        return (
+          <div className="steward-add-form">
+            <div style={{ marginBottom: 10 }}>
+              <label className="sa-field-label">Agent</label>
+              <select value={presetId} onChange={e => onPresetChange(e.target.value)} className="admin-select" style={{ marginBottom: 0 }}>
+                <option value="">Select an agent…</option>
+                {AGENT_PRESETS.map(p => (
+                  <option key={p.id} value={p.id}>{p.icon} {p.name} — {p.description}</option>
+                ))}
+              </select>
+            </div>
+
+            {preset && (
+              <div style={{
+                marginBottom: 10,
+                padding: "10px 12px",
+                background: "var(--bg-mute, rgba(28,30,27,0.04))",
+                borderRadius: 8,
+                fontSize: 12,
+                lineHeight: 1.5,
+                color: "var(--text-mute, #6B6E66)",
+              }}>
+                <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
+                  {platform ? `${platform.icon} ${platform.display_name}` : preset.platform_agent_id} · Mission
+                </div>
+                {preset.mission}
+              </div>
+            )}
+
+            <div style={{ marginBottom: 12 }}>
+              <label className="sa-field-label">Schedule</label>
+              <select value={schedule} onChange={e => setSchedule(e.target.value)} className="admin-select" style={{ marginBottom: 0 }}>
+                {SCHEDULE_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {err && <p style={{ color: "var(--red)", fontSize: 12, margin: "0 0 10px" }}>{err}</p>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="admin-btn admin-btn-sm" onClick={handleAdd} disabled={saving || !presetId}>{saving ? "Saving…" : "Add agent"}</button>
+              <button className="admin-btn-ghost admin-btn-sm" onClick={() => { setShowForm(false); setErr(""); }}>Cancel</button>
+            </div>
           </div>
-          <div style={{ marginBottom: 10 }}>
-            <label className="sa-field-label">Mission</label>
-            <textarea
-              value={mission}
-              onChange={e => setMission(e.target.value)}
-              className="admin-textarea"
-              rows={3}
-              placeholder="What should this agent do for this client? Be specific — this is the scope boundary. e.g. Monitor Monday.com boards for items with no activity in 7+ days. Add a stale comment and move them to the Stale group."
-            />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <label className="sa-field-label">Schedule <span style={{ color: "var(--text-mute)", fontWeight: 400 }}>(cron, optional)</span></label>
-            <input
-              value={schedule}
-              onChange={e => setSchedule(e.target.value)}
-              className="admin-input"
-              style={{ marginBottom: 0 }}
-              placeholder="0 9 * * 1-5  (Mon–Fri 9am)"
-            />
-          </div>
-          {err && <p style={{ color: "var(--red)", fontSize: 12, margin: "0 0 10px" }}>{err}</p>}
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="admin-btn admin-btn-sm" onClick={handleAdd} disabled={saving}>{saving ? "Saving…" : "Add agent"}</button>
-            <button className="admin-btn-ghost admin-btn-sm" onClick={() => { setShowForm(false); setErr(""); }}>Cancel</button>
-          </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

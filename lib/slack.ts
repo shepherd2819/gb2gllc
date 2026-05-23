@@ -32,7 +32,35 @@ export function verifySlackSignature(opts: {
 
 // ─── OAuth ───────────────────────────────────────────────────────────────
 const REDIRECT_URI = `${ADMIN_URL}/api/slack/oauth/callback`;
-const SCOPES = ["commands", "chat:write", "chat:write.public"].join(",");
+
+// Union of scopes any current or future Steward Slack agent might need.
+// Each agent only actually calls the API methods it needs; requesting them all
+// up front avoids forcing every workspace to reinstall when we add new agents.
+const SCOPES = [
+  // Mark + any agent that posts replies / handles slash commands
+  "commands",
+  "chat:write",
+  "chat:write.public",
+  // Conversational agents (mentions, DMs)
+  "app_mentions:read",
+  "im:history",
+  "im:read",
+  "im:write",
+  // Monitoring agents (read channels)
+  "channels:history",
+  "channels:read",
+  "groups:history",
+  "groups:read",
+  // File-aware agents
+  "files:read",
+  // Reaction-based approvals
+  "reactions:read",
+  "reactions:write",
+  // Identity & workspace context
+  "users:read",
+  "users:read.email",
+  "team:read",
+].join(",");
 
 export function slackInstallUrl(state: string) {
   const clientId = process.env.SLACK_CLIENT_ID;

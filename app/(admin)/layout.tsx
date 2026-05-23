@@ -5,8 +5,8 @@ import { AdminThemeToggle } from "./AdminThemeToggle";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "john@gb2gllc.com";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user } = await withAuth();
-  if (!user || user.email !== ADMIN_EMAIL) redirect("/auth/signin");
+  const { user } = await withAuth({ ensureSignedIn: true });
+  if (user.email !== ADMIN_EMAIL) redirect("/auth/no-account");
 
   return (
     <html lang="en">

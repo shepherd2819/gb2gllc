@@ -14,6 +14,12 @@ export function HeraldManager({ clientId, initialBotId, initialEnabled, lastSent
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [msg, setMsg] = useState<{ text: string; tone: "ok" | "err" } | null>(null);
+  const [result, setResult] = useState<null | {
+    status: string;
+    reason?: string;
+    step?: string;
+    email?: string;
+  }>(null);
 
   function flash(text: string, tone: "ok" | "err") {
     setMsg({ text, tone });
@@ -38,11 +44,19 @@ export function HeraldManager({ clientId, initialBotId, initialEnabled, lastSent
       return;
     }
     setTesting(true);
-    const res = await fetch(`/api/admin/clients/${clientId}/herald/test-digest`, { method: "POST" });
-    const data = await res.json().catch(() => ({}));
+    setResult(null);
+    let data: { status?: string; reason?: string; step?: string; email?: string } = {};
+    try {
+      const res = await fetch(`/api/admin/clients/${clientId}/herald/test-digest`, { method: "POST" });
+      data = await res.json().catch(() => ({ status: "failed", reason: `HTTP ${res.status} with non-JSON response` }));
+      if (!res.ok && !data.status) {
+        data = { status: "failed", reason: `HTTP ${res.status}` };
+      }
+    } catch (err) {
+      data = { status: "failed", reason: err instanceof Error ? err.message : "Network error", step: "fetch" };
+    }
     setTesting(false);
-    if (res.ok && data.status === "sent") flash("Digest sent", "ok");
-    else flash(data.reason || data.error || "Failed to send", "err");
+    setResult({ status: data.status ?? "failed", reason: data.reason, step: data.step, email: data.email });
   }
 
   return (
@@ -91,6 +105,29 @@ export function HeraldManager({ clientId, initialBotId, initialEnabled, lastSent
           </span>
         )}
       </div>
+
+      {result && (
+        <div
+          style={{
+            marginTop: 14,
+            padding: "10px 12px",
+            borderRadius: 8,
+            fontSize: 12,
+            fontFamily: "var(--mono)",
+            background: result.status === "sent" ? "rgba(106,142,99,0.10)" : "rgba(196,82,75,0.10)",
+            color: result.status === "sent" ? "var(--sage)" : "var(--red)",
+            border: `1px solid ${result.status === "sent" ? "rgba(106,142,99,0.30)" : "rgba(196,82,75,0.30)"}`,
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>
+            {result.status === "sent" ? "✓ Digest sent" : `✗ ${result.status}${result.step ? ` (at ${result.step})` : ""}`}
+          </div>
+          {result.reason && <div style={{ opacity: 0.85, lineHeight: 1.4 }}>{result.reason}</div>}
+          {result.email && result.status === "sent" && (
+            <div style={{ opacity: 0.7, marginTop: 4 }}>To: {result.email}</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

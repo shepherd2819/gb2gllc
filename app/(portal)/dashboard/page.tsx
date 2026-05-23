@@ -3,11 +3,12 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { CounterAnimation } from "./CounterAnimation";
 import { AnnouncementBanner } from "./AnnouncementBanner";
+import { fetchWeeklyMetrics } from "@/lib/chatbot";
 
 async function getClientData(workosUserId: string) {
   const { data: client } = await supabaseAdmin
     .from("clients")
-    .select("id, name, company, created_at")
+    .select("id, name, company, created_at, chatbot_bot_id, chatbot_agent_name")
     .eq("workos_user_id", workosUserId)
     .single();
 
@@ -15,7 +16,6 @@ async function getClientData(workosUserId: string) {
 
   const [
     { data: products },
-    { data: heraldMetrics },
     { data: stewardMetrics },
     { data: atriumStages },
     { data: tickets },
@@ -23,7 +23,6 @@ async function getClientData(workosUserId: string) {
     { data: dismissals },
   ] = await Promise.all([
     supabaseAdmin.from("client_products").select("*").eq("client_id", client.id).eq("active", true),
-    supabaseAdmin.from("herald_metrics").select("*").eq("client_id", client.id),
     supabaseAdmin.from("steward_metrics").select("*").eq("client_id", client.id),
     supabaseAdmin.from("atrium_progress").select("*").eq("client_id", client.id).order("stage"),
     supabaseAdmin.from("tickets").select("status").eq("client_id", client.id),
@@ -34,14 +33,25 @@ async function getClientData(workosUserId: string) {
   const dismissedIds = new Set((dismissals ?? []).map(d => d.announcement_id));
   const announcements = (rawAnnouncements ?? []).filter(a => !dismissedIds.has(a.id));
 
-  const herald = (heraldMetrics ?? []).reduce(
-    (acc, row) => ({
-      messages: acc.messages + (row.messages_answered ?? 0),
-      hours: acc.hours + Number(row.hours_saved ?? 0),
-      tasks: acc.tasks + (row.tasks_completed ?? 0),
-    }),
-    { messages: 0, hours: 0, tasks: 0 }
-  );
+  // Live Herald metrics from chatbot.com (last 7 days). Falls back to zeros on failure.
+  let herald = { messages: 0, hours: 0, tasks: 0, conversations: 0 };
+  if (client.chatbot_bot_id) {
+    try {
+      const end = new Date();
+      const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const m = await fetchWeeklyMetrics(client.chatbot_bot_id, start, end);
+      // Hours saved: rough estimate = 2 min per resolved conversation
+      const hours = (m.conversations * 2) / 60;
+      herald = {
+        conversations: m.conversations,
+        messages: m.messages,
+        hours,
+        tasks: m.conversations,
+      };
+    } catch (e) {
+      console.error("[dashboard] herald metrics fetch failed", e);
+    }
+  }
 
   const steward = (stewardMetrics ?? []).reduce(
     (acc, row) => ({
@@ -71,6 +81,7 @@ export default async function DashboardPage() {
   const hasHerald  = products.some((p) => p.product === "herald");
   const hasAtrium  = products.some((p) => p.product === "atrium");
   const hasSteward = products.some((p) => p.product === "steward");
+  const heraldName = client.chatbot_agent_name?.trim() || "Herald";
   const atriumCompleted = atriumStages.filter((s) => s.completed).length;
   const atriumTotal = atriumStages.length || 5;
   const atriumPct = Math.round((atriumCompleted / atriumTotal) * 100);
@@ -128,14 +139,21 @@ export default async function DashboardPage() {
           {hasHerald && (
             <div className="product-card">
               <div className="product-card-head">
-                <span className="product-name">Herald</span>
+                <span className="product-name">
+                  {heraldName}
+                  {client.chatbot_agent_name && (
+                    <span style={{ fontSize: 11, color: "var(--text-mute, #8A8C85)", marginLeft: 6, fontWeight: 400, fontFamily: "var(--mono, monospace)" }}>
+                      / Herald
+                    </span>
+                  )}
+                </span>
                 <span className="product-badge active">Active</span>
               </div>
               <p className="product-desc">AI agent handling conversations 24/7</p>
               <div className="product-stats-row">
-                <div className="product-stat"><span className="ps-num">{herald.messages.toLocaleString()}</span><span className="ps-label">conversations</span></div>
-                <div className="product-stat"><span className="ps-num">{herald.hours.toFixed(0)}h</span><span className="ps-label">saved</span></div>
-                <div className="product-stat"><span className="ps-num">{herald.tasks.toLocaleString()}</span><span className="ps-label">tasks</span></div>
+                <div className="product-stat"><span className="ps-num">{(herald.conversations ?? herald.messages).toLocaleString()}</span><span className="ps-label">conversations · last 7d</span></div>
+                <div className="product-stat"><span className="ps-num">{herald.messages.toLocaleString()}</span><span className="ps-label">messages</span></div>
+                <div className="product-stat"><span className="ps-num">{herald.hours.toFixed(1)}h</span><span className="ps-label">saved</span></div>
               </div>
             </div>
           )}

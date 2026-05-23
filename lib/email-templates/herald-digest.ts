@@ -18,13 +18,15 @@ function fmtDate(d: Date) {
 export function heraldDigestHtml(opts: {
   clientName: string;
   company: string | null;
+  agentName: string | null;
   periodStart: Date;
   periodEnd: Date;
   metrics: WeeklyMetrics;
   portalUrl: string;
 }): string {
-  const { clientName, company, periodStart, periodEnd, metrics, portalUrl } = opts;
+  const { clientName, company, agentName, periodStart, periodEnd, metrics, portalUrl } = opts;
   const greeting = company || clientName || "there";
+  const agent = agentName?.trim() || "Herald";
   const range = `${fmtDate(periodStart)} – ${fmtDate(periodEnd)}`;
   const avg = Math.round(metrics.avg_per_day * 10) / 10;
 
@@ -59,7 +61,7 @@ export function heraldDigestHtml(opts: {
                 gb<em style="font-family:'EB Garamond',Georgia,serif;font-style:italic;color:#C9A961;">2</em>g
               </div>
               <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#8A8C85;margin-top:4px;">
-                Herald · Weekly Digest
+                ${escape(agent)} · Weekly Digest
               </div>
             </td>
           </tr>
@@ -67,10 +69,10 @@ export function heraldDigestHtml(opts: {
           <tr>
             <td style="padding:24px 32px 8px;">
               <h1 style="font-family:'EB Garamond',Georgia,serif;font-size:28px;font-weight:400;line-height:1.2;color:#1C1E1B;margin:0 0 8px;">
-                Your week with Herald.
+                Your week with ${escape(agent)}.
               </h1>
               <p style="font-size:14px;color:#6B6E66;margin:0 0 4px;line-height:1.5;">
-                Hi ${escape(greeting)}, here's how Herald performed for you ${escape(range)}.
+                Hi ${escape(greeting)}, here's how ${escape(agent)} performed for you ${escape(range)}.
               </p>
             </td>
           </tr>
@@ -137,8 +139,9 @@ export function heraldDigestHtml(opts: {
 </html>`;
 }
 
-export function heraldDigestSubject(periodEnd: Date) {
-  return `Herald weekly digest · week ending ${fmtDate(periodEnd)}`;
+export function heraldDigestSubject(periodEnd: Date, agentName?: string | null) {
+  const agent = agentName?.trim() || "Herald";
+  return `${agent} weekly digest · week ending ${fmtDate(periodEnd)}`;
 }
 
 function escape(s: string): string {

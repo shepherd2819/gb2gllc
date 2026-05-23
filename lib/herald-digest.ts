@@ -27,7 +27,7 @@ export async function sendDigestForClient(clientId: string, opts: { force?: bool
   // ── 1. Load client ────────────────────────────────────────────────────────
   const { data: client, error: lookupErr } = await supabaseAdmin
     .from("clients")
-    .select("id, email, name, company, status, chatbot_bot_id, herald_digest_enabled")
+    .select("id, email, name, company, status, chatbot_bot_id, chatbot_agent_name, herald_digest_enabled")
     .eq("id", clientId)
     .single();
 
@@ -99,6 +99,7 @@ export async function sendDigestForClient(clientId: string, opts: { force?: bool
   const html = heraldDigestHtml({
     clientName: client.name ?? "",
     company: client.company,
+    agentName: client.chatbot_agent_name ?? null,
     periodStart,
     periodEnd,
     metrics,
@@ -111,7 +112,7 @@ export async function sendDigestForClient(clientId: string, opts: { force?: bool
     const sent = await resend().emails.send({
       from: DEFAULT_FROM,
       to: client.email,
-      subject: heraldDigestSubject(periodEnd),
+      subject: heraldDigestSubject(periodEnd, client.chatbot_agent_name),
       html,
     });
     if (sent.error) {

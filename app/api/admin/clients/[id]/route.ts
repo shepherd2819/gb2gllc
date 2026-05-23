@@ -15,6 +15,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if ("email" in body) updates.email = body.email;
   if ("company" in body) updates.company = body.company || null;
   if ("chatbot_bot_id" in body) updates.chatbot_bot_id = body.chatbot_bot_id?.trim() || null;
+  if ("chatbot_agent_name" in body) updates.chatbot_agent_name = body.chatbot_agent_name?.trim() || null;
   if ("herald_digest_enabled" in body) updates.herald_digest_enabled = !!body.herald_digest_enabled;
 
   const { error } = await supabaseAdmin.from("clients").update(updates).eq("id", id);

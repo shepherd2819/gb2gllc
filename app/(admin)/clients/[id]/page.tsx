@@ -93,6 +93,7 @@ export default async function ClientDetailPage({ params }: Params) {
           <HeraldManager
             clientId={client.id}
             initialBotId={client.chatbot_bot_id ?? null}
+            initialAgentName={client.chatbot_agent_name ?? null}
             initialEnabled={client.herald_digest_enabled ?? true}
             lastSentAt={client.herald_digest_last_sent_at ?? null}
           />

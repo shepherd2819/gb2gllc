@@ -4,12 +4,14 @@ import { useState } from "react";
 type Props = {
   clientId: string;
   initialBotId: string | null;
+  initialAgentName: string | null;
   initialEnabled: boolean;
   lastSentAt: string | null;
 };
 
-export function HeraldManager({ clientId, initialBotId, initialEnabled, lastSentAt }: Props) {
+export function HeraldManager({ clientId, initialBotId, initialAgentName, initialEnabled, lastSentAt }: Props) {
   const [botId, setBotId] = useState(initialBotId ?? "");
+  const [agentName, setAgentName] = useState(initialAgentName ?? "");
   const [enabled, setEnabled] = useState(initialEnabled);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -31,7 +33,11 @@ export function HeraldManager({ clientId, initialBotId, initialEnabled, lastSent
     const res = await fetch(`/api/admin/clients/${clientId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chatbot_bot_id: botId, herald_digest_enabled: enabled }),
+      body: JSON.stringify({
+        chatbot_bot_id: botId,
+        chatbot_agent_name: agentName,
+        herald_digest_enabled: enabled,
+      }),
     });
     setSaving(false);
     if (res.ok) flash("Saved", "ok");
@@ -78,6 +84,17 @@ export function HeraldManager({ clientId, initialBotId, initialEnabled, lastSent
           placeholder="e.g. abc123def456"
           value={botId}
           onChange={(e) => setBotId(e.target.value)}
+        />
+      </div>
+
+      <div className="admin-input-row" style={{ marginTop: 8 }}>
+        <label>Agent name <span style={{ color: "var(--text-mute)", fontWeight: 400 }}>(shown on client dashboard + emails)</span></label>
+        <input
+          className="admin-input"
+          style={{ marginBottom: 0 }}
+          placeholder="e.g. PMC Web Agent"
+          value={agentName}
+          onChange={(e) => setAgentName(e.target.value)}
         />
       </div>
 

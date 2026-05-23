@@ -1,6 +1,68 @@
 "use client";
 import { useState } from "react";
 
+const HOURS_PRESETS = [
+  "Mon–Fri 9–5 ET",
+  "Mon–Fri 9–5 CT",
+  "Mon–Fri 9–5 MT",
+  "Mon–Fri 9–5 PT",
+  "Mon–Fri 8–6 ET",
+  "Mon–Fri 8–6 CT",
+  "Mon–Fri 8–6 MT",
+  "Mon–Fri 8–6 PT",
+  "Mon–Sat 9–6 ET",
+  "Mon–Sat 9–6 CT",
+  "Mon–Sat 9–6 MT",
+  "Mon–Sat 9–6 PT",
+  "7 days a week 9–6",
+  "24/7 (always available)",
+  "By appointment only",
+];
+
+function BusinessHoursPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const isPreset = HOURS_PRESETS.includes(value);
+  const [mode, setMode] = useState<"preset" | "custom">(value && !isPreset ? "custom" : "preset");
+
+  function onSelectChange(v: string) {
+    if (v === "__custom__") {
+      setMode("custom");
+      onChange("");
+    } else if (v === "") {
+      setMode("preset");
+      onChange("");
+    } else {
+      setMode("preset");
+      onChange(v);
+    }
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <select
+        className="admin-select"
+        style={{ marginBottom: 0 }}
+        value={mode === "custom" ? "__custom__" : value}
+        onChange={(e) => onSelectChange(e.target.value)}
+      >
+        <option value="">Not set</option>
+        {HOURS_PRESETS.map((h) => (
+          <option key={h} value={h}>{h}</option>
+        ))}
+        <option value="__custom__">Custom…</option>
+      </select>
+      {mode === "custom" && (
+        <input
+          className="admin-input"
+          style={{ marginBottom: 0 }}
+          placeholder="e.g. Mon, Wed, Fri 10–4 CT · closed holidays"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )}
+    </div>
+  );
+}
+
 type Subscription = {
   page_id: string;
   page_name: string;
@@ -126,7 +188,7 @@ export function MayaManager({ clientId, initialConfig, subscriptions }: Props) {
       </div>
       <div className="admin-input-row" style={{ marginTop: 8 }}>
         <label>Business hours <span style={{ color: "var(--text-mute)", fontWeight: 400 }}>(used in replies)</span></label>
-        <input className="admin-input" style={{ marginBottom: 0 }} placeholder="Mon–Fri 9–5 CT" value={cfg.business_hours ?? ""} onChange={(e) => set("business_hours", e.target.value)} />
+        <BusinessHoursPicker value={cfg.business_hours ?? ""} onChange={(v) => set("business_hours", v)} />
       </div>
       <div className="admin-input-row" style={{ marginTop: 8 }}>
         <label>Brand voice / extra instructions</label>

@@ -169,6 +169,5 @@ export function formatSqftReply(
   if (lookup.propertyType) facts.push(lookup.propertyType.toLowerCase());
   if (facts.length) lines.push(facts.join(" · "));
   else lines.push("_(no building details on record)_");
-  lines.push(`_source: ${lookup.source}_`);
   return lines.join("\n");
 }

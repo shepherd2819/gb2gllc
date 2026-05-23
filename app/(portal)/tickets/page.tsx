@@ -4,8 +4,8 @@ import { redirect } from "next/navigation";
 import { TicketForm } from "./TicketForm";
 
 export default async function TicketsPage() {
-  const { user } = await withAuth({ ensureSignedIn: true });
-  if (!user) redirect("/auth/signin");
+  const { user } = await withAuth();
+  if (!user) redirect("/auth/signin?next=/tickets");
 
   const { data: client } = await supabaseAdmin
     .from("clients").select("id").eq("workos_user_id", user.id).single();

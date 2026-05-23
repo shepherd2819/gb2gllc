@@ -14,8 +14,8 @@ const SLACK_FLASH: Record<string, { tone: "ok" | "warn" | "err"; msg: string }> 
 type Props = { searchParams: Promise<{ slack?: string }> };
 
 export default async function ConnectionsPage({ searchParams }: Props) {
-  const { user } = await withAuth({ ensureSignedIn: true });
-  if (!user) redirect("/auth/signin");
+  const { user } = await withAuth();
+  if (!user) redirect("/auth/signin?next=/connections");
 
   const { data: client } = await supabaseAdmin
     .from("clients").select("id").eq("workos_user_id", user.id).single();

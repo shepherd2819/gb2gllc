@@ -4,8 +4,8 @@ import { redirect } from "next/navigation";
 import { AccountForm } from "./AccountForm";
 
 export default async function AccountPage() {
-  const { user } = await withAuth({ ensureSignedIn: true });
-  if (!user) redirect("/auth/signin");
+  const { user } = await withAuth();
+  if (!user) redirect("/auth/signin?next=/account");
 
   const { data: client } = await supabaseAdmin
     .from("clients")

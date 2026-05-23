@@ -3,8 +3,8 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 
 export default async function MarkPage() {
-  const { user } = await withAuth({ ensureSignedIn: true });
-  if (!user) redirect("/auth/signin");
+  const { user } = await withAuth();
+  if (!user) redirect("/auth/signin?next=/mark");
 
   const { data: client } = await supabaseAdmin
     .from("clients").select("id, name, company").eq("workos_user_id", user.id).single();

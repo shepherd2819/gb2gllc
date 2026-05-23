@@ -1,0 +1,139 @@
+const BASE = "https://api.gateway.attomdata.com/propertyapi/v1.0.0";
+
+function authHeaders() {
+  const key = process.env.ATTOM_API_KEY;
+  if (!key) throw new Error("ATTOM_API_KEY not set");
+  return { apikey: key, Accept: "application/json" };
+}
+
+export type AttomPropertyDetail = {
+  // raw shape from ATTOM /property/detail
+  status: { code: number; msg: string };
+  property?: Array<{
+    address?: { oneline?: string; line1?: string; locality?: string; countrySubd?: string; postal1?: string };
+    summary?: { yearbuilt?: number; proptype?: string; propclass?: string; propsubtype?: string };
+    building?: {
+      size?: { universalsize?: number; livingsize?: number; bldgsize?: number; grosssize?: number };
+      rooms?: { beds?: number; bathstotal?: number; bathsfull?: number; bathshalf?: number };
+    };
+    lot?: { lotsize1?: number; lotsize2?: number };
+  }>;
+};
+
+export type SqftLookup = {
+  ok: true;
+  source: "attom";
+  normalizedAddress: string;
+  sqft: number | null;
+  beds: number | null;
+  baths: number | null;
+  yearBuilt: number | null;
+  propertyType: string | null;
+} | {
+  ok: false;
+  error: string;
+};
+
+function parseAddress(input: string): { address1: string; address2: string } | null {
+  // Accept "123 Main St, Denver, CO 80202" or "123 Main St Denver CO 80202".
+  // ATTOM wants: address1 = street, address2 = "<city>, <state> <zip>" (or similar).
+  const trimmed = input.trim().replace(/\s+/g, " ");
+  if (!trimmed) return null;
+
+  // If a comma separates street from rest, use that.
+  if (trimmed.includes(",")) {
+    const [street, ...rest] = trimmed.split(",");
+    return { address1: street.trim(), address2: rest.join(",").trim() };
+  }
+
+  // Otherwise try to split at a 5-digit ZIP or at the state code.
+  const zipMatch = trimmed.match(/\b(\d{5})(-\d{4})?$/);
+  const stateMatch = trimmed.match(/\b([A-Z]{2})\b/);
+  if (zipMatch && stateMatch) {
+    const idx = stateMatch.index ?? 0;
+    // assume city = word(s) immediately before the state code; street = everything before that
+    // crude but works for common cases like "123 Main St Denver CO 80202"
+    const before = trimmed.slice(0, idx).trim();
+    const after = trimmed.slice(idx).trim();
+    const parts = before.split(" ");
+    // assume city is the last 1-2 words of `before`
+    const city = parts.slice(-2).join(" ");
+    const street = parts.slice(0, -2).join(" ") || parts.join(" ");
+    return { address1: street, address2: `${city} ${after}`.trim() };
+  }
+
+  // Fallback: send whole thing as address1
+  return { address1: trimmed, address2: "" };
+}
+
+export async function lookupProperty(address: string): Promise<SqftLookup> {
+  const parsed = parseAddress(address);
+  if (!parsed) return { ok: false, error: "Could not parse address" };
+
+  const url = new URL(`${BASE}/property/detail`);
+  url.searchParams.set("address1", parsed.address1);
+  if (parsed.address2) url.searchParams.set("address2", parsed.address2);
+
+  console.log("[attom] GET", url.toString());
+
+  let res: Response;
+  try {
+    res = await fetch(url, { headers: authHeaders(), cache: "no-store" });
+  } catch (e) {
+    return { ok: false, error: `Network error reaching ATTOM: ${(e as Error).message}` };
+  }
+
+  const text = await res.text();
+  if (!res.ok) {
+    console.error("[attom] error", res.status, text.slice(0, 300));
+    return { ok: false, error: `ATTOM ${res.status}: ${text.slice(0, 200)}` };
+  }
+
+  let json: AttomPropertyDetail;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    return { ok: false, error: "ATTOM returned non-JSON" };
+  }
+
+  const code = json.status?.code;
+  // ATTOM uses status.code 0 = success, anything else = error/not-found
+  if (code !== 0 || !json.property?.[0]) {
+    return { ok: false, error: json.status?.msg || `Property not found (status code ${code ?? "?"})` };
+  }
+
+  const p = json.property[0];
+  const size = p.building?.size;
+  const sqft = size?.universalsize ?? size?.livingsize ?? size?.bldgsize ?? null;
+  const beds = p.building?.rooms?.beds ?? null;
+  const baths = p.building?.rooms?.bathstotal ?? null;
+  const yearBuilt = p.summary?.yearbuilt ?? null;
+  const propertyType = p.summary?.proptype ?? p.summary?.propsubtype ?? null;
+  const normalizedAddress = p.address?.oneline ?? address;
+
+  return {
+    ok: true,
+    source: "attom",
+    normalizedAddress,
+    sqft,
+    beds,
+    baths,
+    yearBuilt,
+    propertyType,
+  };
+}
+
+export function formatSqftReply(lookup: SqftLookup): string {
+  if (!lookup.ok) return `⚠️ ${lookup.error}`;
+  const lines: string[] = [];
+  lines.push(`📍 *${lookup.normalizedAddress}*`);
+  const facts: string[] = [];
+  if (lookup.sqft != null) facts.push(`${lookup.sqft.toLocaleString()} sqft`);
+  if (lookup.beds != null) facts.push(`${lookup.beds} bd`);
+  if (lookup.baths != null) facts.push(`${lookup.baths} ba`);
+  if (lookup.yearBuilt != null) facts.push(`built ${lookup.yearBuilt}`);
+  if (lookup.propertyType) facts.push(lookup.propertyType.toLowerCase());
+  if (facts.length) lines.push(facts.join(" · "));
+  else lines.push("_(no building details on record)_");
+  return lines.join("\n");
+}

@@ -7,6 +7,6 @@ export async function GET() {
   const xUrl = headersList.get("x-url") ?? "";
   const isAdmin = xUrl.includes("admin.");
   const returnPathname = isAdmin ? "/admin" : "/dashboard";
-  const url = await getSignInUrl({ returnPathname });
+  const url = await getSignInUrl({ returnTo: returnPathname });
   redirect(url);
 }

@@ -2,6 +2,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { presetById } from "@/lib/steward/presets";
+import { getPortalClientId } from "@/lib/portal-auth";
 
 const SLACK_FLASH: Record<string, { tone: "ok" | "warn" | "err"; msg: string }> = {
   connected: { tone: "ok", msg: "Slack workspace connected — Mark is live in your workspace." },
@@ -17,8 +18,10 @@ export default async function ConnectionsPage({ searchParams }: Props) {
   const { user } = await withAuth();
   if (!user) redirect("/auth/signin?next=/connections");
 
+  const clientId = await getPortalClientId(user.id);
+  if (!clientId) redirect("/auth/no-account");
   const { data: client } = await supabaseAdmin
-    .from("clients").select("id").eq("workos_user_id", user.id).single();
+    .from("clients").select("id").eq("id", clientId).single();
   if (!client) redirect("/auth/no-account");
 
   const [
@@ -26,7 +29,7 @@ export default async function ConnectionsPage({ searchParams }: Props) {
     { data: assignments },
     { data: tokens },
   ] = await Promise.all([
-    supabaseAdmin.from("clients").select("intake_sessions(state)").eq("workos_user_id", user.id).single(),
+    supabaseAdmin.from("clients").select("intake_sessions(state)").eq("id", clientId).single(),
     supabaseAdmin
       .from("client_steward_assignments")
       .select("preset_id, platform_agent_id, active, steward_platform_agents(display_name, icon)")

@@ -4,12 +4,16 @@ import { redirect } from "next/navigation";
 import { CounterAnimation } from "./CounterAnimation";
 import { AnnouncementBanner } from "./AnnouncementBanner";
 import { fetchWeeklyMetrics } from "@/lib/chatbot";
+import { getPortalClientId } from "@/lib/portal-auth";
 
 async function getClientData(workosUserId: string) {
+  const clientId = await getPortalClientId(workosUserId);
+  if (!clientId) return null;
+
   const { data: client } = await supabaseAdmin
     .from("clients")
     .select("id, name, company, created_at, chatbot_bot_id, chatbot_agent_name")
-    .eq("workos_user_id", workosUserId)
+    .eq("id", clientId)
     .single();
 
   if (!client) return null;

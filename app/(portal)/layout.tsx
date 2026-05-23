@@ -10,23 +10,54 @@ export default async function PortalLayout({
   const { user } = await withAuth();
   if (!user) redirect("/auth/signin?next=/dashboard");
 
-  // Look up client by WorkOS user ID, fall back to email (for invited clients on first login)
+  // 1. Try owner lookup (clients.workos_user_id)
   let { data: client } = await supabaseAdmin
     .from("clients")
     .select("id, name, email, company")
     .eq("workos_user_id", user.id)
     .single();
 
+  // 2. Try teammate lookup (client_members.workos_user_id)
+  if (!client) {
+    const { data: member } = await supabaseAdmin
+      .from("client_members")
+      .select("clients(id, name, email, company)")
+      .eq("workos_user_id", user.id)
+      .single();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (member?.clients) client = member.clients as any;
+  }
+
+  // 3. First sign-in fallback: backfill workos_user_id by email
   if (!client && user.email) {
-    const { data: byEmail } = await supabaseAdmin
+    // 3a. Owner first-sign-in
+    const { data: ownerByEmail } = await supabaseAdmin
       .from("clients")
       .select("id, name, email, company, workos_user_id")
       .eq("email", user.email)
       .single();
+    if (ownerByEmail && !ownerByEmail.workos_user_id) {
+      await supabaseAdmin.from("clients").update({ workos_user_id: user.id }).eq("id", ownerByEmail.id);
+      client = ownerByEmail;
+    }
 
-    if (byEmail && !byEmail.workos_user_id) {
-      await supabaseAdmin.from("clients").update({ workos_user_id: user.id }).eq("id", byEmail.id);
-      client = byEmail;
+    // 3b. Teammate first-sign-in
+    if (!client) {
+      const { data: memberByEmail } = await supabaseAdmin
+        .from("client_members")
+        .select("id, clients(id, name, email, company)")
+        .ilike("email", user.email)
+        .is("workos_user_id", null)
+        .single();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (memberByEmail?.clients) {
+        await supabaseAdmin
+          .from("client_members")
+          .update({ workos_user_id: user.id, joined_at: new Date().toISOString() })
+          .eq("id", memberByEmail.id);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        client = memberByEmail.clients as any;
+      }
     }
   }
 

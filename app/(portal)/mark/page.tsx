@@ -1,13 +1,16 @@
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
+import { getPortalClientId } from "@/lib/portal-auth";
 
 export default async function MarkPage() {
   const { user } = await withAuth();
   if (!user) redirect("/auth/signin?next=/mark");
 
+  const clientId = await getPortalClientId(user.id);
+  if (!clientId) redirect("/auth/no-account");
   const { data: client } = await supabaseAdmin
-    .from("clients").select("id, name, company").eq("workos_user_id", user.id).single();
+    .from("clients").select("id, name, company").eq("id", clientId).single();
   if (!client) redirect("/auth/no-account");
 
   // Only show this page if the client actually has Mark assigned

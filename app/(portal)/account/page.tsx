@@ -2,17 +2,28 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { AccountForm } from "./AccountForm";
+import { TeamSection } from "./TeamSection";
+import { getPortalClientId, isClientOwner } from "@/lib/portal-auth";
 
 export default async function AccountPage() {
   const { user } = await withAuth();
   if (!user) redirect("/auth/signin?next=/account");
 
+  const clientId = await getPortalClientId(user.id);
+  if (!clientId) redirect("/auth/no-account");
   const { data: client } = await supabaseAdmin
     .from("clients")
     .select("name, email, company, created_at")
-    .eq("workos_user_id", user.id)
+    .eq("id", clientId)
     .single();
   if (!client) redirect("/auth/no-account");
+
+  const isOwner = await isClientOwner(user.id, clientId);
+  const { data: members } = await supabaseAdmin
+    .from("client_members")
+    .select("id, email, joined_at, invited_at")
+    .eq("client_id", clientId)
+    .order("invited_at", { ascending: true });
 
   return (
     <>
@@ -23,6 +34,18 @@ export default async function AccountPage() {
 
       <div className="account-section-title">Profile</div>
       <AccountForm name={client.name} company={client.company} email={client.email} />
+
+      <div className="account-section-title" style={{ marginTop: 32 }}>Team</div>
+      <TeamSection
+        isOwner={isOwner}
+        ownerEmail={client.email}
+        initialMembers={(members ?? []).map((m) => ({
+          id: m.id,
+          email: m.email,
+          joined_at: m.joined_at,
+          invited_at: m.invited_at,
+        }))}
+      />
 
       <div className="danger-zone">
         <h2 className="danger-title">Close account</h2>

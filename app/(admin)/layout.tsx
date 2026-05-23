@@ -14,8 +14,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>GB2G · Admin</title>
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-        <link rel="icon" href="/favicon-512.png" type="image/png" sizes="512x512" />
+        <link rel="icon" href="/favicon-512.png" type="image/png" />
         <link rel="apple-touch-icon" href="/favicon-512.png" />
         <meta name="theme-color" content="#F7F5F0" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />

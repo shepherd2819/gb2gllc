@@ -80,10 +80,13 @@ async function getClientData(workosUserId: string) {
   const markCount = markLookupCount ?? 0;
   const markHours = (markCount * 5) / 60;
 
+  const byAgent: Array<{ id: string; name: string; icon: string; tasks: number; hours: number }> = [];
+  if (markCount > 0) byAgent.push({ id: "mark", name: "Mark", icon: "🏠", tasks: markCount, hours: markHours });
+
   const steward = {
     hours: baseSteward.hours + markHours,
     tasks: baseSteward.tasks + markCount,
-    markCount,
+    byAgent,
   };
 
   const totalHours = herald.hours + steward.hours;
@@ -195,10 +198,22 @@ export default async function DashboardPage() {
               <div className="product-stats-row">
                 <div className="product-stat"><span className="ps-num">{steward.tasks.toLocaleString()}</span><span className="ps-label">tasks done</span></div>
                 <div className="product-stat"><span className="ps-num">{steward.hours.toFixed(1)}h</span><span className="ps-label">saved</span></div>
-                {steward.markCount > 0 && (
-                  <div className="product-stat"><span className="ps-num">{steward.markCount.toLocaleString()}</span><span className="ps-label">Mark lookups</span></div>
-                )}
               </div>
+              {(steward.byAgent ?? []).length > 0 && (
+                <details className="agent-breakdown">
+                  <summary>By agent</summary>
+                  <div className="agent-breakdown-list">
+                    {steward.byAgent!.map((a) => (
+                      <div key={a.id} className="agent-breakdown-row">
+                        <span className="ab-name">{a.icon} {a.name}</span>
+                        <span className="ab-stats">
+                          {a.tasks.toLocaleString()} {a.tasks === 1 ? "task" : "tasks"} · {a.hours.toFixed(1)}h
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
           )}
 

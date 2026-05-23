@@ -84,9 +84,6 @@ export default async function ClientDetailPage({ params }: Params) {
         <div className="admin-stat"><div className="asn">{totals.messages.toLocaleString()}</div><div className="asl">Herald conversations</div></div>
         <div className="admin-stat"><div className="asn">{totals.hours.toFixed(1)}h</div><div className="asl">Hours saved</div></div>
         <div className="admin-stat"><div className="asn">{totals.tasks.toLocaleString()}</div><div className="asl">Tasks completed</div></div>
-        {totals.markLookups > 0 && (
-          <div className="admin-stat"><div className="asn">{totals.markLookups.toLocaleString()}</div><div className="asl">Mark lookups</div></div>
-        )}
         <div className="admin-stat"><div className="asn">{invoices.length}</div><div className="asl">Invoices sent</div></div>
       </div>
 

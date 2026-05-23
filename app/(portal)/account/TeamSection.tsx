@@ -64,85 +64,77 @@ export function TeamSection({ isOwner, ownerEmail, initialMembers }: Props) {
   }
 
   return (
-    <div className="account-edit-card">
-      <div className="ae-row" style={{ marginBottom: 12 }}>
-        <span className="ae-label">Account owner</span>
-        <span style={{ fontSize: 13 }}>{ownerEmail}</span>
-      </div>
+    <div className="team-card">
+      <div className="team-section">
+        <div className="team-row">
+          <div className="team-row-main">
+            <div className="team-email">{ownerEmail}</div>
+            <div className="team-meta">Account owner</div>
+          </div>
+        </div>
 
-      {members.length > 0 && (
-        <>
-          <div className="ae-label" style={{ marginBottom: 8 }}>Teammates</div>
-          {members.map((m) => (
-            <div
-              key={m.id}
-              className="ae-row"
-              style={{ marginBottom: 8, paddingBottom: 8, borderBottom: "1px solid rgba(28,30,27,0.06)" }}
-            >
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: 13 }}>{m.email}</span>
-                <span style={{ fontSize: 11, color: "var(--text-mute, #8A8C85)", fontFamily: "var(--mono, monospace)" }}>
-                  {m.joined_at
-                    ? `Joined ${new Date(m.joined_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
-                    : `Invited ${new Date(m.invited_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })} · pending`}
-                </span>
+        {members.map((m) => (
+          <div key={m.id} className="team-row">
+            <div className="team-row-main">
+              <div className="team-email">{m.email}</div>
+              <div className="team-meta">
+                {m.joined_at
+                  ? `Teammate · joined ${new Date(m.joined_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                  : `Teammate · invited ${new Date(m.invited_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })} · pending sign-up`}
               </div>
-              {isOwner && (
-                <button
-                  onClick={() => remove(m)}
-                  disabled={removing === m.id}
-                  className="ae-save"
-                  style={{
-                    background: "transparent",
-                    color: "var(--red)",
-                    border: "1px solid var(--red)",
-                    fontSize: 12,
-                    padding: "6px 12px",
-                  }}
-                >
-                  {removing === m.id ? "Removing…" : "Remove"}
-                </button>
-              )}
             </div>
-          ))}
-        </>
-      )}
+            {isOwner && (
+              <button
+                onClick={() => remove(m)}
+                disabled={removing === m.id}
+                className="team-remove-btn"
+              >
+                {removing === m.id ? "Removing…" : "Remove"}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
 
       {isOwner ? (
         atCap ? (
-          <p style={{ fontSize: 12, color: "var(--text-mute, #8A8C85)", marginTop: 8 }}>
-            You&apos;re at the {MAX_TEAMMATES}-teammate limit. Remove someone to invite another.
-          </p>
+          <div className="team-footer">
+            <p className="team-hint">
+              You&apos;re at the {MAX_TEAMMATES}-teammate limit on this plan. Remove someone to invite another.
+            </p>
+          </div>
         ) : (
-          <form onSubmit={invite} style={{ marginTop: members.length > 0 ? 16 : 0 }}>
-            <div className="ae-label" style={{ marginBottom: 6 }}>Invite a teammate</div>
-            <div style={{ display: "flex", gap: 8 }}>
+          <form onSubmit={invite} className="team-invite">
+            <label htmlFor="team-invite-email" className="team-invite-label">
+              Invite a teammate
+            </label>
+            <div className="team-invite-row">
               <input
+                id="team-invite-email"
                 type="email"
-                className="ae-input"
+                className="team-invite-input"
                 placeholder="teammate@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                style={{ flex: 1 }}
               />
-              <button type="submit" className="ae-save" disabled={busy || !email.trim()}>
+              <button type="submit" className="team-invite-btn" disabled={busy || !email.trim()}>
                 {busy ? "Sending…" : "Send invite"}
               </button>
             </div>
-            <p style={{ fontSize: 11, color: "var(--text-mute, #8A8C85)", marginTop: 6 }}>
-              They&apos;ll get an email to set up their password. You can invite {MAX_TEAMMATES} teammate on this plan.
+            <p className="team-hint">
+              They&apos;ll get an email to set up their password and join your portal. You can invite {MAX_TEAMMATES} teammate on this plan.
             </p>
           </form>
         )
       ) : (
-        <p style={{ fontSize: 12, color: "var(--text-mute, #8A8C85)", marginTop: 8 }}>
-          Only the account owner can invite or remove teammates.
-        </p>
+        <div className="team-footer">
+          <p className="team-hint">Only the account owner can invite or remove teammates.</p>
+        </div>
       )}
 
       {msg && (
-        <div className={`ae-msg ${msg.tone === "ok" ? "ae-ok" : "ae-err"}`} style={{ marginTop: 12 }}>
+        <div className={`team-msg ${msg.tone === "ok" ? "team-ok" : "team-err"}`}>
           {msg.text}
         </div>
       )}

@@ -1,4 +1,4 @@
-import { anthropic } from "@/lib/anthropic";
+import { juneAnthropic } from "@/lib/june/anthropic";
 
 const MODEL = "claude-sonnet-4-6";
 
@@ -72,7 +72,7 @@ export async function juneTurn(input: ChatTurnInput): Promise<ChatTurnOutput> {
   const stateNote = buildStateNote(input);
   const system = SYSTEM + (stateNote ? `\n\n[State note]\n${stateNote}` : "");
 
-  const res = await anthropic.messages.create({
+  const res = await juneAnthropic.messages.create({
     model: MODEL,
     max_tokens: 600,
     system,

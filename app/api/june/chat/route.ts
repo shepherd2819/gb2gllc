@@ -138,7 +138,14 @@ async function runAuditInBackground(attemptId: string, websiteUrl: string) {
       return;
     }
     await updateAttempt(attemptId, { scraped_text: scrape.text });
-    const audit = await generateAudit(scrape);
+
+    // Kick off audit + logo fetch in parallel. Logo is best-effort.
+    const { fetchLogoAsDataUrl } = await import("@/lib/june/scrape");
+    const [audit, logoDataUrl] = await Promise.all([
+      generateAudit(scrape),
+      scrape.logoUrl ? fetchLogoAsDataUrl(scrape.logoUrl) : Promise.resolve(null),
+    ]);
+
     // Append the "ready, give me your email" bridge to the conversation history
     // so the NEXT chat turn — when the user replies with an email — sees
     // June's question in context and responds with SEND_EMAIL, not confusion.
@@ -150,8 +157,12 @@ async function runAuditInBackground(attemptId: string, websiteUrl: string) {
       .single();
     const conv = Array.isArray(row?.conversation) ? row.conversation : [];
     const newHistory = [...conv, { role: "assistant", content: AUDIT_BRIDGE }];
+
+    // Stuff the logo data URL onto the audit object so the PDF renderer can use it
+    const auditWithLogo = { ...audit, _logoDataUrl: logoDataUrl };
+
     await updateAttempt(attemptId, {
-      audit_data: audit,
+      audit_data: auditWithLogo,
       status: "audit_ready",
       pdf_generated_at: new Date().toISOString(),
       conversation: newHistory,

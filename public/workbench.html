@@ -343,10 +343,13 @@
   }
   .msg.user .bubble { background: #2C2E2B; }
   .msg.agent .bubble { background: rgba(127, 157, 185, 0.18); border: 1px solid rgba(127, 157, 185, 0.3); color: #2C2E2B; }
+  /* Dark mode: keep the dusty-blue bubble look (slightly more opaque so it
+     still reads on a dark page) but flip the text to light parchment so it's
+     actually readable. */
   [data-theme="dark"] .msg.agent .bubble {
-    background: #EDE7D7;
-    border-color: #C9A961;
-    color: #1C1E1B;
+    background: rgba(127, 157, 185, 0.28);
+    border-color: rgba(127, 157, 185, 0.5);
+    color: #EDE7D7;
   }
   .msg .typing-dots {
     display: inline-flex;

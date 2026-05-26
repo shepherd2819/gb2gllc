@@ -27,7 +27,13 @@ const RULE        = "#E5DECF";
 
 const s = StyleSheet.create({
   page: {
-    padding: 0,
+    // No left/right/top padding (the header and body apply their own).
+    // Bottom padding is critical: it tells the auto-wrap engine to break
+    // pages before content collides with the fixed footer at bottom:24.
+    paddingTop: 0,
+    paddingBottom: 64,
+    paddingLeft: 0,
+    paddingRight: 0,
     backgroundColor: PARCHMENT,
     fontFamily: SANS,
     color: INK,
@@ -131,10 +137,13 @@ const s = StyleSheet.create({
   },
 
   // ── Opportunity card (compact) ──────────────────────────────────
+  // wrap={false} on each opp keeps individual cards intact — they break to
+  // the next page rather than splitting mid-card. Combined with the page's
+  // paddingBottom this prevents the "last bullet bleeds into footer" bug.
   opp: {
     marginBottom: 10,
     paddingTop: 12,
-    paddingBottom: 12,
+    paddingBottom: 14,
     paddingLeft: 14,
     paddingRight: 14,
     backgroundColor: PARCHMENT_2,
@@ -302,7 +311,7 @@ export function AuditDoc({ audit, websiteUrl }: { audit: AuditWithLogo; websiteU
 
           <Text style={s.sectionLabel}>WHERE AI FITS IN</Text>
           {audit.opportunities.map((op, i) => (
-            <View key={i} style={s.opp} wrap={true}>
+            <View key={i} style={s.opp} wrap={false}>
               <View style={s.oppHead}>
                 <View style={s.oppHeadLeft}>
                   <Text style={s.oppAgent}>{op.agent_name}</Text>

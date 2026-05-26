@@ -1,34 +1,19 @@
-import { Document, Page, Text, View, Image, StyleSheet, Font, renderToBuffer } from "@react-pdf/renderer";
+import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import type { AuditData } from "./audit";
 
-// Brand fonts via @fontsource on jsdelivr's CDN. Pinned to specific package
-// versions so the URLs are immutable (Google's font CDN rotates hashes; this
-// one doesn't). PNG/JPG only — no SVG.
-const FONT_CDN = "https://cdn.jsdelivr.net/npm";
-
-Font.register({
-  family: "EB Garamond",
-  fonts: [
-    { src: `${FONT_CDN}/@fontsource/eb-garamond@5.2.5/files/eb-garamond-latin-400-normal.ttf`, fontWeight: 400 },
-    { src: `${FONT_CDN}/@fontsource/eb-garamond@5.2.5/files/eb-garamond-latin-500-normal.ttf`, fontWeight: 500 },
-    { src: `${FONT_CDN}/@fontsource/eb-garamond@5.2.5/files/eb-garamond-latin-400-italic.ttf`, fontWeight: 400, fontStyle: "italic" },
-  ],
-});
-Font.register({
-  family: "Inter",
-  fonts: [
-    { src: `${FONT_CDN}/@fontsource/inter@5.0.20/files/inter-latin-400-normal.ttf`, fontWeight: 400 },
-    { src: `${FONT_CDN}/@fontsource/inter@5.0.20/files/inter-latin-500-normal.ttf`, fontWeight: 500 },
-    { src: `${FONT_CDN}/@fontsource/inter@5.0.20/files/inter-latin-600-normal.ttf`, fontWeight: 600 },
-  ],
-});
-Font.register({
-  family: "JetBrains Mono",
-  fonts: [
-    { src: `${FONT_CDN}/@fontsource/jetbrains-mono@5.0.20/files/jetbrains-mono-latin-400-normal.ttf`, fontWeight: 400 },
-    { src: `${FONT_CDN}/@fontsource/jetbrains-mono@5.0.20/files/jetbrains-mono-latin-500-normal.ttf`, fontWeight: 500 },
-  ],
-});
+// PDF built-in fonts only — @fontsource dropped TTF starting in v5 (woff/woff2
+// only, which @react-pdf can't read) and Google's font CDN rotates hashes
+// unpredictably. Sticking to the three PDF built-ins (Helvetica, Times, Courier)
+// means the renderer can never fail on a missing font. Brand styling lives in
+// the layout, palette, and hierarchy below — fonts are just the vehicle.
+const SANS         = "Helvetica";
+const SANS_BOLD    = "Helvetica-Bold";
+const SANS_OBLIQUE = "Helvetica-Oblique";
+const SERIF        = "Times-Roman";
+const SERIF_BOLD   = "Times-Bold";
+const SERIF_ITAL   = "Times-Italic";
+const MONO         = "Courier";
+const MONO_BOLD    = "Courier-Bold";
 
 // Brand palette (matches workbench.html)
 const PARCHMENT   = "#FAF6EC";
@@ -45,7 +30,7 @@ const s = StyleSheet.create({
   page: {
     padding: 0,
     backgroundColor: PARCHMENT,
-    fontFamily: "Inter",
+    fontFamily: SANS,
     color: INK,
     fontSize: 11,
   },
@@ -66,20 +51,18 @@ const s = StyleSheet.create({
   },
   cobrandWordmark: {
     fontSize: 28,
-    fontFamily: "Inter",
+    fontFamily: SANS,
     fontWeight: 500,
     letterSpacing: -0.6,
     color: INK,
   },
   cobrandTwo: {
-    fontFamily: "EB Garamond",
-    fontStyle: "italic",
+    fontFamily: SERIF_ITAL,
     color: GOLD,
     fontWeight: 400,
   },
   cobrandX: {
-    fontFamily: "EB Garamond",
-    fontStyle: "italic",
+    fontFamily: SERIF_ITAL,
     fontSize: 22,
     color: INK_MUTE,
     paddingHorizontal: 4,
@@ -90,14 +73,14 @@ const s = StyleSheet.create({
     objectFit: "contain",
   },
   cobrandCompany: {
-    fontFamily: "EB Garamond",
+    fontFamily: SERIF,
     fontSize: 22,
     color: INK,
     maxWidth: 240,
   },
 
   headerSubLine: {
-    fontFamily: "JetBrains Mono",
+    fontFamily: MONO,
     fontSize: 9,
     letterSpacing: 1.4,
     textTransform: "uppercase",
@@ -117,7 +100,7 @@ const s = StyleSheet.create({
     borderBottomColor: RULE,
   },
   heroEyebrow: {
-    fontFamily: "JetBrains Mono",
+    fontFamily: MONO,
     fontSize: 9,
     letterSpacing: 1.6,
     textTransform: "uppercase",
@@ -125,7 +108,7 @@ const s = StyleSheet.create({
     marginBottom: 12,
   },
   heroTitle: {
-    fontFamily: "EB Garamond",
+    fontFamily: SERIF,
     fontWeight: 400,
     fontSize: 32,
     lineHeight: 1.1,
@@ -134,8 +117,7 @@ const s = StyleSheet.create({
     marginBottom: 6,
   },
   heroSub: {
-    fontFamily: "EB Garamond",
-    fontStyle: "italic",
+    fontFamily: SERIF_ITAL,
     fontSize: 14,
     color: GOLD,
     marginBottom: 14,
@@ -148,7 +130,7 @@ const s = StyleSheet.create({
 
   // ── Section label ────────────────────────────────────────────────
   sectionLabel: {
-    fontFamily: "JetBrains Mono",
+    fontFamily: MONO,
     fontSize: 9,
     letterSpacing: 1.6,
     textTransform: "uppercase",
@@ -173,13 +155,13 @@ const s = StyleSheet.create({
     marginBottom: 8,
   },
   oppAgent: {
-    fontFamily: "EB Garamond",
+    fontFamily: SERIF,
     fontSize: 20,
     fontWeight: 500,
     color: INK,
   },
   oppProductPill: {
-    fontFamily: "JetBrains Mono",
+    fontFamily: MONO,
     fontSize: 8,
     letterSpacing: 1.4,
     color: GOLD,
@@ -194,7 +176,7 @@ const s = StyleSheet.create({
   },
   oppHeadline: {
     fontSize: 12,
-    fontFamily: "Inter",
+    fontFamily: SANS,
     fontWeight: 500,
     marginBottom: 10,
     color: INK,
@@ -205,11 +187,10 @@ const s = StyleSheet.create({
     color: INK_SOFT,
     marginBottom: 12,
     lineHeight: 1.55,
-    fontStyle: "italic",
-    fontFamily: "EB Garamond",
+    fontFamily: SERIF_ITAL,
   },
   oppListLabel: {
-    fontFamily: "JetBrains Mono",
+    fontFamily: MONO,
     fontSize: 8,
     letterSpacing: 1.4,
     textTransform: "uppercase",
@@ -226,7 +207,7 @@ const s = StyleSheet.create({
   oppListBullet: { color: GOLD, fontWeight: 600 },
   oppListText: { flex: 1, lineHeight: 1.5 },
   oppHours: {
-    fontFamily: "JetBrains Mono",
+    fontFamily: MONO,
     fontSize: 9,
     color: SAGE,
     marginTop: 10,
@@ -244,7 +225,7 @@ const s = StyleSheet.create({
     color: PARCHMENT,
   },
   closingLabel: {
-    fontFamily: "JetBrains Mono",
+    fontFamily: MONO,
     fontSize: 9,
     letterSpacing: 1.6,
     textTransform: "uppercase",
@@ -252,22 +233,20 @@ const s = StyleSheet.create({
     marginBottom: 10,
   },
   closingBody: {
-    fontFamily: "EB Garamond",
-    fontStyle: "italic",
+    fontFamily: SERIF_ITAL,
     fontSize: 14,
     lineHeight: 1.55,
     color: PARCHMENT,
     marginBottom: 14,
   },
   closingSignature: {
-    fontFamily: "JetBrains Mono",
+    fontFamily: MONO,
     fontSize: 10,
     color: GOLD,
     letterSpacing: 0.5,
   },
   closingAnchor: {
-    fontFamily: "EB Garamond",
-    fontStyle: "italic",
+    fontFamily: SERIF_ITAL,
     fontSize: 11,
     color: INK_MUTE,
     marginTop: 10,
@@ -281,7 +260,7 @@ const s = StyleSheet.create({
     right: 56,
     flexDirection: "row",
     justifyContent: "space-between",
-    fontFamily: "JetBrains Mono",
+    fontFamily: MONO,
     fontSize: 8,
     color: INK_MUTE,
     letterSpacing: 0.6,

@@ -106,6 +106,10 @@ export function StewardManager({
       window.location.href = `/api/meta/install?clientId=${clientId}`;
       return;
     }
+    if (platformAgentId === "linkedin") {
+      window.location.href = `/api/linkedin/install?clientId=${clientId}`;
+      return;
+    }
     setConnectingFor(platformAgentId);
   }
 
@@ -256,7 +260,9 @@ export function StewardManager({
                       ? `Install ${p.display_name} workspace →`
                       : a.platform_agent_id === "meta"
                         ? `Connect Meta (FB + IG) →`
-                        : `Connect ${p.display_name} →`}
+                        : a.platform_agent_id === "linkedin"
+                          ? `Connect LinkedIn →`
+                          : `Connect ${p.display_name} →`}
                   </button>
               }
             </div>

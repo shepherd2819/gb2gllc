@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/chatbot-digest",
       "schedule": "0 13 * * 1"
+    },
+    {
+      "path": "/api/cron/reese-draft",
+      "schedule": "0 13 * * *"
     }
   ]
 }

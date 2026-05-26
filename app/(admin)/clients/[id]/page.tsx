@@ -7,6 +7,7 @@ import { AnnouncementManager } from "./AnnouncementManager";
 import { StewardManager } from "./StewardManager";
 import { HeraldManager } from "./HeraldManager";
 import { MayaManager } from "./MayaManager";
+import { ReeseManager } from "./ReeseManager";
 import { SendInviteButton } from "./SendInviteButton";
 
 type Params = { params: Promise<{ id: string }> };
@@ -27,6 +28,9 @@ export default async function ClientDetailPage({ params }: Params) {
     { data: members },
     { data: socialConfig },
     { data: metaSubs },
+    { data: linkedinConfig },
+    { data: linkedinToken },
+    { data: linkedinPosts },
   ] = await Promise.all([
     supabaseAdmin.from("clients").select("*, client_products(*), invoices(id, amount_cents, description, status, sent_at, created_at)").eq("id", id).single(),
     supabaseAdmin.from("client_logs").select("*").eq("client_id", id).order("created_at", { ascending: false }).limit(50),
@@ -40,6 +44,9 @@ export default async function ClientDetailPage({ params }: Params) {
     supabaseAdmin.from("client_members").select("email, joined_at, last_signed_in_at").eq("client_id", id),
     supabaseAdmin.from("client_social_configs").select("*").eq("client_id", id).maybeSingle(),
     supabaseAdmin.from("meta_page_subscriptions").select("page_id, page_name, instagram_username, active, installed_at").eq("client_id", id).order("installed_at", { ascending: true }),
+    supabaseAdmin.from("client_linkedin_configs").select("*").eq("client_id", id).maybeSingle(),
+    supabaseAdmin.from("steward_platform_tokens").select("token_data").eq("client_id", id).eq("platform", "linkedin").maybeSingle(),
+    supabaseAdmin.from("linkedin_posts").select("id, pillar, draft_text, edited_text, status, scheduled_for, published_at, linkedin_url, rejected_reason, created_at").eq("client_id", id).order("created_at", { ascending: false }).limit(50),
   ]);
 
   if (!client) notFound();
@@ -167,6 +174,15 @@ export default async function ClientDetailPage({ params }: Params) {
             clientId={client.id}
             initialConfig={socialConfig ?? null}
             subscriptions={metaSubs ?? []}
+          />
+
+          <ReeseManager
+            clientId={client.id}
+            initialConfig={linkedinConfig ?? null}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            subscription={(linkedinToken?.token_data as any) ?? null}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            posts={(linkedinPosts ?? []) as any}
           />
 
           <AtriumManager clientId={client.id} stages={atriumStages ?? []} />

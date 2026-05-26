@@ -1,11 +1,15 @@
 import { supabaseAdmin } from "@/lib/supabase";
 
 export default async function SubmissionsPage() {
+  // Only show actually-submitted intakes here. The intake_sessions table also
+  // holds in-progress + abandoned rows (every /intake page-load creates one
+  // so the multi-step form has somewhere to save state); those are noise on
+  // this view.
   const { data: sessions } = await supabaseAdmin
     .from("intake_sessions")
     .select("id, state, submitted_at, notion_page_id, source")
-    .order("submitted_at", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false });
+    .not("submitted_at", "is", null)
+    .order("submitted_at", { ascending: false });
 
   return (
     <>

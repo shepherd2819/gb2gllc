@@ -1079,6 +1079,136 @@
   [data-theme="dark"] .approach-strip .principle p { color: var(--ink-soft); }
   [data-theme="dark"] .approach-strip .principle h4 { color: var(--ink); }
   [data-theme="dark"] .product-info .roman { color: var(--warm-gold); }
+
+  /* ============= JUNE DEMO MODAL ============= */
+  .june-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(28, 30, 27, 0.55);
+    backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .june-overlay.open { display: flex; }
+  .june-modal {
+    background: var(--parchment-2);
+    border: 1px solid var(--rule);
+    border-radius: 18px;
+    width: 100%;
+    max-width: 560px;
+    height: min(720px, 90vh);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+  }
+  .june-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid var(--rule);
+  }
+  .june-head-left { display: flex; align-items: center; gap: 12px; }
+  .june-avatar {
+    width: 38px; height: 38px; border-radius: 100px;
+    background: linear-gradient(135deg, var(--warm-gold) 0%, var(--dusty-blue-deep) 100%);
+    color: var(--parchment-2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--serif); font-size: 18px; font-style: italic;
+  }
+  .june-name { font-size: 15px; font-weight: 500; color: var(--ink); }
+  .june-status { font-size: 11px; font-family: var(--mono); color: var(--ink-mute); letter-spacing: 0.04em; }
+  .june-close { background: none; border: none; color: var(--ink-mute); cursor: pointer; font-size: 24px; line-height: 1; padding: 4px 8px; }
+  .june-close:hover { color: var(--ink); }
+  .june-body {
+    flex: 1; overflow-y: auto;
+    padding: 20px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .june-msg { display: flex; gap: 8px; }
+  .june-msg.user { justify-content: flex-end; }
+  .june-bubble {
+    max-width: 78%; padding: 10px 14px; border-radius: 16px;
+    font-size: 14px; line-height: 1.5; word-wrap: break-word; white-space: pre-wrap;
+  }
+  .june-msg.june .june-bubble {
+    background: var(--parchment);
+    color: var(--ink);
+    border: 1px solid var(--rule);
+    border-bottom-left-radius: 4px;
+  }
+  .june-msg.user .june-bubble {
+    background: var(--ink);
+    color: var(--parchment-2);
+    border-bottom-right-radius: 4px;
+  }
+  .june-typing { display: inline-flex; gap: 4px; padding: 6px 4px; }
+  .june-typing span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--ink-mute);
+    animation: june-bounce 1s infinite ease-in-out;
+  }
+  .june-typing span:nth-child(2) { animation-delay: 0.15s; }
+  .june-typing span:nth-child(3) { animation-delay: 0.30s; }
+  @keyframes june-bounce { 0%, 60%, 100% { opacity: 0.3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+
+  .june-workflow {
+    border: 1px solid var(--rule);
+    background: var(--parchment);
+    border-radius: 12px;
+    padding: 14px;
+    margin: 6px 0;
+  }
+  .june-workflow-title { font-size: 11px; font-family: var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-mute); margin-bottom: 10px; }
+  .june-step { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-soft); padding: 4px 0; }
+  .june-step.done { color: var(--ink); }
+  .june-step.active { color: var(--ink); }
+  .june-step-dot {
+    width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+    border: 1px solid var(--rule);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px;
+  }
+  .june-step.done .june-step-dot { background: var(--warm-gold); border-color: var(--warm-gold); color: var(--abs-dark, #1C1E1B); }
+  .june-step.active .june-step-dot { border-color: var(--ink); }
+  .june-step.active .june-step-dot::after {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--ink); animation: june-pulse 1s infinite ease-in-out;
+  }
+  @keyframes june-pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+  .june-foot {
+    padding: 12px 16px 16px;
+    border-top: 1px solid var(--rule);
+    background: var(--parchment-2);
+  }
+  .june-input-row { display: flex; gap: 8px; align-items: flex-end; }
+  .june-input {
+    flex: 1; background: var(--parchment); border: 1px solid var(--rule);
+    border-radius: 10px; padding: 10px 12px;
+    font-family: var(--sans); font-size: 14px; color: var(--ink);
+    outline: none; resize: none; min-height: 38px; max-height: 120px;
+    line-height: 1.4;
+    transition: border-color .15s;
+  }
+  .june-input:focus { border-color: var(--ink); }
+  .june-input::placeholder { color: var(--ink-mute); }
+  .june-send {
+    background: var(--ink); color: var(--parchment-2); border: none;
+    border-radius: 10px; padding: 0 16px; height: 38px;
+    font-size: 13px; font-family: var(--sans); cursor: pointer;
+    transition: opacity .15s;
+    flex-shrink: 0;
+  }
+  .june-send:hover:not(:disabled) { opacity: 0.85; }
+  .june-send:disabled { opacity: 0.4; cursor: default; }
+  .june-hint {
+    margin-top: 8px; font-size: 10px; font-family: var(--mono);
+    color: var(--ink-mute); letter-spacing: 0.04em; text-align: center;
+  }
+  @media (max-width: 600px) {
+    .june-overlay { padding: 0; align-items: stretch; }
+    .june-modal { border-radius: 0; max-width: 100%; height: 100%; }
+  }
 </style>
 </head>
 <body>
@@ -1130,7 +1260,8 @@
       <p class="sub">Three products — website agents, AI website design, and internal AI employees. Watch them run.</p>
       <div class="anchor">"Whatever you do, work at it with all your heart, as working for the Lord."<span class="ref">Col. 3:23 · our anchor</span></div>
       <div class="hero-ctas">
-        <a href="#products" class="btn btn-primary">See the work <span class="arrow">→</span></a>
+        <button type="button" class="btn btn-primary" id="june-open">Talk to June <span class="arrow">→</span></button>
+        <a href="#products" class="btn btn-ghost">See the work</a>
         <a href="#contact" class="btn btn-ghost">Book a call</a>
       </div>
     </div>
@@ -1458,6 +1589,228 @@
     </div>
   </div>
 </footer>
+
+<!-- ============= JUNE DEMO MODAL ============= -->
+<div class="june-overlay" id="june-overlay" role="dialog" aria-modal="true" aria-labelledby="june-name-label">
+  <div class="june-modal">
+    <div class="june-head">
+      <div class="june-head-left">
+        <div class="june-avatar">J</div>
+        <div>
+          <div class="june-name" id="june-name-label">June</div>
+          <div class="june-status">Available now</div>
+        </div>
+      </div>
+      <button type="button" class="june-close" id="june-close" aria-label="Close">×</button>
+    </div>
+    <div class="june-body" id="june-body"></div>
+    <div class="june-foot">
+      <div class="june-input-row">
+        <textarea class="june-input" id="june-input" rows="1" placeholder="Say hi to June…"></textarea>
+        <button type="button" class="june-send" id="june-send" disabled>Send</button>
+      </div>
+      <div class="june-hint">Press Enter to send · Shift+Enter for newline</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const overlay  = document.getElementById('june-overlay');
+  const closeBtn = document.getElementById('june-close');
+  const openBtn  = document.getElementById('june-open');
+  const body     = document.getElementById('june-body');
+  const input    = document.getElementById('june-input');
+  const sendBtn  = document.getElementById('june-send');
+
+  let started = false;
+  let sending = false;
+  let pollTimer = null;
+
+  // ── Open / close ────────────────────────────────────────────────
+  openBtn?.addEventListener('click', () => {
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    input.focus();
+    if (!started) {
+      started = true;
+      addJuneMessage("Hey, I'm June — sort of like a secretary you can borrow for a minute. Ask me anything, or say \"show me what you can do\" and I'll walk you through it.");
+    }
+  });
+  closeBtn.addEventListener('click', closeModal);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal(); });
+  function closeModal() {
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  // ── Input handling ──────────────────────────────────────────────
+  input.addEventListener('input', () => {
+    sendBtn.disabled = !input.value.trim() || sending;
+    input.style.height = 'auto';
+    input.style.height = Math.min(120, input.scrollHeight) + 'px';
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!sendBtn.disabled) send();
+    }
+  });
+  sendBtn.addEventListener('click', send);
+
+  async function send() {
+    const text = input.value.trim();
+    if (!text || sending) return;
+    sending = true;
+    sendBtn.disabled = true;
+    input.value = '';
+    input.style.height = 'auto';
+
+    addUserMessage(text);
+    const typing = addTypingIndicator();
+
+    let data;
+    try {
+      const res = await fetch('/api/june/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
+      data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'something went wrong');
+    } catch (err) {
+      typing.remove();
+      addJuneMessage("I had trouble sending that. Mind trying again?");
+      sending = false;
+      sendBtn.disabled = false;
+      return;
+    }
+
+    typing.remove();
+    if (data.reply) addJuneMessage(data.reply);
+
+    if (data.auditing) {
+      runWorkflow();
+    } else if (data.emailing) {
+      addWorkflowSentIndicator();
+      startPolling('emailed');
+    }
+
+    sending = false;
+    sendBtn.disabled = !input.value.trim();
+  }
+
+  // ── Message rendering ───────────────────────────────────────────
+  function addJuneMessage(text) {
+    const row = document.createElement('div');
+    row.className = 'june-msg june';
+    const bubble = document.createElement('div');
+    bubble.className = 'june-bubble';
+    bubble.textContent = text;
+    row.appendChild(bubble);
+    body.appendChild(row);
+    body.scrollTop = body.scrollHeight;
+    return row;
+  }
+  function addUserMessage(text) {
+    const row = document.createElement('div');
+    row.className = 'june-msg user';
+    const bubble = document.createElement('div');
+    bubble.className = 'june-bubble';
+    bubble.textContent = text;
+    row.appendChild(bubble);
+    body.appendChild(row);
+    body.scrollTop = body.scrollHeight;
+  }
+  function addTypingIndicator() {
+    const row = document.createElement('div');
+    row.className = 'june-msg june';
+    const bubble = document.createElement('div');
+    bubble.className = 'june-bubble';
+    bubble.innerHTML = '<span class="june-typing"><span></span><span></span><span></span></span>';
+    row.appendChild(bubble);
+    body.appendChild(row);
+    body.scrollTop = body.scrollHeight;
+    return row;
+  }
+
+  // ── Workflow card ───────────────────────────────────────────────
+  const WORKFLOW_STEPS = [
+    { key: 'scrape',   label: 'Reading your website' },
+    { key: 'analyze',  label: 'Analyzing your services' },
+    { key: 'draft',    label: 'Drafting opportunities' },
+    { key: 'pdf',      label: 'Generating your audit PDF' },
+  ];
+  function runWorkflow() {
+    const card = document.createElement('div');
+    card.className = 'june-workflow';
+    card.innerHTML = '<div class="june-workflow-title">Building your audit</div>';
+    WORKFLOW_STEPS.forEach((s, i) => {
+      const step = document.createElement('div');
+      step.className = 'june-step' + (i === 0 ? ' active' : '');
+      step.dataset.key = s.key;
+      step.innerHTML = '<div class="june-step-dot"></div><div class="june-step-label">' + s.label + '</div>';
+      card.appendChild(step);
+    });
+    body.appendChild(card);
+    body.scrollTop = body.scrollHeight;
+
+    // Visual progression timed to ~12-25s real audit
+    let i = 0;
+    const tick = () => {
+      const steps = card.querySelectorAll('.june-step');
+      if (i < steps.length) {
+        if (i > 0) steps[i - 1].classList.remove('active'), steps[i - 1].classList.add('done');
+        if (i < steps.length) steps[i].classList.add('active');
+        i++;
+        if (i < steps.length) setTimeout(tick, 3500 + Math.random() * 1500);
+      }
+    };
+    setTimeout(tick, 1200);
+    startPolling('audit_ready', () => {
+      // Mark all done
+      card.querySelectorAll('.june-step').forEach(s => { s.classList.remove('active'); s.classList.add('done'); });
+    });
+  }
+  function addWorkflowSentIndicator() {
+    const card = document.createElement('div');
+    card.className = 'june-workflow';
+    card.innerHTML = '<div class="june-workflow-title">Sending</div><div class="june-step active"><div class="june-step-dot"></div><div class="june-step-label">Emailing your audit</div></div>';
+    body.appendChild(card);
+    body.scrollTop = body.scrollHeight;
+    return card;
+  }
+
+  // ── Poll /api/june/state until a target status hits, then react ─
+  function startPolling(targetStatus, onDone) {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(async () => {
+      try {
+        const res = await fetch('/api/june/state', { cache: 'no-store' });
+        const data = await res.json();
+        if (data.status === targetStatus) {
+          clearInterval(pollTimer);
+          pollTimer = null;
+          if (onDone) onDone();
+          if (targetStatus === 'audit_ready') {
+            addJuneMessage("Okay — your audit is ready. Where should I send it? Just drop your email and it's on its way.");
+          } else if (targetStatus === 'emailed') {
+            addJuneMessage("Sent. Check your inbox in a minute. If anything in there resonates, just reply to that email — I'll see it.");
+            input.placeholder = 'Anything else? (just chat)';
+          }
+        } else if (data.status === 'errored') {
+          clearInterval(pollTimer);
+          pollTimer = null;
+          addJuneMessage("Hm, something went sideways on my end: " + (data.error || 'unknown error') + ". Reach out to hello@gb2gllc.com and we'll figure it out together.");
+        }
+      } catch (e) {
+        // ignore transient errors; keep polling
+      }
+    }, 2000);
+  }
+})();
+</script>
 
 <script>
   // ============= THEME TOGGLE =============

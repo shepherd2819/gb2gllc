@@ -5,7 +5,7 @@ import { scrapeWebsite } from "@/lib/june/scrape";
 import { generateAudit } from "@/lib/june/audit";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const MAX_USER_MSG_LEN = 1200;
 const MAX_TURNS = 30; // hard cap so a chatty user can't run up a bill

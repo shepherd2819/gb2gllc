@@ -1,6 +1,9 @@
 import { juneAnthropic } from "@/lib/june/anthropic";
 
-const MODEL = "claude-sonnet-4-6";
+// Haiku for the conversational turn — sub-2s latency, plenty smart for
+// June's persona + simple intent recognition. Sonnet was hitting Vercel's
+// 30s function timeout because of its extended-thinking overhead.
+const MODEL = "claude-haiku-4-5";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 

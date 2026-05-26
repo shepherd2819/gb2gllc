@@ -1,6 +1,9 @@
 import { juneAnthropic } from "@/lib/june/anthropic";
 
-const MODEL = "claude-sonnet-4-6";
+// Haiku is fast enough and produces solid structured audits for a homepage
+// demo. If audit quality ever drops noticeably, swap to claude-sonnet-4-6
+// (this path is in after() so timeout isn't a concern, just cost vs. quality).
+const MODEL = "claude-haiku-4-5";
 
 export type Opportunity = {
   agent_name: string;       // friendly persona name, e.g. "Jordan"

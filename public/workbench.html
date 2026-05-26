@@ -1087,8 +1087,8 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    height: 100%;
-    min-height: 520px;
+    height: 560px;
+    max-height: 80vh;
     box-shadow: 0 8px 32px rgba(28,30,27,0.08);
   }
   .june-head {
@@ -1247,7 +1247,7 @@
   .video-close:hover { background: rgba(0,0,0,0.8); }
 
   @media (max-width: 768px) {
-    .june-embed { min-height: 460px; height: auto; }
+    .june-embed { height: 480px; max-height: 75vh; }
     .video-overlay { padding: 0; }
     .video-frame { border-radius: 0; max-width: 100%; }
   }

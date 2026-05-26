@@ -342,13 +342,12 @@
     max-width: 78%;
   }
   .msg.user .bubble { background: #2C2E2B; }
-  .msg.agent .bubble { background: rgba(127, 157, 185, 0.18); border: 1px solid rgba(127, 157, 185, 0.3); color: #2C2E2B; }
-  /* Dark mode: keep the dusty-blue bubble look (slightly more opaque so it
-     still reads on a dark page) but flip the text to light parchment so it's
-     actually readable. */
-  [data-theme="dark"] .msg.agent .bubble {
-    background: rgba(127, 157, 185, 0.28);
-    border-color: rgba(127, 157, 185, 0.5);
+  /* The agent bubble sits inside .demo which has a hard-coded dark background
+     (#1C1E1B) in both themes, so the bubble text needs to be light parchment
+     to be readable — the previous #2C2E2B was dark-on-dark and invisible. */
+  .msg.agent .bubble {
+    background: rgba(127, 157, 185, 0.22);
+    border: 1px solid rgba(127, 157, 185, 0.4);
     color: #EDE7D7;
   }
   .msg .typing-dots {

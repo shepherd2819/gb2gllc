@@ -344,8 +344,8 @@
   .msg.user .bubble { background: #2C2E2B; }
   .msg.agent .bubble { background: rgba(127, 157, 185, 0.18); border: 1px solid rgba(127, 157, 185, 0.3); color: #2C2E2B; }
   [data-theme="dark"] .msg.agent .bubble {
-    background: rgba(220, 225, 230, 0.95);
-    border-color: rgba(127, 157, 185, 0.5);
+    background: #EDE7D7;
+    border-color: #C9A961;
     color: #1C1E1B;
   }
   .msg .typing-dots {
@@ -911,10 +911,12 @@
   @keyframes blink { 50% { opacity: 0; } }
 
   .closing-ctas { display: flex; gap: 10px; }
-  .btn-on-ink { background: var(--parchment-2); color: var(--ink); border: 1px solid transparent; }
-  .btn-on-ink:hover { background: var(--warm-gold); }
-  .btn-ink-ghost { border-color: rgba(244, 238, 226, 0.2); color: var(--parchment-2); }
-  .btn-ink-ghost:hover { border-color: var(--warm-gold); color: var(--warm-gold); }
+  /* These two buttons sit on an always-dark CTA section, so their colors are
+     hardcoded (not var-based) so dark mode doesn't invert the contrast. */
+  .btn-on-ink { background: #F4EEE2; color: #1C1E1B; border: 1px solid transparent; }
+  .btn-on-ink:hover { background: #C9A961; color: #1C1E1B; }
+  .btn-ink-ghost { border-color: rgba(244, 238, 226, 0.45); color: #F4EEE2; }
+  .btn-ink-ghost:hover { border-color: #C9A961; color: #C9A961; }
 
   /* ====== FOOTER (always dark) ====== */
   footer {

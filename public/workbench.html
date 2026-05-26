@@ -1846,7 +1846,8 @@
         } else if (data.status === 'errored') {
           clearInterval(pollTimer);
           pollTimer = null;
-          addJuneMessage("Hm, something went sideways on my end: " + (data.error || 'unknown error') + ". Reach out to hello@gb2gllc.com and we'll figure it out together.");
+          console.error('[june] backend error:', data.error);
+          addJuneMessage("Hm, something didn't quite go right on my end. Mind reaching out to hello@gb2gllc.com directly? Sorry about that.");
         }
       } catch (e) {
         // ignore transient errors; keep polling

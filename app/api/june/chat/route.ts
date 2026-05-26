@@ -67,15 +67,22 @@ export async function POST(req: NextRequest) {
   const newHistory = [...history, { role: "assistant" as const, content: turn.reply }];
   await updateAttempt(attempt.id, { conversation: newHistory });
 
-  // If June wants to start the audit, kick it off async — UI will open the SSE stream
+  // If June wants to start the audit, kick it off async — but only if we
+  // haven't already audited this visitor. Guards against Claude emitting
+  // <<START_AUDIT>> a second time when it's confused (e.g. mid-audit or
+  // after the audit is done and the user is providing their email).
   let auditing = false;
   if (turn.action.kind === "start_audit") {
-    if (rateLimited) {
+    const auditAlreadyStartedOrDone =
+      attempt.status === "auditing" ||
+      attempt.status === "audit_ready" ||
+      attempt.status === "emailed";
+    if (rateLimited || auditAlreadyStartedOrDone) {
       return NextResponse.json({
         reply: turn.reply,
-        rate_limited: true,
+        rate_limited: rateLimited,
         auditing: false,
-        state: "blocked",
+        state: attempt.status === "audit_ready" ? "audit_done" : turn.newState,
       });
     }
     auditing = true;
@@ -86,15 +93,25 @@ export async function POST(req: NextRequest) {
     after(runAuditInBackground(attempt.id, turn.action.website_url));
   }
 
-  // If June wants to send the email, kick it off async — UI will poll /api/june/state
+  // If June wants to send the email, kick it off async — but only when the
+  // audit is actually ready. Guards against early or duplicate sends.
   let emailing = false;
   if (turn.action.kind === "send_email") {
-    if (rateLimited) {
+    if (rateLimited || attempt.status === "emailed") {
       return NextResponse.json({
         reply: turn.reply,
         rate_limited: true,
         emailing: false,
         state: "blocked",
+      });
+    }
+    if (attempt.status !== "audit_ready") {
+      // Audit not ready yet — June can chat with the user, but don't fire the email
+      return NextResponse.json({
+        reply: turn.reply,
+        emailing: false,
+        rate_limited: false,
+        state: turn.newState,
       });
     }
     emailing = true;
@@ -111,6 +128,8 @@ export async function POST(req: NextRequest) {
   });
 }
 
+const AUDIT_BRIDGE = "Okay — your audit is ready. Where should I send it? Just drop your email and it's on its way.";
+
 async function runAuditInBackground(attemptId: string, websiteUrl: string) {
   try {
     const scrape = await scrapeWebsite(websiteUrl);
@@ -120,10 +139,22 @@ async function runAuditInBackground(attemptId: string, websiteUrl: string) {
     }
     await updateAttempt(attemptId, { scraped_text: scrape.text });
     const audit = await generateAudit(scrape);
+    // Append the "ready, give me your email" bridge to the conversation history
+    // so the NEXT chat turn — when the user replies with an email — sees
+    // June's question in context and responds with SEND_EMAIL, not confusion.
+    const { supabaseAdmin } = await import("@/lib/supabase");
+    const { data: row } = await supabaseAdmin
+      .from("june_demo_attempts")
+      .select("conversation")
+      .eq("id", attemptId)
+      .single();
+    const conv = Array.isArray(row?.conversation) ? row.conversation : [];
+    const newHistory = [...conv, { role: "assistant", content: AUDIT_BRIDGE }];
     await updateAttempt(attemptId, {
       audit_data: audit,
       status: "audit_ready",
       pdf_generated_at: new Date().toISOString(),
+      conversation: newHistory,
     });
   } catch (err) {
     console.error("[june audit] background error", err);
@@ -133,6 +164,8 @@ async function runAuditInBackground(attemptId: string, websiteUrl: string) {
     });
   }
 }
+
+const EMAIL_SENT_BRIDGE = "Sent. Check your inbox in a minute. If anything in there resonates, just reply to that email — I'll see it.";
 
 async function sendInBackground(attemptId: string, email: string) {
   try {
@@ -144,7 +177,7 @@ async function sendInBackground(attemptId: string, email: string) {
     ]);
     const { data } = await supabaseAdmin
       .from("june_demo_attempts")
-      .select("audit_data, website_url")
+      .select("audit_data, website_url, conversation")
       .eq("id", attemptId)
       .single();
     if (!data?.audit_data || !data?.website_url) {
@@ -162,12 +195,14 @@ async function sendInBackground(attemptId: string, email: string) {
       await updateAttempt(attemptId, { status: "errored", error: result.error ?? "send failed" });
       return;
     }
+    const conv = Array.isArray(data.conversation) ? data.conversation : [];
+    const newHistory = [...conv, { role: "assistant", content: EMAIL_SENT_BRIDGE }];
     await updateAttempt(attemptId, {
       status: "emailed",
       email_sent_at: new Date().toISOString(),
       resend_id: result.id ?? null,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+      conversation: newHistory,
+    });
   } catch (err) {
     console.error("[june send] background error", err);
     await updateAttempt(attemptId, {

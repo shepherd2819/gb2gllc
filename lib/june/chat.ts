@@ -19,6 +19,7 @@ export type ChatAction =
 type JuneState =
   | "open_chat"       // free conversation
   | "audit_offered"   // June has offered the audit, waiting for confirmation/URL
+  | "auditing"        // audit is actually running in the background
   | "audit_done"      // audit complete, waiting for email or wrap
   | "emailed"         // PDF was sent
   | "blocked";        // rate-limited
@@ -121,6 +122,7 @@ export async function juneTurn(input: ChatTurnInput): Promise<ChatTurnOutput> {
 function buildStateNote(input: ChatTurnInput): string {
   const notes: string[] = [];
   if (input.isRateLimited) notes.push("This visitor has already received their one audit. Do not start a new one.");
+  if (input.state === "auditing") notes.push("The audit is currently running in the background — you've already kicked it off, don't run another one. If the visitor is chatting with you, keep them engaged warmly: small talk, brief questions about their business, light banter. Reference that you're still reading through their site if it comes up naturally. Do NOT promise the audit will be ready by a specific time.");
   if (input.state === "audit_done") notes.push("The audit just finished generating. Ask the visitor for their email so you can send the PDF.");
   if (input.state === "emailed") notes.push("The audit has already been emailed. Wrap up warmly. Do not offer another.");
   return notes.join(" ");

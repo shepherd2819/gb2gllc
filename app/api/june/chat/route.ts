@@ -48,7 +48,8 @@ export async function POST(req: NextRequest) {
   const rateLimited = isRateLimited(attempt);
   const stateForJune =
     attempt.status === "audit_ready" ? "audit_done" :
-    attempt.status === "emailed" ? "emailed" :
+    attempt.status === "auditing"    ? "auditing"   :
+    attempt.status === "emailed"     ? "emailed"    :
     "open_chat";
 
   let turn;

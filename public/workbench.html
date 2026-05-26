@@ -1755,6 +1755,18 @@
     { key: 'draft',    label: 'Drafting opportunities' },
     { key: 'pdf',      label: 'Generating your audit PDF' },
   ];
+  // Small-talk lines June drops while the audit is cooking. Random pick, no
+  // hard questions — visitor can answer or ignore.
+  const FILLERS = [
+    "Reading through your site now — I'll keep going while we chat. What kind of work pulled you toward looking at AI in the first place?",
+    "Skimming through the pages… while I'm doing that, anything specific that's been eating up your team's time lately?",
+    "Almost done over here — out of curiosity, are you a one-person shop or do you have a small team helping?",
+    "Still working through this. What does a typical week look like for you?",
+    "Picking up some interesting things in your services. Have you tried any AI tools before, or is this new territory?",
+  ];
+
+  let workflowCardEl = null;
+
   function runWorkflow() {
     const card = document.createElement('div');
     card.className = 'june-workflow';
@@ -1768,8 +1780,9 @@
     });
     body.appendChild(card);
     body.scrollTop = body.scrollHeight;
+    workflowCardEl = card;
 
-    // Visual progression timed to ~12-25s real audit
+    // Visual progression timed to roughly match a Sonnet audit (~12-25s)
     let i = 0;
     const tick = () => {
       const steps = card.querySelectorAll('.june-step');
@@ -1777,14 +1790,32 @@
         if (i > 0) steps[i - 1].classList.remove('active'), steps[i - 1].classList.add('done');
         if (i < steps.length) steps[i].classList.add('active');
         i++;
-        if (i < steps.length) setTimeout(tick, 3500 + Math.random() * 1500);
+        if (i < steps.length) setTimeout(tick, 4500 + Math.random() * 2000);
       }
     };
     setTimeout(tick, 1200);
+
+    // Small-talk while the audit runs. Two lines spaced out so it feels like
+    // June is naturally filling silence rather than reading a script.
+    const f1 = pickFiller([]);
+    const f2 = pickFiller([f1]);
+    const t1 = setTimeout(() => {
+      if (workflowCardEl) addJuneMessage(f1);
+    }, 4500);
+    const t2 = setTimeout(() => {
+      if (workflowCardEl) addJuneMessage(f2);
+    }, 14000);
+
     startPolling('audit_ready', () => {
-      // Mark all done
+      clearTimeout(t1);
+      clearTimeout(t2);
       card.querySelectorAll('.june-step').forEach(s => { s.classList.remove('active'); s.classList.add('done'); });
+      workflowCardEl = null;
     });
+  }
+  function pickFiller(exclude) {
+    const choices = FILLERS.filter(f => !exclude.includes(f));
+    return choices[Math.floor(Math.random() * choices.length)];
   }
   function addWorkflowSentIndicator() {
     const card = document.createElement('div');

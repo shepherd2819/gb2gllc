@@ -45,6 +45,14 @@ export function AveryCampaignDetail({
   sentTodayCount: number;
 }) {
   const [c, setC] = useState(campaign);
+  const [cfg, setCfg] = useState({
+    name: campaign.name,
+    briefing_text: campaign.briefing_text ?? "",
+    sender_name: campaign.sender_name,
+    sender_email: campaign.sender_email,
+    daily_send_cap: campaign.daily_send_cap,
+    status: campaign.status,
+  });
   const [leads, setLeads] = useState(initialLeads);
   const [sentToday, setSentToday] = useState(sentTodayCount);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -56,23 +64,41 @@ export function AveryCampaignDetail({
   const [pasteOpen, setPasteOpen] = useState(false);
   const [csvText, setCsvText] = useState("");
 
+  const dirty =
+    cfg.name !== c.name ||
+    cfg.briefing_text !== (c.briefing_text ?? "") ||
+    cfg.sender_name !== c.sender_name ||
+    cfg.sender_email !== c.sender_email ||
+    cfg.daily_send_cap !== c.daily_send_cap ||
+    cfg.status !== c.status;
+
   function flash(text: string, tone: "ok" | "err") {
     setMsg({ text, tone });
     setTimeout(() => setMsg(null), 4000);
   }
 
-  async function saveCampaign(patch: Partial<Campaign>) {
+  async function saveCampaign() {
     setSavingCampaign(true);
     const res = await fetch(`/api/admin/avery/campaigns/${c.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
+      body: JSON.stringify(cfg),
     });
     setSavingCampaign(false);
     if (res.ok) {
-      setC({ ...c, ...patch });
+      setC({ ...c, ...cfg });
       flash("Saved", "ok");
     } else flash("Save failed", "err");
+  }
+  function resetCfg() {
+    setCfg({
+      name: c.name,
+      briefing_text: c.briefing_text ?? "",
+      sender_name: c.sender_name,
+      sender_email: c.sender_email,
+      daily_send_cap: c.daily_send_cap,
+      status: c.status,
+    });
   }
 
   async function uploadPdf(file: File) {
@@ -198,20 +224,38 @@ export function AveryCampaignDetail({
 
           {/* ── Briefing card ─────────────────────────────────────────── */}
           <div className="admin-card">
-            <div className="admin-card-head"><h2>Briefing</h2></div>
+            <div className="admin-card-head">
+              <h2>Briefing</h2>
+              {dirty && (
+                <span style={{ fontSize: 11, color: "var(--gold, #C9A961)", fontFamily: "var(--mono)", letterSpacing: 0.04 }}>
+                  Unsaved changes
+                </span>
+              )}
+            </div>
+
             <div className="admin-input-row">
-              <label>Briefing text <span style={{ color: "var(--text-mute)", fontWeight: 400 }}>(what you want Avery to pitch)</span></label>
-              <textarea
-                className="admin-textarea"
-                rows={8}
-                placeholder="e.g. We sell AI agents for small real-estate media studios. Sweet spot: 1-15 person teams running into bottlenecks on scheduling + scam scope creep. Mention Mark (sqft lookup) + Maya (DM responder) as concrete examples. Soft CTA: 20-min call to talk through their specific bottlenecks."
-                defaultValue={c.briefing_text ?? ""}
-                onBlur={(e) => saveCampaign({ briefing_text: e.target.value })}
+              <label>Campaign name</label>
+              <input
+                className="admin-input"
+                style={{ marginBottom: 0 }}
+                value={cfg.name}
+                onChange={(e) => setCfg({ ...cfg, name: e.target.value })}
               />
             </div>
 
             <div className="admin-input-row" style={{ marginTop: 12 }}>
-              <label>Supporting PDF <span style={{ color: "var(--text-mute)", fontWeight: 400 }}>(optional)</span></label>
+              <label>Briefing text <span style={{ color: "var(--text-mute)", fontWeight: 400 }}>(what you want Avery to pitch)</span></label>
+              <textarea
+                className="admin-textarea"
+                rows={8}
+                placeholder="e.g. We sell AI agents for small real-estate media studios. Sweet spot: 1-15 person teams running into bottlenecks on scheduling + scope creep. Mention Mark (sqft lookup) + Maya (DM responder) as concrete examples. Soft CTA: 20-min call to talk through their specific bottlenecks."
+                value={cfg.briefing_text}
+                onChange={(e) => setCfg({ ...cfg, briefing_text: e.target.value })}
+              />
+            </div>
+
+            <div className="admin-input-row" style={{ marginTop: 12 }}>
+              <label>Supporting PDF <span style={{ color: "var(--text-mute)", fontWeight: 400 }}>(optional — saves immediately)</span></label>
               {c.briefing_pdf_filename ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
                   <span style={{ fontFamily: "var(--mono)", fontSize: 12 }}>📄 {c.briefing_pdf_filename}</span>
@@ -232,8 +276,8 @@ export function AveryCampaignDetail({
                 <label>From name</label>
                 <input
                   className="admin-input"
-                  defaultValue={c.sender_name}
-                  onBlur={(e) => saveCampaign({ sender_name: e.target.value })}
+                  value={cfg.sender_name}
+                  onChange={(e) => setCfg({ ...cfg, sender_name: e.target.value })}
                   style={{ marginBottom: 0 }}
                 />
               </div>
@@ -241,8 +285,8 @@ export function AveryCampaignDetail({
                 <label>From email</label>
                 <input
                   className="admin-input"
-                  defaultValue={c.sender_email}
-                  onBlur={(e) => saveCampaign({ sender_email: e.target.value })}
+                  value={cfg.sender_email}
+                  onChange={(e) => setCfg({ ...cfg, sender_email: e.target.value })}
                   style={{ marginBottom: 0, fontFamily: "var(--mono)", fontSize: 12 }}
                 />
               </div>
@@ -253,8 +297,8 @@ export function AveryCampaignDetail({
                   type="number"
                   min={1}
                   max={100}
-                  defaultValue={c.daily_send_cap}
-                  onBlur={(e) => saveCampaign({ daily_send_cap: parseInt(e.target.value, 10) })}
+                  value={cfg.daily_send_cap}
+                  onChange={(e) => setCfg({ ...cfg, daily_send_cap: parseInt(e.target.value, 10) || 1 })}
                   style={{ marginBottom: 0, fontFamily: "var(--mono)" }}
                 />
               </div>
@@ -264,8 +308,8 @@ export function AveryCampaignDetail({
               <label>Status</label>
               <select
                 className="admin-select"
-                value={c.status}
-                onChange={(e) => saveCampaign({ status: e.target.value })}
+                value={cfg.status}
+                onChange={(e) => setCfg({ ...cfg, status: e.target.value })}
                 style={{ marginBottom: 0 }}
               >
                 <option value="active">Active — sends allowed</option>
@@ -274,7 +318,21 @@ export function AveryCampaignDetail({
               </select>
             </div>
 
-            {savingCampaign && <div style={{ fontSize: 11, color: "var(--text-mute)", fontFamily: "var(--mono)", marginTop: 8 }}>Saving…</div>}
+            <div style={{ display: "flex", gap: 8, marginTop: 16, alignItems: "center" }}>
+              <button
+                className="admin-btn admin-btn-sm"
+                onClick={saveCampaign}
+                disabled={savingCampaign || !dirty}
+                title={!dirty ? "No changes to save" : ""}
+              >
+                {savingCampaign ? "Saving…" : "Save changes"}
+              </button>
+              {dirty && !savingCampaign && (
+                <button className="admin-btn-ghost admin-btn-sm" onClick={resetCfg}>
+                  Discard
+                </button>
+              )}
+            </div>
           </div>
 
           {/* ── Lead upload ───────────────────────────────────────────── */}

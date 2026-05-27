@@ -63,6 +63,7 @@ export function AveryCampaignDetail({
   const [savingCampaign, setSavingCampaign] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [csvText, setCsvText] = useState("");
+  const [importingPdf, setImportingPdf] = useState(false);
 
   const dirty =
     cfg.name !== c.name ||
@@ -132,6 +133,24 @@ export function AveryCampaignDetail({
       flash(`Added ${data.inserted} leads`, "ok");
       window.location.reload();
     } else flash(data.error || "Upload failed", "err");
+  }
+
+  async function importLeadsPdf(file: File) {
+    setImportingPdf(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const res = await fetch(`/api/admin/avery/campaigns/${c.id}/leads-pdf`, { method: "POST", body: fd });
+      const data = await res.json();
+      if (res.ok) {
+        flash(`Imported ${data.inserted} leads from ${data.filename}`, "ok");
+        setTimeout(() => window.location.reload(), 800);
+      } else flash(data.error || "PDF import failed", "err");
+    } catch (err) {
+      flash(err instanceof Error ? err.message : "Upload failed", "err");
+    } finally {
+      setImportingPdf(false);
+    }
   }
 
   async function leadAction(leadId: string, body: object) {
@@ -338,8 +357,30 @@ export function AveryCampaignDetail({
           {/* ── Lead upload ───────────────────────────────────────────── */}
           <div className="admin-card">
             <div className="admin-card-head"><h2>Add leads</h2></div>
+
+            {/* PDF import (Claude parses the doc into structured leads) */}
+            <div style={{ padding: 14, border: "1px dashed var(--rule, rgba(28,30,27,0.18))", borderRadius: 10, marginBottom: 14 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>📄 Upload a PDF list</div>
+              <div style={{ fontSize: 12, color: "var(--text-mute)", marginBottom: 10 }}>
+                Avery will scan the PDF, pull out every contact (name, email, company, website, notes), and add them as leads. Works on tables, paragraphs, or business-card scans. ~10-30 sec depending on length.
+              </div>
+              {importingPdf ? (
+                <div style={{ fontSize: 12, color: "var(--gold, #C9A961)", fontFamily: "var(--mono)" }}>
+                  Scanning PDF and pulling leads… (this can take up to 30s)
+                </div>
+              ) : (
+                <input
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) importLeadsPdf(f); e.currentTarget.value = ""; }}
+                  style={{ fontSize: 13 }}
+                />
+              )}
+            </div>
+
+            {/* CSV paste fallback */}
             {!pasteOpen ? (
-              <button className="admin-btn admin-btn-sm" onClick={() => setPasteOpen(true)}>+ Paste CSV</button>
+              <button className="admin-btn-ghost admin-btn-sm" onClick={() => setPasteOpen(true)}>+ Paste CSV instead</button>
             ) : (
               <>
                 <div className="admin-input-row" style={{ marginBottom: 8 }}>

@@ -7,6 +7,14 @@
     {
       "path": "/api/cron/reese-draft",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/iris-poll",
+      "schedule": "*/2 * * * *"
+    },
+    {
+      "path": "/api/cron/iris-purge",
+      "schedule": "0 4 * * *"
     }
   ]
 }

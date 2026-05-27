@@ -6,6 +6,12 @@ const STORAGE_KEY = SESSION_ID ? `gb2g_intake_${SESSION_ID}` : 'gb2g_intake_v1';
 const DEFAULT_STATE = {
   stage: 0,
   startedAt: null,
+  // Path selector: 'braindump' | 'structured' | null (not chosen yet)
+  path: null,
+  brain_dump_text: '',
+  brain_dump_extracted_at: null,
+  brain_dump_missing: [],
+  brain_dump_confidence: { low: [], high: [] },
   // 1 — basics
   contact: { name: '', email: '', company: '', website: '' },
   // 2 — about
@@ -94,22 +100,57 @@ function update(updater) {
 }
 
 // =================== STAGES ===================
-const STAGES = [
-  { id: 'welcome', label: '01 · Welcome', short: 'Welcome' },
-  { id: 'about', label: '02 · About you', short: 'About' },
-  { id: 'goals', label: '03 · Goals', short: 'Goals' },
-  { id: 'software', label: '04 · Software stack', short: 'Stack' },
-  { id: 'access', label: '05 · Granting access', short: 'Access' },
-  { id: 'sops', label: '06 · SOPs & docs', short: 'SOPs' },
-  { id: 'tasks', label: '07 · Top tasks', short: 'Tasks' },
-  { id: 'schedule', label: '08 · Schedule call', short: 'Schedule' },
-  { id: 'done', label: '09 · Done', short: 'Done' },
+// Two flows: brain-dump (faster) and structured (classic). Both share the
+// later stages (access, sops, schedule). The brain-dump flow inserts a
+// 'braindump' + 'review' pair right after path selection and skips the
+// about/goals/software/tasks stages (which the brain dump fills automatically).
+const STAGES_FULL = [
+  { id: 'welcome',  label: '01 · Welcome',         short: 'Welcome' },
+  { id: 'path',     label: '02 · How to start',    short: 'Start' },
+  { id: 'braindump',label: '03 · Brain dump',      short: 'Dump',     paths: ['braindump'] },
+  { id: 'review',   label: '04 · Review',          short: 'Review',   paths: ['braindump'] },
+  { id: 'about',    label: '03 · About you',       short: 'About',    paths: ['structured'] },
+  { id: 'goals',    label: '04 · Goals',           short: 'Goals',    paths: ['structured'] },
+  { id: 'software', label: '05 · Software stack',  short: 'Stack',    paths: ['structured'] },
+  { id: 'tasks',    label: '06 · Top tasks',       short: 'Tasks',    paths: ['structured'] },
+  { id: 'access',   label: '07 · Granting access', short: 'Access' },
+  { id: 'sops',     label: '08 · SOPs & docs',     short: 'SOPs' },
+  { id: 'schedule', label: '09 · Schedule call',   short: 'Schedule' },
+  { id: 'done',     label: '10 · Done',            short: 'Done' },
 ];
+
+function buildActiveStages() {
+  const path = state.path;
+  return STAGES_FULL.filter((s) => !s.paths || (path && s.paths.includes(path)));
+}
+// Acts like the old `STAGES` array so the rest of the file keeps working.
+// Recomputes on every read so changing state.path immediately re-routes.
+const STAGES = new Proxy({}, {
+  get(_t, prop) {
+    const arr = buildActiveStages();
+    if (prop === 'length') return arr.length;
+    if (prop === Symbol.iterator) return arr[Symbol.iterator].bind(arr);
+    if (typeof arr[prop] === 'function') return arr[prop].bind(arr);
+    return arr[prop];
+  },
+});
 
 const HERALD_CONTEXT = {
   welcome: {
     msg: `Welcome — I'm Herald, your intake assistant. I'll walk you through about 8 short steps so the team behind me knows everything we need <em>before</em> we ever bother you again. Start with the basics on the right.`,
     tip: `Most folks finish in 12–18 minutes.`,
+  },
+  path: {
+    msg: `Two ways to do this. <strong>Brain dump</strong> lets you type or speak everything that's on your mind — I'll pull it into the right places for you to review. <strong>Structured</strong> walks you stage-by-stage. The brain dump is faster if you already know what you want.`,
+    tip: `Both end up in the same place — pick whatever feels less like work.`,
+  },
+  braindump: {
+    msg: `Just write what's on your mind. What does your business do, what are you stuck on, what would feel like real help. You can hit the mic and talk if you'd rather. Then I'll organize the rest.`,
+    tip: `4–6 sentences is plenty. Don't worry about being organized — that's my job.`,
+  },
+  review: {
+    msg: `Here's what I pulled from what you said. Look it over, fix anything I got wrong, and we'll move on. The original is on the left so you can compare.`,
+    tip: `Yellow tags mean low confidence — worth double-checking those.`,
   },
   about: {
     msg: `Quick context on you and your team. This shapes how we scope. There's no wrong answer — if you're a one-person shop, say so.`,
@@ -264,6 +305,9 @@ function canAdvance() {
 function renderStage(id) {
   const renderers = {
     welcome: renderWelcome,
+    path: renderPath,
+    braindump: renderBrainDump,
+    review: renderReview,
     about: renderAbout,
     goals: renderGoals,
     software: renderSoftware,
@@ -345,6 +389,312 @@ function renderWelcome() {
   });
   wireActions(node);
   if (!state.startedAt) { state.startedAt = Date.now(); saveState(); }
+  return node;
+}
+
+// ============ STAGE: PATH SELECTOR ============
+function renderPath() {
+  const path = state.path;
+  const meta = STAGES.find(s => s.id === 'path');
+  const node = el(`
+    <div>
+      <div class="stage-meta"><span class="dot"></span>${meta ? meta.label : 'How to start'}</div>
+      <h1>How would you like to do this?</h1>
+      <p class="lede">Two ways — pick whichever feels less like work. Both end up in the same place.</p>
+
+      <div class="path-picker">
+        <button type="button" class="path-card ${path === 'braindump' ? 'selected' : ''}" data-path="braindump">
+          <span class="path-badge">Recommended</span>
+          <div class="path-visual">
+            <svg viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="6" y="6" width="52" height="36" rx="6"/>
+              <path d="M14 18 h36 M14 26 h28 M14 34 h22"/>
+              <circle cx="50" cy="38" r="5" fill="currentColor" opacity="0.18"/>
+              <path d="M48 38 l1.5 1.5 L52 36" stroke="currentColor" stroke-width="1.6"/>
+            </svg>
+          </div>
+          <div class="path-title">Brain dump</div>
+          <div class="path-desc">Type or speak everything that's on your mind — I'll organize it into the right places for you to review.</div>
+          <div class="path-meta">~4 min · 1 textarea</div>
+        </button>
+
+        <button type="button" class="path-card ${path === 'structured' ? 'selected' : ''}" data-path="structured">
+          <div class="path-visual">
+            <svg viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="10" r="3"/>
+              <path d="M20 10 h36"/>
+              <circle cx="12" cy="24" r="3"/>
+              <path d="M20 24 h28"/>
+              <circle cx="12" cy="38" r="3"/>
+              <path d="M20 38 h22"/>
+              <path d="M12 13 v8 M12 27 v8" opacity="0.4"/>
+            </svg>
+          </div>
+          <div class="path-title">Structured walk-through</div>
+          <div class="path-desc">I'll guide you stage by stage with focused questions. Slower, more thorough, no surprises.</div>
+          <div class="path-meta">~12 min · 8 stages</div>
+        </button>
+      </div>
+
+      ${actionsHtml({ primaryLabel: 'Continue' })}
+    </div>
+  `);
+  node.querySelectorAll('.path-card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      e.preventDefault();
+      const chosen = card.dataset.path;
+      update(s => { s.path = chosen; });
+    });
+  });
+  wireActions(node);
+  return node;
+}
+
+// ============ STAGE: BRAIN DUMP ============
+function renderBrainDump() {
+  const meta = STAGES.find(s => s.id === 'braindump');
+  const node = el(`
+    <div>
+      <div class="stage-meta"><span class="dot"></span>${meta ? meta.label : 'Brain dump'}</div>
+      <h1>Tell me <em>everything</em>.</h1>
+      <p class="lede">What does your business do? What's eating your time? What would feel like real help? Don't worry about being organized — that's my job.</p>
+
+      <div class="braindump-wrap">
+        <textarea id="bd-text" class="braindump-text" placeholder="e.g. We run a real-estate photo & video studio in Charleston. Three shooters, two editors. We get most of our jobs through agents who book through Spiro. The thing that kills us is the back-and-forth on cancellations and rescheduling — feels like 6 hours a week between three of us. I'd love an AI that handles the rebook flow and sends follow-ups for canceled shoots.">${esc(state.brain_dump_text)}</textarea>
+        <div class="braindump-toolbar">
+          <button type="button" class="braindump-mic" id="bd-mic" title="Voice input" aria-label="Toggle voice input">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="9" y="3" width="6" height="12" rx="3"/>
+              <path d="M5 11a7 7 0 0 0 14 0"/>
+              <path d="M12 18v3"/>
+              <path d="M9 21h6"/>
+            </svg>
+            <span class="bd-mic-label">Talk</span>
+          </button>
+          <div class="braindump-count" id="bd-count">0 chars</div>
+        </div>
+      </div>
+
+      <div class="braindump-error" id="bd-error" style="display:none;"></div>
+
+      ${actionsHtml({ primaryLabel: 'Organize this for me' })}
+    </div>
+  `);
+
+  const ta = node.querySelector('#bd-text');
+  const count = node.querySelector('#bd-count');
+  const mic = node.querySelector('#bd-mic');
+  const micLabel = node.querySelector('.bd-mic-label');
+  const err = node.querySelector('#bd-error');
+  const nextBtn = node.querySelector('#btn-next');
+
+  function refreshCount() {
+    const n = (ta.value || '').length;
+    count.textContent = `${n.toLocaleString()} chars` + (n < 20 ? ' · at least 20 needed' : '');
+    if (nextBtn) nextBtn.disabled = n < 20;
+  }
+  refreshCount();
+  ta.addEventListener('input', () => {
+    state.brain_dump_text = ta.value;
+    saveStateLocal();
+    refreshCount();
+  });
+
+  // ── Voice input (Web Speech API) ────────────────────────────────
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    mic.style.display = 'none';
+  } else {
+    let rec = null;
+    let listening = false;
+    mic.addEventListener('click', () => {
+      if (listening) { rec.stop(); return; }
+      rec = new SR();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = 'en-US';
+      let baseText = ta.value;
+      if (baseText && !baseText.endsWith(' ') && !baseText.endsWith('\n')) baseText += ' ';
+      rec.onresult = (evt) => {
+        let final = '', interim = '';
+        for (let i = evt.resultIndex; i < evt.results.length; i++) {
+          const t = evt.results[i][0].transcript;
+          if (evt.results[i].isFinal) final += t + ' ';
+          else interim += t;
+        }
+        ta.value = baseText + final + interim;
+        if (final) baseText += final;
+        state.brain_dump_text = ta.value;
+        saveStateLocal();
+        refreshCount();
+      };
+      rec.onerror = (e) => { console.warn('Speech recognition error', e); stop(); };
+      rec.onend = stop;
+      rec.start();
+      listening = true;
+      mic.classList.add('listening');
+      micLabel.textContent = 'Stop';
+    });
+    function stop() {
+      listening = false;
+      mic.classList.remove('listening');
+      micLabel.textContent = 'Talk';
+    }
+  }
+
+  // ── Submit: hijack the next button to call /braindump first ─────
+  if (nextBtn) {
+    nextBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const text = (ta.value || '').trim();
+      if (text.length < 20) return;
+      nextBtn.disabled = true;
+      nextBtn.textContent = 'Organizing…';
+      err.style.display = 'none';
+      try {
+        const res = await fetch(`/api/intake/${SESSION_ID}/braindump`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to organize');
+        // Merge extracted into local state. Preserve existing contact (the
+        // welcome stage already collected name/email/company/website) but
+        // fill in anything still blank.
+        const ex = data.extracted;
+        update(s => {
+          s.contact.name    = s.contact.name    || ex.contact.name;
+          s.contact.email   = s.contact.email   || ex.contact.email;
+          s.contact.company = s.contact.company || ex.contact.company;
+          s.contact.website = s.contact.website || ex.contact.website;
+          s.about = ex.about;
+          s.goals = ex.goals;
+          s.software = ex.software;
+          s.tasks = ex.tasks;
+          s.brain_dump_text = text;
+          s.brain_dump_extracted_at = new Date().toISOString();
+          s.brain_dump_missing = ex.missing_fields;
+          s.brain_dump_confidence = ex.confidence;
+          s.stage = s.stage + 1;
+        });
+      } catch (e2) {
+        err.textContent = e2.message;
+        err.style.display = 'block';
+        nextBtn.disabled = false;
+        nextBtn.textContent = 'Organize this for me';
+      }
+    }, { capture: true });
+  }
+  // No wireActions() — we hijacked next ourselves
+  const back = node.querySelector('#btn-back');
+  if (back) back.addEventListener('click', () => window.prev());
+  return node;
+}
+
+// ============ STAGE: REVIEW (after brain dump) ============
+function renderReview() {
+  const meta = STAGES.find(s => s.id === 'review');
+  const conf = state.brain_dump_confidence || { low: [], high: [] };
+  const isLow = (path) => conf.low.includes(path);
+
+  function fieldRow(path, label, value, type = 'text') {
+    const lowTag = isLow(path) ? `<span class="rv-tag rv-low" title="Low confidence — please double-check">check</span>` : '';
+    const input = type === 'textarea'
+      ? `<textarea class="rv-input" data-path="${path}" rows="2">${esc(value || '')}</textarea>`
+      : `<input class="rv-input" data-path="${path}" type="text" value="${esc(value || '')}" />`;
+    return `
+      <div class="rv-row">
+        <label>${label} ${lowTag}</label>
+        ${input}
+      </div>
+    `;
+  }
+
+  const tasksHtml = (state.tasks || []).map((t, i) => `
+    <div class="rv-task">
+      <input class="rv-input rv-task-input" data-task-idx="${i}" data-task-field="title" value="${esc(t.title || '')}" placeholder="Task title" />
+      <input class="rv-input rv-task-sub"   data-task-idx="${i}" data-task-field="frequency" value="${esc(t.frequency || '')}" placeholder="How often?" />
+      <input class="rv-input rv-task-sub"   data-task-idx="${i}" data-task-field="whoDoesItNow" value="${esc(t.whoDoesItNow || '')}" placeholder="Who handles it now?" />
+      <input class="rv-input rv-task-sub"   data-task-idx="${i}" data-task-field="dataLives" value="${esc(t.dataLives || '')}" placeholder="Where does the data live?" />
+    </div>
+  `).join('');
+
+  const missingHtml = (state.brain_dump_missing || []).length > 0
+    ? `<div class="rv-missing"><strong>Couldn't infer:</strong> ${(state.brain_dump_missing || []).map(esc).join(', ')}. You can fill these in if they matter.</div>`
+    : '';
+
+  const node = el(`
+    <div>
+      <div class="stage-meta"><span class="dot"></span>${meta ? meta.label : 'Review'}</div>
+      <h1>Here's what I <em>heard</em>.</h1>
+      <p class="lede">Edit anything I got wrong. Yellow tags mean low confidence. Original is on the left.</p>
+
+      ${missingHtml}
+
+      <div class="review-grid">
+        <div class="review-source">
+          <div class="rv-source-label">Your brain dump</div>
+          <div class="rv-source-text">${esc(state.brain_dump_text || '')}</div>
+        </div>
+
+        <div class="review-extracted">
+          <h3 class="rv-section">About you</h3>
+          <div class="rv-grid-2">
+            ${fieldRow('contact.name', 'Name', state.contact.name)}
+            ${fieldRow('contact.email', 'Email', state.contact.email)}
+            ${fieldRow('contact.company', 'Company', state.contact.company)}
+            ${fieldRow('contact.website', 'Website', state.contact.website)}
+            ${fieldRow('about.role', 'Your role', state.about.role)}
+            ${fieldRow('about.industry', 'Industry', state.about.industry)}
+            ${fieldRow('about.teamSize', 'Team size', state.about.teamSize)}
+            ${fieldRow('about.urgency', 'Urgency', state.about.urgency)}
+          </div>
+
+          <h3 class="rv-section">Goals & stack</h3>
+          ${fieldRow('goals.freeText', 'Goals in your words', state.goals.freeText, 'textarea')}
+          <div class="rv-row">
+            <label>Goal tags <span class="rv-helper">(auto-picked)</span></label>
+            <div class="rv-chips">${(state.goals.selected || []).map(g => `<span class="rv-chip">${esc(g)}</span>`).join('') || '<span class="rv-empty">none picked yet — adjust in the next stages</span>'}</div>
+          </div>
+          <div class="rv-row">
+            <label>Software you use</label>
+            <div class="rv-chips">${(state.software.selected || []).map(g => `<span class="rv-chip">${esc(g)}</span>`).join('') || '<span class="rv-empty">none picked yet</span>'}</div>
+          </div>
+          ${fieldRow('software.other', 'Other software', state.software.other)}
+
+          <h3 class="rv-section">Tasks you'd want AI to handle</h3>
+          ${tasksHtml || '<div class="rv-empty">No specific tasks pulled. You can add them in the next stages if you want.</div>'}
+        </div>
+      </div>
+
+      ${actionsHtml({ primaryLabel: 'Looks good — continue' })}
+    </div>
+  `);
+
+  // Wire field edits — write back to state on input
+  node.querySelectorAll('.rv-input[data-path]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const path = inp.dataset.path.split('.');
+      let cursor = state;
+      for (let i = 0; i < path.length - 1; i++) cursor = cursor[path[i]];
+      cursor[path[path.length - 1]] = inp.value;
+      saveStateLocal();
+    });
+  });
+  // Wire task edits
+  node.querySelectorAll('.rv-task-input, .rv-task-sub').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const i = parseInt(inp.dataset.taskIdx, 10);
+      const f = inp.dataset.taskField;
+      if (!state.tasks[i]) return;
+      state.tasks[i][f] = inp.value;
+      saveStateLocal();
+    });
+  });
+
+  wireActions(node);
   return node;
 }
 

@@ -455,7 +455,10 @@ function renderBrainDump() {
   const meta = STAGES.find(s => s.id === 'braindump');
   const node = el(`
     <div>
-      <div class="stage-meta"><span class="dot"></span>${meta ? meta.label : 'Brain dump'}</div>
+      <div class="stage-meta">
+        <span class="dot"></span>${meta ? meta.label : 'Brain dump'}
+        <button type="button" class="path-switch" id="bd-switch">← Back to picker</button>
+      </div>
       <h1>Tell me <em>everything</em>.</h1>
       <p class="lede">What does your business do? What's eating your time? What would feel like real help? Don't worry about being organized — that's my job.</p>
 
@@ -590,6 +593,19 @@ function renderBrainDump() {
   // No wireActions() — we hijacked next ourselves
   const back = node.querySelector('#btn-back');
   if (back) back.addEventListener('click', () => window.prev());
+
+  // "Back to picker" — reset path and jump to the path stage. Brain-dump
+  // text is preserved in state, so coming back here it's still there.
+  const switchBtn = node.querySelector('#bd-switch');
+  if (switchBtn) {
+    switchBtn.addEventListener('click', () => {
+      const pathIdx = STAGES_FULL.findIndex(s => s.id === 'path');
+      update(s => {
+        s.path = null;
+        s.stage = Math.max(0, pathIdx);
+      });
+    });
+  }
   return node;
 }
 

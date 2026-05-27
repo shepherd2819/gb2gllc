@@ -1322,6 +1322,21 @@
   @media (max-width: 720px) { .path-picker { grid-template-columns: 1fr; } }
 
   /* ===== BRAIN DUMP (stage: braindump) ===== */
+  .path-switch {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--ink-mute);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: color .15s, background .15s;
+  }
+  .path-switch:hover { color: var(--ink); background: var(--parchment-3); }
+  .stage-meta { display: flex; align-items: center; }
   .braindump-wrap { position: relative; margin: 22px 0 10px; }
   .braindump-text {
     width: 100%; min-height: 240px; max-height: 60vh;

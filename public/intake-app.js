@@ -165,8 +165,8 @@ const HERALD_CONTEXT = {
     tip: `Don't see a tool? Add it under "Other" at the bottom.`,
   },
   access: {
-    msg: `For each platform you picked, I have step-by-step instructions on exactly how to give our dev team access — with the minimum permissions needed. Expand any card, follow the steps, then check it off. You can skip and do this later.`,
-    tip: `We use <strong>devs@gb2g.com</strong> as our team email.`,
+    msg: `For each platform you picked, I have step-by-step instructions on exactly how to give our dev team access. Expand any card, follow the steps, then check it off. You can skip and do this later.`,
+    tip: `We use <strong>dev@gb2gllc.com</strong> as our team email — grant it full admin on each platform so we don't get blocked mid-setup.`,
   },
   sops: {
     msg: `Drop in any SOPs, internal docs, FAQs, or process notes. These let our Steward agents answer questions like you would. <em>Skip if you don't have any</em> — totally fine.`,
@@ -1047,7 +1047,7 @@ function renderSOPs() {
       <div class="field">
         <label>Links to existing docs</label>
         <textarea id="f-sops-links" placeholder="Notion / Google Doc / Confluence links — one per line">${esc(state.sops.additionalLinks)}</textarea>
-        <div class="hint">Make sure they're shared with <strong>devs@gb2g.com</strong> if they require auth.</div>
+        <div class="hint">Make sure they're shared with <strong>dev@gb2gllc.com</strong> if they require auth.</div>
       </div>
 
       ${actionsHtml({ canSkip: true })}

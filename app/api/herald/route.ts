@@ -1,5 +1,10 @@
+// Herald · intake assistant (in-house). Streams a custom Anthropic chat (SSE)
+// for the intake form: the "Ask Herald" modal and goals suggestions
+// (modes: intake-assist, goals-insight). Same brand as — but a different
+// system from — the Herald *product* clients buy, which runs on chatbot.com
+// (lib/chatbot.ts) with a weekly digest (lib/herald-digest.ts).
 import { NextRequest } from "next/server";
-import { anthropic, HERALD_MODEL, HERALD_MAX_TOKENS, buildIntakeSystemPrompt, buildGoalsInsightPrompt } from "@/lib/anthropic";
+import { anthropic, INTAKE_ASSIST_MODEL, INTAKE_ASSIST_MAX_TOKENS, buildIntakeSystemPrompt, buildGoalsInsightPrompt } from "@/lib/anthropic";
 
 // Rate limit: 30 requests / hour per session (in-memory; swap for Redis in prod)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -54,8 +59,8 @@ export async function POST(req: NextRequest) {
   }
 
   const stream = await anthropic.messages.stream({
-    model: HERALD_MODEL,
-    max_tokens: HERALD_MAX_TOKENS,
+    model: INTAKE_ASSIST_MODEL,
+    max_tokens: INTAKE_ASSIST_MAX_TOKENS,
     ...(systemPrompt ? { system: systemPrompt } : {}),
     messages: [{ role: "user", content: userMessage }],
   });
@@ -76,7 +81,7 @@ export async function POST(req: NextRequest) {
         }
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
       } catch (err) {
-        console.error("Herald stream error:", err);
+        console.error("[herald-intake] stream error:", err);
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "Stream error" })}\n\n`));
       } finally {
         controller.close();

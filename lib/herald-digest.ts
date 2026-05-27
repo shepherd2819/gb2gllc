@@ -1,3 +1,7 @@
+// Herald · product digest. Builds and sends the weekly metrics email for the
+// Herald *product* clients buy — the chatbot itself lives on chatbot.com
+// (lib/chatbot.ts). Unrelated to the in-house intake assistant
+// (app/api/herald + lib/anthropic.ts), which only shares the brand name.
 import { supabaseAdmin } from "@/lib/supabase";
 import { fetchWeeklyMetrics } from "@/lib/chatbot";
 import { resend, DEFAULT_FROM } from "@/lib/resend";

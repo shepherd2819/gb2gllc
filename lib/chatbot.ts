@@ -1,3 +1,6 @@
+// chatbot.com API client for the Herald *product* clients buy (the white-label
+// website chatbot). Feeds the weekly digest in lib/herald-digest.ts. Distinct
+// from the in-house Herald intake assistant (app/api/herald + lib/anthropic.ts).
 const BASE = "https://api.chatbot.com";
 
 function authHeaders() {

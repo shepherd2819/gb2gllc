@@ -4,8 +4,14 @@ export const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-export const HERALD_MODEL = "claude-haiku-4-5";
-export const HERALD_MAX_TOKENS = 1024;
+// ── Herald · intake assistant ─────────────────────────────────────────────
+// The config and prompt builders below power the IN-HOUSE Herald that the
+// intake form talks to — a custom Anthropic SSE chat (see app/api/herald).
+// This is NOT the Herald *product* clients buy: that one runs on chatbot.com
+// (lib/chatbot.ts) and is summarised by the weekly digest (lib/herald-digest.ts).
+// Same brand, different system.
+export const INTAKE_ASSIST_MODEL = "claude-haiku-4-5";
+export const INTAKE_ASSIST_MAX_TOKENS = 1024;
 
 export function buildIntakeSystemPrompt(stage: string, contactName: string, company: string, goals: string[]) {
   return `You are Herald, the AI intake assistant for GB2GLLC (GloryBe2God LLC) — a faith-rooted but business-first AI software studio. Our products:

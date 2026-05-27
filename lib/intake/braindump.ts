@@ -23,10 +23,38 @@ const GOAL_OPTIONS = [
   "data-entry", "reporting", "other",
 ];
 
+// Keep IN SYNC with public/intake-platforms.js — these are the IDs the brain
+// dump extractor is allowed to use. Adding new platforms? Add them in BOTH
+// places so the structured picker and the AI extractor stay aligned.
 const SOFTWARE_OPTIONS = [
-  "gmail", "slack", "monday", "notion", "hubspot", "airtable", "google-calendar",
-  "salesforce", "shopify", "quickbooks", "asana", "trello", "zendesk", "intercom",
-  "calendly", "linkedin", "facebook", "instagram", "x-twitter", "stripe", "other",
+  // Email + comms
+  "gmail", "m365", "slack", "zoom",
+  // Docs + project mgmt
+  "notion", "linear", "asana", "trello", "clickup", "jira", "monday",
+  // CRM
+  "hubspot", "salesforce", "pipedrive", "zoho-crm", "gohighlevel",
+  // Data
+  "airtable",
+  // Ecommerce + payments
+  "shopify", "stripe", "square",
+  // Accounting
+  "quickbooks", "xero",
+  // Email marketing
+  "mailchimp", "klaviyo", "activecampaign",
+  // Scheduling
+  "calendly", "acuity", "google-calendar",
+  // Docs / forms
+  "docusign", "typeform",
+  // Support
+  "zendesk", "intercom",
+  // Field service / vertical
+  "jobber", "servicetitan", "spiro",
+  // Code + automation
+  "github", "zapier",
+  // Social (recognized by extractor even without a separate platform entry)
+  "linkedin", "facebook", "instagram", "x-twitter",
+  // Catch-all
+  "other",
 ];
 
 const TEAM_SIZE_OPTIONS = ["solo", "2-5", "6-15", "16-50", "50+"];

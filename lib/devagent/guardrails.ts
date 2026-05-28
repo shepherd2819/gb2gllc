@@ -21,7 +21,11 @@ export function matchesAny(path: string, patterns: string[]): boolean {
 }
 
 export function isPathProtected(path: string, protectedPaths: string[]): boolean {
-  const normalized = normalize(path.replace(/\\/g, "/")).replace(/^\.\//, "");
+  // Backslashes → forward slashes (Windows-style or escape variants).
+  const slashed = path.replace(/\\/g, "/");
+  // Absolute paths are always treated as protected (fail-safe; relative paths only).
+  if (slashed.startsWith("/")) return true;
+  const normalized = normalize(slashed).replace(/^\.\//, "");
   if (normalized.startsWith("../")) return true; // traversal — deny
   return matchesAny(normalized, protectedPaths);
 }

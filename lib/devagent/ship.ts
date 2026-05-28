@@ -101,7 +101,7 @@ export function buildShipServer(deps: ShipDeps) {
           ).catch(() => undefined);
         }
 
-        const decision: ShipDecision = { prUrl, merged, evaluation };
+        const decision: ShipDecision = { prUrl, merged, evaluation, verify: verifyResult };
         deps.onDecision?.(decision);
 
         return {

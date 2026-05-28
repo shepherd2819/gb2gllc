@@ -78,6 +78,8 @@ export type ShipDecision = {
   prUrl: string | null;
   merged: boolean;
   evaluation: ScopeEvaluation;
+  /** The authoritative verify result re-run inside ship; included for audit. */
+  verify: VerifyResult;
 };
 
 export type RunResult = {

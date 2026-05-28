@@ -22,6 +22,12 @@ export const DEFAULT_BANNED_BASH: string[] = [
   "supabase db reset",
   "git checkout main",
   "git switch main",
+  "gh pr merge",
+  "gh pr review --approve",
+  "git push origin main",
+  "git push origin head:main",
+  "git -c ",
+  "git --git-dir",
 ];
 
 /** Always force needs-review when ANY of these globs is in the diff (Gate 2). */

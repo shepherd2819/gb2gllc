@@ -216,3 +216,27 @@ test("evaluateScope: empty changes fail-closed", () => {
   assert.equal(ev.eligible, false);
   assert.ok(ev.reasons.includes("no_changes"));
 });
+
+test("isBashBanned: gh pr merge bypass attempts are caught", () => {
+  assert.equal(isBashBanned("gh pr merge --squash 123", DEFAULT_GUARDRAILS.bannedBashSubstrings), true);
+  assert.equal(isBashBanned("gh pr merge --auto", DEFAULT_GUARDRAILS.bannedBashSubstrings), true);
+  assert.equal(isBashBanned("gh pr review --approve", DEFAULT_GUARDRAILS.bannedBashSubstrings), true);
+});
+
+test("isBashBanned: parent-repo git escapes are caught", () => {
+  assert.equal(isBashBanned("git -C /Users/lb223/Desktop/GB2G commit -am whatever", DEFAULT_GUARDRAILS.bannedBashSubstrings), true);
+  assert.equal(isBashBanned("git --git-dir=/Users/lb223/Desktop/GB2G/.git push", DEFAULT_GUARDRAILS.bannedBashSubstrings), true);
+});
+
+test("isBashBanned: pushing to remote main is caught", () => {
+  assert.equal(isBashBanned("git push origin main", DEFAULT_GUARDRAILS.bannedBashSubstrings), true);
+  assert.equal(isBashBanned("git push origin HEAD:main", DEFAULT_GUARDRAILS.bannedBashSubstrings), true);
+});
+
+test("isPathProtected: absolute paths are always treated as protected", () => {
+  assert.equal(isPathProtected("/Users/foo/some-file.ts", DEFAULT_GUARDRAILS.protectedPaths), true);
+  assert.equal(isPathProtected("/etc/passwd", DEFAULT_GUARDRAILS.protectedPaths), true);
+  // Even non-protected absolute paths inside the worktree are treated as protected
+  // (model must use relative paths).
+  assert.equal(isPathProtected("/Users/lb223/Desktop/devagent-runs/x/lib/devagent/run.ts", DEFAULT_GUARDRAILS.protectedPaths), true);
+});

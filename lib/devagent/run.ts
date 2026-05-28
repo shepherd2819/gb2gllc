@@ -183,6 +183,7 @@ export async function runDevAgent(opts: RunOptions): Promise<RunResult> {
       status,
       ship: shipDecision,
       filesChanged: changes,
+      verify: shipDecision?.verify,
       tokensUsed: totalTokens,
       costUsd: totalCost,
       error: combinedError,
@@ -195,7 +196,9 @@ export async function runDevAgent(opts: RunOptions): Promise<RunResult> {
     finalizeRecord(rec);
     const result: RunResult = {
       status: "failed",
+      ship: shipDecision,
       filesChanged: [],
+      verify: shipDecision?.verify,
       tokensUsed: totalTokens,
       costUsd: totalCost,
       error: e instanceof Error ? e.message : String(e),

@@ -107,11 +107,15 @@ export async function exchangeSlackCode(code: string): Promise<SlackOAuthRespons
 }
 
 // ─── Web API: post a message to a channel ────────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type SlackBlock = Record<string, any>;
+
 export async function postSlackMessage(opts: {
   botToken: string;
   channel: string;
-  text: string;
+  text: string;                      // fallback / notification text (required by Slack even with blocks)
   thread_ts?: string;
+  blocks?: SlackBlock[];
 }): Promise<{ ok: boolean; error?: string; ts?: string }> {
   const res = await fetch("https://slack.com/api/chat.postMessage", {
     method: "POST",
@@ -124,6 +128,7 @@ export async function postSlackMessage(opts: {
       text: opts.text,
       thread_ts: opts.thread_ts,
       mrkdwn: true,
+      ...(opts.blocks ? { blocks: opts.blocks } : {}),
     }),
   });
   return res.json();

@@ -51,7 +51,7 @@ CREATE TABLE wren_messages (
   reasoning           TEXT,
   suggested_action    TEXT,
   draft_reply         TEXT,
-  matched_client_id   UUID REFERENCES clients(id),
+  matched_client_id   UUID REFERENCES clients(id) ON DELETE SET NULL,
   classified_at       TIMESTAMPTZ,
   classify_model      TEXT,
   classify_error      TEXT,

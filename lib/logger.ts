@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "./supabase";
 
 type Level = "info" | "warn" | "error";
-type Category = "herald" | "intake" | "steward" | "system" | "iris";
+type Category = "herald" | "intake" | "steward" | "system" | "iris" | "wren";
 
 export async function logEvent(opts: {
   clientId?: string | null;

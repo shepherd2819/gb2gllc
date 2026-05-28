@@ -1,4 +1,5 @@
-// Gmail / Google OAuth helpers for Iris.
+// Shared Gmail / Google OAuth helpers — used by both Iris and Wren.
+// Each caller passes its own redirectUri to googleInstallUrl + exchangeGoogleCode.
 //
 // Scope choices:
 //   gmail.modify         → read messages, create labels, modify labels, create drafts

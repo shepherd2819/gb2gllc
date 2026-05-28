@@ -237,7 +237,7 @@ export async function pollAccount(accountId: string): Promise<PollResult> {
 
   if (result.fetched || result.errors.length) {
     await logEvent({
-      category: "system",
+      category: "wren",
       level: result.errors.length ? "warn" : "info",
       message: `Wren poll ${acct.email_address}: ${result.fetched} new, ${result.classified} classified, ${result.drafted} drafted, ${result.skipped} skipped, ${result.errors.length} errors`,
       metadata: { account_id: acct.id, errors: result.errors.slice(0, 5) },

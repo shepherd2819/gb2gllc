@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     ]);
   } catch (err) {
     console.error("[wren oauth] exchange failed", err);
-    await logEvent({ category: "system", level: "error", message: `Wren OAuth failed: ${err instanceof Error ? err.message : String(err)}` });
+    await logEvent({ category: "wren", level: "error", message: `Wren OAuth failed: ${err instanceof Error ? err.message : String(err)}` });
     return land("exchange_failed");
   }
 
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
   }
 
   await logEvent({
-    category: "system",
+    category: "wren",
     level: "info",
     message: `Wren inbox connected: ${profile.emailAddress} (${aliases.length} aliases)`,
     metadata: { sub: userInfo.sub, aliases },

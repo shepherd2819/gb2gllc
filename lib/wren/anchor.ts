@@ -25,6 +25,8 @@ export function summarizeRecentLogs(logs: LogEntry[]): string | null {
  * a short recent-logs summary for the classifier prompt.
  */
 export async function findClientForSender(fromEmail: string): Promise<MatchedClient | null> {
+  // Lazy: lib/supabase.ts evaluates createClient() at module load with non-null
+  // env vars, which would crash test runs that don't set NEXT_PUBLIC_SUPABASE_URL.
   const { supabaseAdmin } = await import("@/lib/supabase");
   const email = fromEmail.trim().toLowerCase();
   if (!email) return null;

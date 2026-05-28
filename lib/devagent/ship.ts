@@ -51,13 +51,24 @@ export function buildShipServer(deps: ShipDeps) {
         // Push the branch.
         await exec("git", ["push", "-u", "origin", deps.branch], { cwd: deps.cwd });
 
-        // Open the PR via gh; capture the URL it prints on the last line.
-        const { stdout: prOut } = await exec(
-          "gh",
-          ["pr", "create", "--base", "main", "--head", deps.branch, "--title", args.title, "--body", args.body],
-          { cwd: deps.cwd }
-        );
-        const prUrl = prOut.trim().split("\n").pop() ?? "";
+        // Open the PR via gh; capture the URL it prints.
+        let prOut: string;
+        try {
+          const result = await exec(
+            "gh",
+            ["pr", "create", "--base", "main", "--head", deps.branch, "--title", args.title, "--body", args.body],
+            { cwd: deps.cwd }
+          );
+          prOut = result.stdout;
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          throw new Error(`gh pr create failed (branch "${deps.branch}" is already pushed to origin). ${msg}`);
+        }
+        const lines = prOut.trim().split("\n");
+        const prUrl = lines.filter((l) => /https?:\/\//.test(l)).pop() ?? "";
+        if (!prUrl) {
+          throw new Error(`gh pr create produced no URL. Full output:\n${prOut}`);
+        }
 
         // Authoritative re-check before merging.
         const { changes, packageJsonChanged } = await captureDiff(deps.cwd);

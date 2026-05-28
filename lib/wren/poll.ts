@@ -1,3 +1,10 @@
+// lib/wren/poll.ts
+//
+// Per-account poller for Wren — the support-mailbox triage agent.
+// Mirrors lib/iris/poll.ts with three deltas: uses wren_* tables,
+// calls findClientForSender before classify, and labels with
+// Wren/{category} instead of Iris/{category}.
+
 import { supabaseAdmin } from "@/lib/supabase";
 import { logEvent } from "@/lib/logger";
 import {
@@ -9,14 +16,12 @@ import {
   addLabelToMessage,
   createGmailDraft,
 } from "@/lib/gmail";
-import { classifyAndDraft, MODEL_NAME } from "./classify";
 import type { ParsedMessage } from "@/lib/gmail";
+import { classifyAndDraft, MODEL_NAME } from "./classify";
 import type { Classification } from "./classify";
+import { findClientForSender } from "./anchor";
 
-// How far back to look on each poll. We deliberately overlap by ~2x the
-// cron interval to handle clock skew / late-arriving messages — the
-// UNIQUE(account_id, gmail_message_id) constraint dedupes the rest.
-const LOOKBACK_SEC = 60 * 10;       // 10 min
+const LOOKBACK_SEC = 60 * 10;             // 10 min — 2x the cron interval
 const MAX_PER_POLL_PER_ACCOUNT = 25;
 
 export type AccountRow = {
@@ -49,10 +54,9 @@ export type PollResult = {
   errors: string[];
 };
 
-// ─── Entry: poll a single account ────────────────────────────────────────
 export async function pollAccount(accountId: string): Promise<PollResult> {
   const { data: acct, error: acctErr } = await supabaseAdmin
-    .from("iris_inbox_accounts")
+    .from("wren_inbox_accounts")
     .select("*")
     .eq("id", accountId)
     .single<AccountRow>();
@@ -74,7 +78,7 @@ export async function pollAccount(accountId: string): Promise<PollResult> {
     errors: [],
   };
 
-  // Refresh access token if it's expired (or expires within 60s).
+  // Refresh access token if expiring within 60s.
   let accessToken = acct.access_token;
   try {
     accessToken = await ensureFreshToken(acct);
@@ -85,21 +89,21 @@ export async function pollAccount(accountId: string): Promise<PollResult> {
     return result;
   }
 
-  // Settings (or defaults)
+  // Settings (or defaults).
   const { data: settingsRow } = await supabaseAdmin
-    .from("iris_settings")
+    .from("wren_settings")
     .select("*")
     .eq("account_id", acct.id)
     .maybeSingle<SettingsRow>();
   const settings: SettingsRow = settingsRow ?? {
     account_id: acct.id,
-    draft_categories: ["lead", "support", "internal"],
+    draft_categories: ["bug", "feature_request", "account_help", "billing_question", "general"],
     ignore_from_patterns: ["noreply@", "no-reply@", "donotreply@", "mailer-daemon@"],
     voice_notes: null,
     signature: null,
   };
 
-  // 1. Fetch recent inbox message ids
+  // 1. List recent inbox ids.
   const afterSec = Math.floor(Date.now() / 1000) - LOOKBACK_SEC;
   let ids: string[] = [];
   try {
@@ -112,10 +116,10 @@ export async function pollAccount(accountId: string): Promise<PollResult> {
     return result;
   }
 
-  // 2. Dedupe against what we already have
+  // 2. Dedupe against what we already have.
   if (ids.length) {
     const { data: existing } = await supabaseAdmin
-      .from("iris_messages")
+      .from("wren_messages")
       .select("gmail_message_id")
       .eq("account_id", acct.id)
       .in("gmail_message_id", ids);
@@ -123,17 +127,14 @@ export async function pollAccount(accountId: string): Promise<PollResult> {
     ids = ids.filter((id) => !seen.has(id));
   }
 
-  // 3. For each new message: fetch full body, ingest, classify, label, optionally draft
+  // 3. For each new message: fetch, ingest, anchor, classify, label, draft.
   for (const id of ids) {
     try {
       const msg = await getGmailMessage(accessToken, id);
       const parsed = parseGmailMessage(msg);
       result.fetched++;
 
-      // Skip on patterns (newsletters, no-reply addresses) — still record,
-      // just skip the classifier call and draft.
       const ignore = shouldIgnore(parsed, settings.ignore_from_patterns);
-
       const inserted = await insertMessage(acct.id, parsed);
       if (!inserted) { result.skipped++; continue; }
 
@@ -143,7 +144,10 @@ export async function pollAccount(accountId: string): Promise<PollResult> {
         continue;
       }
 
-      // Classify
+      // Warm context: try to match the sender to a known client.
+      const matched = parsed.from_email ? await findClientForSender(parsed.from_email).catch(() => null) : null;
+
+      // Classify.
       let classification: Classification;
       try {
         classification = await classifyAndDraft({
@@ -155,6 +159,7 @@ export async function pollAccount(accountId: string): Promise<PollResult> {
           voice_notes: settings.voice_notes ?? undefined,
           signature: settings.signature ?? undefined,
           draft_categories: settings.draft_categories,
+          matched_client: matched,
         });
       } catch (err) {
         const m = err instanceof Error ? err.message : String(err);
@@ -164,17 +169,17 @@ export async function pollAccount(accountId: string): Promise<PollResult> {
       }
       result.classified++;
 
-      // Apply Gmail label (best-effort; label failure shouldn't block the row)
+      // Label.
       let labelId: string | null = null;
       try {
-        labelId = await getOrCreateLabel(accessToken, `Iris/${classification.category}`);
+        labelId = await getOrCreateLabel(accessToken, `Wren/${classification.category}`);
         await addLabelToMessage(accessToken, parsed.id, labelId);
       } catch (err) {
         const m = err instanceof Error ? err.message : String(err);
         result.errors.push(`label ${id}: ${m}`);
       }
 
-      // Save draft into the Gmail thread (only if classifier wrote one + sender has an email)
+      // Draft.
       let draftId: string | null = null;
       if (classification.draft_reply && parsed.from_email) {
         try {
@@ -197,15 +202,16 @@ export async function pollAccount(accountId: string): Promise<PollResult> {
         }
       }
 
-      // Persist classification + artifact ids
+      // Persist classification + artifact ids.
       await supabaseAdmin
-        .from("iris_messages")
+        .from("wren_messages")
         .update({
           category: classification.category,
           priority: classification.priority,
           reasoning: classification.reasoning,
           suggested_action: classification.suggested_action,
           draft_reply: classification.draft_reply || null,
+          matched_client_id: matched?.id ?? null,
           classified_at: new Date().toISOString(),
           classify_model: MODEL_NAME,
           gmail_label_id: labelId,
@@ -220,9 +226,8 @@ export async function pollAccount(accountId: string): Promise<PollResult> {
     }
   }
 
-  // Update poll cursor + clear any prior error
   await supabaseAdmin
-    .from("iris_inbox_accounts")
+    .from("wren_inbox_accounts")
     .update({
       last_polled_at: new Date().toISOString(),
       last_poll_error: result.errors.length ? result.errors.slice(0, 3).join(" | ").slice(0, 500) : null,
@@ -232,9 +237,9 @@ export async function pollAccount(accountId: string): Promise<PollResult> {
 
   if (result.fetched || result.errors.length) {
     await logEvent({
-      category: "iris",
+      category: "system",
       level: result.errors.length ? "warn" : "info",
-      message: `Iris poll ${acct.email_address}: ${result.fetched} new, ${result.classified} classified, ${result.drafted} drafted, ${result.skipped} skipped, ${result.errors.length} errors`,
+      message: `Wren poll ${acct.email_address}: ${result.fetched} new, ${result.classified} classified, ${result.drafted} drafted, ${result.skipped} skipped, ${result.errors.length} errors`,
       metadata: { account_id: acct.id, errors: result.errors.slice(0, 5) },
     });
   }
@@ -242,34 +247,28 @@ export async function pollAccount(accountId: string): Promise<PollResult> {
   return result;
 }
 
-// ─── Poll all active accounts (used by cron) ─────────────────────────────
 export async function pollAllActiveAccounts(): Promise<PollResult[]> {
   const { data: accounts } = await supabaseAdmin
-    .from("iris_inbox_accounts")
+    .from("wren_inbox_accounts")
     .select("id")
     .eq("status", "active");
-
   const results: PollResult[] = [];
-  for (const a of accounts ?? []) {
-    results.push(await pollAccount(a.id));
-  }
+  for (const a of accounts ?? []) results.push(await pollAccount(a.id));
   return results;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────
+// ─── helpers (parallel to lib/iris/poll.ts) ───────────────────────────────
 
 async function ensureFreshToken(acct: AccountRow): Promise<string> {
   const expiresAt = new Date(acct.token_expires_at).getTime();
   if (Date.now() < expiresAt - 60_000) return acct.access_token;
-
   const refreshed = await refreshGoogleToken(acct.refresh_token);
   const newExpires = new Date(Date.now() + refreshed.expires_in * 1000).toISOString();
   await supabaseAdmin
-    .from("iris_inbox_accounts")
+    .from("wren_inbox_accounts")
     .update({
       access_token: refreshed.access_token,
       token_expires_at: newExpires,
-      // Google sometimes rotates refresh tokens; preserve old one if absent.
       ...(refreshed.refresh_token ? { refresh_token: refreshed.refresh_token } : {}),
       updated_at: new Date().toISOString(),
     })
@@ -289,7 +288,7 @@ function shouldIgnore(p: ParsedMessage, patterns: string[]): boolean {
 
 async function insertMessage(accountId: string, p: ParsedMessage): Promise<{ id: string } | null> {
   const { data, error } = await supabaseAdmin
-    .from("iris_messages")
+    .from("wren_messages")
     .insert({
       account_id: accountId,
       gmail_message_id: p.id,
@@ -308,8 +307,7 @@ async function insertMessage(accountId: string, p: ParsedMessage): Promise<{ id:
     .select("id")
     .single<{ id: string }>();
   if (error) {
-    // Duplicate (race condition with another concurrent poll) is fine, ignore.
-    if (error.code === "23505") return null;
+    if (error.code === "23505") return null; // duplicate from a concurrent poll — fine
     throw new Error(`insert ${p.id}: ${error.message}`);
   }
   return data ?? null;
@@ -317,9 +315,9 @@ async function insertMessage(accountId: string, p: ParsedMessage): Promise<{ id:
 
 async function markIgnored(messageId: string, reason: string): Promise<void> {
   await supabaseAdmin
-    .from("iris_messages")
+    .from("wren_messages")
     .update({
-      category: "newsletter",
+      category: "spam",
       priority: "low",
       reasoning: reason,
       suggested_action: "Archive — auto-ignored",
@@ -332,14 +330,14 @@ async function markIgnored(messageId: string, reason: string): Promise<void> {
 
 async function markClassifyError(messageId: string, error: string): Promise<void> {
   await supabaseAdmin
-    .from("iris_messages")
+    .from("wren_messages")
     .update({ classify_error: error.slice(0, 1000), updated_at: new Date().toISOString() })
     .eq("id", messageId);
 }
 
 async function markPollError(accountId: string, error: string): Promise<void> {
   await supabaseAdmin
-    .from("iris_inbox_accounts")
+    .from("wren_inbox_accounts")
     .update({
       last_polled_at: new Date().toISOString(),
       last_poll_error: error.slice(0, 500),

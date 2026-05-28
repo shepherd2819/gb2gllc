@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { classifyAndDraft, MODEL_NAME } from "@/lib/iris/classify";
-import { refreshGoogleToken, getOrCreateLabel, addLabelToMessage, createGmailDraft, updateGmailDraft } from "@/lib/iris/google";
+import { refreshGoogleToken, getOrCreateLabel, addLabelToMessage, createGmailDraft, updateGmailDraft } from "@/lib/gmail";
 
 export const maxDuration = 60;
 

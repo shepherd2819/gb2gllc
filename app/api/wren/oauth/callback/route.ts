@@ -4,13 +4,13 @@ import { exchangeGoogleCode, getGoogleUserInfo, getGmailProfile, getGmailSendAs 
 import { logEvent } from "@/lib/logger";
 
 const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL ?? "https://admin.gb2gllc.com";
-const IRIS_REDIRECT_URI = `${ADMIN_URL}/api/iris/oauth/callback`;
+const WREN_REDIRECT_URI = `${ADMIN_URL}/api/wren/oauth/callback`;
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
   const stateParam = req.nextUrl.searchParams.get("state");
-  const cookieState = req.cookies.get("iris_install_state")?.value;
-  const land = (p: string) => NextResponse.redirect(`${ADMIN_URL}/agents/iris?iris_install=${p}`);
+  const cookieState = req.cookies.get("wren_install_state")?.value;
+  const land = (p: string) => NextResponse.redirect(`${ADMIN_URL}/agents/wren?wren_install=${p}`);
 
   if (!code || !stateParam) return land("missing_code");
   if (!cookieState || cookieState !== stateParam) return land("state_mismatch");
@@ -20,25 +20,22 @@ export async function GET(req: NextRequest) {
 
   let token, userInfo, profile, aliases: string[] = [];
   try {
-    token = await exchangeGoogleCode({ code, redirectUri: IRIS_REDIRECT_URI });
-    if (!token.refresh_token) {
-      // Without a refresh_token we can't poll long-term. Force user to re-consent.
-      return land("no_refresh_token");
-    }
+    token = await exchangeGoogleCode({ code, redirectUri: WREN_REDIRECT_URI });
+    if (!token.refresh_token) return land("no_refresh_token");
     [userInfo, profile, aliases] = await Promise.all([
       getGoogleUserInfo(token.access_token),
       getGmailProfile(token.access_token),
       getGmailSendAs(token.access_token).catch(() => []),
     ]);
   } catch (err) {
-    console.error("[iris oauth] exchange failed", err);
-    await logEvent({ category: "iris", level: "error", message: `Iris OAuth failed: ${err instanceof Error ? err.message : String(err)}` });
+    console.error("[wren oauth] exchange failed", err);
+    await logEvent({ category: "system", level: "error", message: `Wren OAuth failed: ${err instanceof Error ? err.message : String(err)}` });
     return land("exchange_failed");
   }
 
   const expiresAt = new Date(Date.now() + token.expires_in * 1000).toISOString();
 
-  const { error } = await supabaseAdmin.from("iris_inbox_accounts").upsert(
+  const { error } = await supabaseAdmin.from("wren_inbox_accounts").upsert(
     {
       workos_user_id: workosUserId,
       provider: "gmail",
@@ -56,18 +53,18 @@ export async function GET(req: NextRequest) {
   );
 
   if (error) {
-    console.error("[iris oauth] upsert failed", error);
+    console.error("[wren oauth] upsert failed", error);
     return land("save_failed");
   }
 
   await logEvent({
-    category: "iris",
+    category: "system",
     level: "info",
-    message: `Iris inbox connected: ${profile.emailAddress} (${aliases.length} aliases)`,
+    message: `Wren inbox connected: ${profile.emailAddress} (${aliases.length} aliases)`,
     metadata: { sub: userInfo.sub, aliases },
   });
 
-  const res = NextResponse.redirect(`${ADMIN_URL}/agents/iris?iris_install=connected`);
-  res.cookies.set("iris_install_state", "", { httpOnly: true, secure: true, sameSite: "lax", maxAge: 0, path: "/", domain: ".gb2gllc.com" });
+  const res = NextResponse.redirect(`${ADMIN_URL}/agents/wren?wren_install=connected`);
+  res.cookies.set("wren_install_state", "", { httpOnly: true, secure: true, sameSite: "lax", maxAge: 0, path: "/", domain: ".gb2gllc.com" });
   return res;
 }

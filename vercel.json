@@ -15,6 +15,14 @@
     {
       "path": "/api/cron/iris-purge",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/wren-poll",
+      "schedule": "*/2 * * * *"
+    },
+    {
+      "path": "/api/cron/wren-purge",
+      "schedule": "0 4 * * *"
     }
   ]
 }

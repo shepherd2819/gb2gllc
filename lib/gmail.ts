@@ -10,9 +10,6 @@
 // (To upgrade to actually sending the draft via Gmail, we'll add gmail.send
 // later behind an explicit toggle.)
 
-const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL ?? "https://admin.gb2gllc.com";
-export const GOOGLE_REDIRECT_URI = `${ADMIN_URL}/api/iris/oauth/callback`;
-
 const OAUTH_AUTH  = "https://accounts.google.com/o/oauth2/v2/auth";
 const OAUTH_TOKEN = "https://oauth2.googleapis.com/token";
 const GMAIL_API   = "https://gmail.googleapis.com/gmail/v1";
@@ -26,18 +23,18 @@ const SCOPES = [
 ];
 
 // ─── OAuth start ─────────────────────────────────────────────────────────
-export function googleInstallUrl(state: string): string {
+export function googleInstallUrl(opts: { state: string; redirectUri: string }): string {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if (!clientId) throw new Error("GOOGLE_CLIENT_ID not set");
   const url = new URL(OAUTH_AUTH);
   url.searchParams.set("client_id", clientId);
-  url.searchParams.set("redirect_uri", GOOGLE_REDIRECT_URI);
+  url.searchParams.set("redirect_uri", opts.redirectUri);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", SCOPES.join(" "));
   url.searchParams.set("access_type", "offline");      // required to get refresh_token
   url.searchParams.set("prompt", "consent");           // force refresh_token on every install
   url.searchParams.set("include_granted_scopes", "true");
-  url.searchParams.set("state", state);
+  url.searchParams.set("state", opts.state);
   return url.toString();
 }
 
@@ -50,7 +47,7 @@ export type GoogleTokenResponse = {
   id_token?: string;
 };
 
-export async function exchangeGoogleCode(code: string): Promise<GoogleTokenResponse> {
+export async function exchangeGoogleCode(opts: { code: string; redirectUri: string }): Promise<GoogleTokenResponse> {
   const clientId     = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   if (!clientId || !clientSecret) throw new Error("GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET not set");
@@ -60,8 +57,8 @@ export async function exchangeGoogleCode(code: string): Promise<GoogleTokenRespo
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       grant_type: "authorization_code",
-      code,
-      redirect_uri: GOOGLE_REDIRECT_URI,
+      code: opts.code,
+      redirect_uri: opts.redirectUri,
       client_id: clientId,
       client_secret: clientSecret,
     }),

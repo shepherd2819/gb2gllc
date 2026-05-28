@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "devagent": "tsx scripts/devagent.ts",
-    "test": "node --import tsx --test \"lib/devagent/**/*.test.ts\"",
+    "test": "node --import tsx --test 'lib/**/*.test.ts'",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

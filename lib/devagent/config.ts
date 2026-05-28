@@ -28,6 +28,16 @@ export const DEFAULT_BANNED_BASH: string[] = [
   "git push origin head:main",
   "git -c ",
   "git --git-dir",
+  // Secret-exfiltration patterns — block direct env-var references and env-dumping
+  // tools. Defense-in-depth alongside Phase 2 sandbox isolation (Vercel Sandbox).
+  // Match is case-insensitive on the lowercased command, so these catch $VAR,
+  // ${VAR}, and bareword forms.
+  "anthropic_api_key",
+  "gh_token",
+  "supabase_service",
+  "stripe_secret",
+  "workos_api_key",
+  "printenv",
 ];
 
 /** Always force needs-review when ANY of these globs is in the diff (Gate 2). */

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { refreshGoogleToken, sendGmailDraft, createGmailDraft, updateGmailDraft } from "@/lib/iris/google";
+import { refreshGoogleToken, sendGmailDraft, createGmailDraft, updateGmailDraft } from "@/lib/gmail";
 
 // POST /api/admin/iris/messages/[id]/send
 // Admin clicked "Send reply". Sync any pending draft edits to Gmail, then

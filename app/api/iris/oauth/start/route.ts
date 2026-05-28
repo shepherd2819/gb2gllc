@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { withAuth } from "@workos-inc/authkit-nextjs";
-import { googleInstallUrl } from "@/lib/iris/google";
+import { googleInstallUrl } from "@/lib/gmail";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "john@gb2gllc.com";
+const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL ?? "https://admin.gb2gllc.com";
+const IRIS_REDIRECT_URI = `${ADMIN_URL}/api/iris/oauth/callback`;
 
 // GET /api/iris/oauth/start
 // Admin clicks "Connect inbox" → we generate a state nonce, set a cookie,
@@ -15,7 +17,7 @@ export async function GET(_req: NextRequest) {
 
   const nonce = randomBytes(16).toString("hex");
   const state = `${user.id}:${nonce}`;
-  const url = googleInstallUrl(state);
+  const url = googleInstallUrl({ state, redirectUri: IRIS_REDIRECT_URI });
 
   const res = NextResponse.redirect(url);
   res.cookies.set("iris_install_state", state, {

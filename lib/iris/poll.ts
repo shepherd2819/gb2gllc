@@ -8,9 +8,9 @@ import {
   getOrCreateLabel,
   addLabelToMessage,
   createGmailDraft,
-} from "./google";
+} from "@/lib/gmail";
 import { classifyAndDraft, MODEL_NAME } from "./classify";
-import type { ParsedMessage } from "./google";
+import type { ParsedMessage } from "@/lib/gmail";
 import type { Classification } from "./classify";
 
 // How far back to look on each poll. We deliberately overlap by ~2x the

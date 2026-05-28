@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { exchangeGoogleCode, getGoogleUserInfo, getGmailProfile, getGmailSendAs } from "@/lib/iris/google";
+import { exchangeGoogleCode, getGoogleUserInfo, getGmailProfile, getGmailSendAs } from "@/lib/gmail";
 import { logEvent } from "@/lib/logger";
 
 const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL ?? "https://admin.gb2gllc.com";
+const IRIS_REDIRECT_URI = `${ADMIN_URL}/api/iris/oauth/callback`;
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest) {
 
   let token, userInfo, profile, aliases: string[] = [];
   try {
-    token = await exchangeGoogleCode(code);
+    token = await exchangeGoogleCode({ code, redirectUri: IRIS_REDIRECT_URI });
     if (!token.refresh_token) {
       // Without a refresh_token we can't poll long-term. Force user to re-consent.
       return land("no_refresh_token");

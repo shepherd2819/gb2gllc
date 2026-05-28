@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { refreshGoogleToken, updateGmailDraft, createGmailDraft } from "@/lib/iris/google";
+import { refreshGoogleToken, updateGmailDraft, createGmailDraft } from "@/lib/gmail";
 
 // PATCH /api/admin/iris/messages/[id]
 // Update the draft body / subject. If a Gmail draft already exists, sync it

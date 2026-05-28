@@ -33,6 +33,7 @@ export type FileChange = {
 
 export type ScopeReason =
   | "ok"
+  | "no_changes"
   | "verification_failed"
   | "reviewer_must_fix"
   | "outside_allowlist"

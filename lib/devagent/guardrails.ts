@@ -1,4 +1,5 @@
 // lib/devagent/guardrails.ts
+import { normalize } from "node:path";
 import type { FileChange, GuardrailsConfig, ScopeEvaluation, ScopeReason } from "./types";
 
 /**
@@ -20,13 +21,14 @@ export function matchesAny(path: string, patterns: string[]): boolean {
 }
 
 export function isPathProtected(path: string, protectedPaths: string[]): boolean {
-  const normalized = path.replace(/^\.\//, "");
+  const normalized = normalize(path.replace(/\\/g, "/")).replace(/^\.\//, "");
+  if (normalized.startsWith("../")) return true; // traversal — deny
   return matchesAny(normalized, protectedPaths);
 }
 
 export function isBashBanned(command: string, banned: string[]): boolean {
-  const lower = command.toLowerCase();
-  return banned.some((s) => lower.includes(s.toLowerCase()));
+  const normalised = command.toLowerCase().replace(/\s+/g, " ");
+  return banned.some((s) => normalised.includes(s.toLowerCase()));
 }
 
 /** Gate 1: PreToolUse decision. Returns whether the agent may proceed. */
@@ -81,6 +83,14 @@ export function evaluateScope(args: {
   packageJsonDepsChanged: boolean;
   cfg: GuardrailsConfig;
 }): ScopeEvaluation {
+  if (args.changes.length === 0) {
+    return {
+      eligible: false,
+      reasons: ["no_changes"],
+      message: "No changed files detected — refusing to auto-merge an empty diff.",
+    };
+  }
+
   const reasons: ScopeReason[] = [];
 
   if (!args.verifyPassed) reasons.push("verification_failed");
@@ -99,6 +109,7 @@ export function evaluateScope(args: {
       break;
     }
   }
+  // Strict greater-than is intentional: maxChangedFiles = 8 allows exactly 8 files; 9 trips this.
   if (args.changes.length > args.cfg.maxChangedFiles) reasons.push("too_many_files");
 
   const totalLines = args.changes.reduce((s, c) => s + c.added + c.deleted, 0);
@@ -116,6 +127,7 @@ function explain(
   a: { changes: FileChange[]; reviewerMustFix: string[]; cfg: GuardrailsConfig }
 ): string {
   const parts: string[] = [];
+  if (reasons.includes("no_changes")) parts.push("No changed files.");
   if (reasons.includes("verification_failed")) parts.push("Verification failed (typecheck/build/lint/test).");
   if (reasons.includes("reviewer_must_fix")) parts.push(`Reviewer flagged ${a.reviewerMustFix.length} must-fix item(s).`);
   if (reasons.includes("dependency_change")) parts.push("package.json dependencies changed.");

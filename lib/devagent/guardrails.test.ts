@@ -7,6 +7,7 @@ import {
   isBashBanned,
   evaluatePreToolUse,
   evaluateScope,
+  buildPreToolUseHook,
 } from "./guardrails";
 import { DEFAULT_GUARDRAILS } from "./config";
 
@@ -160,4 +161,58 @@ test("evaluateScope: too many lines blocks merge", () => {
   });
   assert.equal(ev.eligible, false);
   assert.ok(ev.reasons.includes("too_many_lines"));
+});
+
+test("isBashBanned: whitespace-injection variants still caught", () => {
+  // Double-space and tab between tokens must be normalised.
+  assert.equal(isBashBanned("vercel  deploy  --prod", DEFAULT_GUARDRAILS.bannedBashSubstrings), true);
+  assert.equal(isBashBanned("git push\t--force", DEFAULT_GUARDRAILS.bannedBashSubstrings), true);
+});
+
+test("isBashBanned: env-prefixed and chained commands still caught", () => {
+  assert.equal(isBashBanned("FOO=bar vercel --prod deploy", DEFAULT_GUARDRAILS.bannedBashSubstrings), true);
+  assert.equal(isBashBanned("echo hi && vercel --prod", DEFAULT_GUARDRAILS.bannedBashSubstrings), true);
+});
+
+test("isPathProtected: traversal resolves to protected", () => {
+  assert.equal(isPathProtected("../lib/admin-auth.ts", DEFAULT_GUARDRAILS.protectedPaths), true);
+  assert.equal(isPathProtected("../../proxy.ts", DEFAULT_GUARDRAILS.protectedPaths), true);
+});
+
+test("isPathProtected: backslash variant matches", () => {
+  assert.equal(isPathProtected("lib\\admin-auth.ts", DEFAULT_GUARDRAILS.protectedPaths), true);
+});
+
+test("buildPreToolUseHook: deny shape is correct", async () => {
+  const hook = buildPreToolUseHook(DEFAULT_GUARDRAILS);
+  const out = await hook({
+    tool_name: "Write",
+    tool_input: { file_path: "proxy.ts" },
+    hook_event_name: "PreToolUse",
+  });
+  // The hookSpecificOutput field signals the SDK to deny.
+  const hso = (out as { hookSpecificOutput?: { permissionDecision?: string } }).hookSpecificOutput;
+  assert.equal(hso?.permissionDecision, "deny");
+});
+
+test("buildPreToolUseHook: allow returns empty object", async () => {
+  const hook = buildPreToolUseHook(DEFAULT_GUARDRAILS);
+  const out = await hook({
+    tool_name: "Write",
+    tool_input: { file_path: "lib/devagent/run.ts" },
+    hook_event_name: "PreToolUse",
+  });
+  assert.deepEqual(out, {});
+});
+
+test("evaluateScope: empty changes fail-closed", () => {
+  const ev = evaluateScope({
+    changes: [],
+    verifyPassed: true,
+    reviewerMustFix: [],
+    packageJsonDepsChanged: false,
+    cfg: DEFAULT_GUARDRAILS,
+  });
+  assert.equal(ev.eligible, false);
+  assert.ok(ev.reasons.includes("no_changes"));
 });

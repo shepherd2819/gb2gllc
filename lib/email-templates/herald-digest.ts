@@ -1,4 +1,5 @@
 import type { WeeklyMetrics } from "@/lib/chatbot";
+import { supportFooterHtml } from "@/lib/email-footer";
 
 function fmt(n: number) {
   return n.toLocaleString("en-US");
@@ -124,6 +125,7 @@ export function heraldDigestHtml(opts: {
             </td>
           </tr>
 
+          ${supportFooterHtml()}
           <tr>
             <td style="padding:16px 32px 28px;border-top:1px solid rgba(28,30,27,0.06);">
               <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8A8C85;letter-spacing:0.06em;">

@@ -1,0 +1,35 @@
+// scripts/devagent.ts
+import { prepareWorkspace } from "../lib/devagent/workspace";
+import { runDevAgent } from "../lib/devagent/run";
+
+async function main() {
+  const args = process.argv.slice(2);
+  if (args.length === 0 || args.some((a) => a === "-h" || a === "--help")) {
+    console.error(`Usage: npm run devagent -- "<task description>"\n`);
+    process.exit(1);
+  }
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error("ANTHROPIC_API_KEY is not set. Add it to .env or export it before running.");
+    process.exit(1);
+  }
+
+  const description = args.join(" ");
+  const repoRoot = process.cwd();
+  const ws = await prepareWorkspace({ repoRoot, description });
+  console.log(`Workspace: ${ws.cwd}\nBranch:    ${ws.branch}\n`);
+
+  try {
+    const result = await runDevAgent({
+      task: { description },
+      workspace: ws,
+    });
+    process.exit(result.status === "completed" ? 0 : 2);
+  } finally {
+    await ws.cleanup();
+  }
+}
+
+main().catch((e) => {
+  console.error(`devagent failed: ${(e as Error).message}`);
+  process.exit(1);
+});

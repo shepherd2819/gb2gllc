@@ -27,7 +27,7 @@ export function recordEvent(rec: RunRecord, type: string, payload: unknown) {
 }
 
 export function finalizeRecord(rec: RunRecord) {
-  rec.endedAt = new Date().toISOString();
+  if (!rec.endedAt) rec.endedAt = new Date().toISOString();
 }
 
 /** Pretty-print a one-shot summary at the end of a run. */

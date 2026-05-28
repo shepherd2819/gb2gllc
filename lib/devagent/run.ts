@@ -27,11 +27,20 @@ type QueryFn = NonNullable<RunOptions["queryFn"]>;
 
 export async function runDevAgent(opts: RunOptions): Promise<RunResult> {
   const queryFn: QueryFn = opts.queryFn ?? (defaultQuery as unknown as QueryFn);
+
+  // CRITICAL: deep-merge the budget sub-object so a partial budget override
+  // (e.g. {maxTurns: 100}) does not wipe out maxWallMs/maxTokens.
   const guardrails: GuardrailsConfig = {
     ...DEFAULT_GUARDRAILS,
     ...(opts.guardrails ?? {}),
     ...(opts.task.guardrails ?? {}),
+    budget: {
+      ...DEFAULT_GUARDRAILS.budget,
+      ...(opts.guardrails?.budget ?? {}),
+      ...(opts.task.guardrails?.budget ?? {}),
+    },
   };
+
   const rec = newRecord(opts.task.description, opts.workspace.branch);
 
   let shipDecision: ShipDecision | undefined;
@@ -75,8 +84,19 @@ export async function runDevAgent(opts: RunOptions): Promise<RunResult> {
         {
           matcher: "*",
           hooks: [
+            // MINOR: truncate the recorded payload to keep rec.events bounded.
             async (input: unknown) => {
-              recordEvent(rec, "tool_post", input);
+              const i = input as { tool_name?: string; tool_input?: unknown };
+              const inputStr =
+                typeof i.tool_input === "string"
+                  ? i.tool_input
+                  : JSON.stringify(i.tool_input ?? {});
+              const summary = {
+                tool_name: i.tool_name,
+                tool_input_preview: inputStr.slice(0, 500),
+                tool_input_length: inputStr.length,
+              };
+              recordEvent(rec, "tool_post", summary);
               return {};
             },
           ],
@@ -99,6 +119,11 @@ export async function runDevAgent(opts: RunOptions): Promise<RunResult> {
   };
 
   let timedOut = false;
+  // IMPORTANT: separate flag to distinguish "timer fired during stream" from
+  // "loop actually aborted mid-stream because of the timeout".
+  let loopAborted = false;
+  let resultSubtype: string | undefined;
+
   const timer = setTimeout(() => {
     timedOut = true;
   }, guardrails.budget.maxWallMs);
@@ -108,41 +133,72 @@ export async function runDevAgent(opts: RunOptions): Promise<RunResult> {
       prompt: opts.task.description,
       options: sdkOptions,
     })) {
-      if (timedOut) break;
+      if (timedOut) {
+        loopAborted = true;
+        break;
+      }
       const m = msg as { type: string };
       recordEvent(rec, "message", { type: m.type });
       if (m.type === "result") {
+        // IMPORTANT: capture subtype to detect SDK-level failures.
         const r = msg as {
+          subtype?: string;
           result?: string;
           total_cost_usd?: number;
           usage?: { input_tokens?: number; output_tokens?: number };
         };
+        resultSubtype = r.subtype;
         totalCost = r.total_cost_usd ?? 0;
         totalTokens = (r.usage?.input_tokens ?? 0) + (r.usage?.output_tokens ?? 0);
       }
     }
 
-    const { changes } = await captureDiff(opts.workspace.cwd).catch(() => ({
-      changes: [],
-    }));
+    // IMPORTANT: determine failure reasons.
+    const sdkFailed = resultSubtype != null && resultSubtype !== "success";
+    // MINOR: token budget enforcement (detection-after-the-fact for Phase 1).
+    const tokenOverrun = totalTokens > guardrails.budget.maxTokens;
+
+    const status: RunResult["status"] =
+      loopAborted || sdkFailed || tokenOverrun ? "failed" : "completed";
+
+    const errorReason = loopAborted
+      ? "wall-clock budget exceeded"
+      : sdkFailed
+      ? `SDK result subtype: ${resultSubtype}`
+      : tokenOverrun
+      ? `token budget exceeded (${totalTokens} > ${guardrails.budget.maxTokens})`
+      : undefined;
+
+    // MINOR: surface captureDiff errors instead of silently swallowing them.
+    let captureDiffError: string | undefined;
+    const { changes } = await captureDiff(opts.workspace.cwd).catch((e: unknown) => {
+      captureDiffError = e instanceof Error ? e.message : String(e);
+      return { changes: [] };
+    });
+
+    const combinedError =
+      errorReason ?? (captureDiffError ? `captureDiff failed: ${captureDiffError}` : undefined);
 
     const result: RunResult = {
-      status: timedOut ? "failed" : "completed",
+      status,
       ship: shipDecision,
       filesChanged: changes,
       tokensUsed: totalTokens,
       costUsd: totalCost,
-      error: timedOut ? "wall-clock budget exceeded" : undefined,
+      error: combinedError,
     };
     finalizeRecord(rec);
     printSummary(rec, result);
     return result;
   } catch (e) {
+    // IMPORTANT: preserve accumulated cost/token data; use safe error coercion.
     finalizeRecord(rec);
     const result: RunResult = {
       status: "failed",
       filesChanged: [],
-      error: (e as Error).message,
+      tokensUsed: totalTokens,
+      costUsd: totalCost,
+      error: e instanceof Error ? e.message : String(e),
     };
     printSummary(rec, result);
     return result;

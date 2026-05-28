@@ -48,9 +48,32 @@ export async function prepareWorkspace(opts: PrepareWorkspaceOpts): Promise<Work
       } catch {
         // Worktree command may fail if dir was already removed; clean up the path either way.
         await rm(cwd, { recursive: true, force: true });
+        // Best-effort prune to clear the stale registration. Ignore failures.
+        await exec("git", ["worktree", "prune"], { cwd: opts.repoRoot }).catch(() => {});
       }
     },
   };
+}
+
+/** Parse `git diff --numstat` output. Exported for unit testing. */
+export function parseNumstat(stdout: string): FileChange[] {
+  const lines = stdout.trim().split("\n").filter(Boolean);
+  return lines.map((line) => {
+    const tab1 = line.indexOf("\t");
+    const tab2 = line.indexOf("\t", tab1 + 1);
+    // Defensive: malformed line falls through with zeros and the raw line as path.
+    if (tab1 < 0 || tab2 < 0) {
+      return { path: line, added: 0, deleted: 0 };
+    }
+    const addedStr = line.slice(0, tab1);
+    const deletedStr = line.slice(tab1 + 1, tab2);
+    const path = line.slice(tab2 + 1); // rest of line, tabs preserved
+    return {
+      path,
+      added: addedStr === "-" ? 0 : parseInt(addedStr, 10) || 0,
+      deleted: deletedStr === "-" ? 0 : parseInt(deletedStr, 10) || 0,
+    };
+  });
 }
 
 /** Return a list of FileChange entries from `git diff --numstat main...HEAD`. */
@@ -58,15 +81,8 @@ export async function captureDiff(
   cwd: string
 ): Promise<{ changes: FileChange[]; packageJsonChanged: boolean }> {
   const { stdout } = await exec("git", ["diff", "--numstat", "main...HEAD"], { cwd });
-  const lines = stdout.trim().split("\n").filter(Boolean);
-  const changes: FileChange[] = lines.map((line) => {
-    const [addedStr, deletedStr, p] = line.split("\t");
-    return {
-      path: p,
-      added: addedStr === "-" ? 0 : parseInt(addedStr, 10) || 0,
-      deleted: deletedStr === "-" ? 0 : parseInt(deletedStr, 10) || 0,
-    };
-  });
+  const changes = parseNumstat(stdout);
+  // Top-level package.json only; nested package.json files (e.g. fixtures) are intentionally ignored.
   const packageJsonChanged = changes.some((c) => c.path === "package.json");
   return { changes, packageJsonChanged };
 }

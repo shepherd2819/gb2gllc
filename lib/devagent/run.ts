@@ -15,10 +15,17 @@ import type {
   Workspace,
 } from "./types";
 
+/** Deep-partial of GuardrailsConfig: all fields optional, budget fields also optional. */
+type PartialGuardrails = Omit<Partial<GuardrailsConfig>, "budget"> & {
+  budget?: Partial<GuardrailsConfig["budget"]>;
+};
+
 export type RunOptions = {
   task: DevAgentTask;
   workspace: Workspace;
-  guardrails?: Partial<GuardrailsConfig>;
+  guardrails?: PartialGuardrails;
+  /** Per-client mission override; forwarded to buildOrchestratorSystemPrompt({mission}). */
+  mission?: string;
   /** Testing seam: override the SDK's query function. Real query() is used by default. */
   queryFn?: (input: { prompt: string; options: unknown }) => AsyncIterable<unknown>;
 };
@@ -65,7 +72,7 @@ export async function runDevAgent(opts: RunOptions): Promise<RunResult> {
   const sdkOptions = {
     cwd: opts.workspace.cwd,
     settingSources: ["project"] as Array<"project" | "user" | "local">,
-    systemPrompt: buildOrchestratorSystemPrompt(),
+    systemPrompt: buildOrchestratorSystemPrompt({ mission: opts.mission }),
     agents: buildAgents(),
     mcpServers: { devagent: shipServer },
     allowedTools: [

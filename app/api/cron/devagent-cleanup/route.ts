@@ -5,6 +5,9 @@ import { logEvent } from "@/lib/logger";
 const STALE_AFTER_MS = 30 * 60_000; // 30 minutes
 
 export async function GET(req: NextRequest) {
+  if (!process.env.CRON_SECRET) {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
   const authHeader = req.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return new NextResponse("Unauthorized", { status: 401 });

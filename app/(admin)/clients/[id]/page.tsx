@@ -8,6 +8,7 @@ import { StewardManager } from "./StewardManager";
 import { HeraldManager } from "./HeraldManager";
 import { MayaManager } from "./MayaManager";
 import { ReeseManager } from "./ReeseManager";
+import { DevAgentManager } from "./DevAgentManager";
 import { SendInviteButton } from "./SendInviteButton";
 
 type Params = { params: Promise<{ id: string }> };
@@ -31,6 +32,8 @@ export default async function ClientDetailPage({ params }: Params) {
     { data: linkedinConfig },
     { data: linkedinToken },
     { data: linkedinPosts },
+    { data: devagentAssignment },
+    { data: devagentRuns },
   ] = await Promise.all([
     supabaseAdmin.from("clients").select("*, client_products(*), invoices(id, amount_cents, description, status, sent_at, created_at)").eq("id", id).single(),
     supabaseAdmin.from("client_logs").select("*").eq("client_id", id).order("created_at", { ascending: false }).limit(50),
@@ -47,6 +50,17 @@ export default async function ClientDetailPage({ params }: Params) {
     supabaseAdmin.from("client_linkedin_configs").select("*").eq("client_id", id).maybeSingle(),
     supabaseAdmin.from("steward_platform_tokens").select("token_data").eq("client_id", id).eq("platform", "linkedin").maybeSingle(),
     supabaseAdmin.from("linkedin_posts").select("id, pillar, draft_text, edited_text, status, scheduled_for, published_at, linkedin_url, rejected_reason, created_at").eq("client_id", id).order("created_at", { ascending: false }).limit(50),
+    supabaseAdmin
+      .from("client_devagent_assignments")
+      .select("*")
+      .eq("client_id", id)
+      .maybeSingle(),
+    supabaseAdmin
+      .from("devagent_runs")
+      .select("id, trigger, triggering_ticket_id, task_text, status, ship, tokens_used, cost_usd, error, started_at, completed_at")
+      .eq("client_id", id)
+      .order("started_at", { ascending: false })
+      .limit(50),
   ]);
 
   if (!client) notFound();
@@ -183,6 +197,12 @@ export default async function ClientDetailPage({ params }: Params) {
             subscription={(linkedinToken?.token_data as any) ?? null}
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             posts={(linkedinPosts ?? []) as any}
+          />
+
+          <DevAgentManager
+            clientId={id}
+            initialAssignment={devagentAssignment ?? null}
+            initialRuns={devagentRuns ?? []}
           />
 
           <AtriumManager clientId={client.id} stages={atriumStages ?? []} />

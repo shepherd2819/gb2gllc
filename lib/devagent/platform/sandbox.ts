@@ -32,6 +32,10 @@ export type SandboxRunOutcome = {
 
 export type RunInSandboxArgs = {
   taskDescription: string;
+  /** Per-client mission override from client_devagent_assignments.mission. */
+  missionOverride?: string;
+  /** JSON-stringified Partial<GuardrailsConfig["budget"]>. */
+  budgetOverrideJson?: string;
 };
 
 export async function runInSandbox(
@@ -43,6 +47,8 @@ export async function runInSandbox(
       ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? "",
       GH_TOKEN: process.env.GH_TOKEN ?? "",
       ADA_RESULT_FILE: SANDBOX_RESULT_PATH,
+      ...(args.missionOverride    !== undefined ? { ADA_MISSION_OVERRIDE:     args.missionOverride }    : {}),
+      ...(args.budgetOverrideJson !== undefined ? { ADA_BUDGET_OVERRIDE_JSON: args.budgetOverrideJson } : {}),
     },
   });
 

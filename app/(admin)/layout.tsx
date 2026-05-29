@@ -40,6 +40,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <a href="/agents/avery">Avery</a>
             <a href="/agents/june">June</a>
             <a href="/agents/wren">Wren</a>
+            <a href="/agents/vera">Vera</a>
             <a href="/agents/holt">Holt</a>
             <a href="/agents/nora">Nora</a>
           </div>

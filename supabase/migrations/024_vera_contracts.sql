@@ -11,11 +11,11 @@ CREATE TABLE contracts (
   client_id            UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
 
   product              TEXT NOT NULL CHECK (product IN ('herald','atrium','steward','custom')),
-  amount_cents         INTEGER NOT NULL,
+  amount_cents         INTEGER NOT NULL CHECK (amount_cents > 0),
   cadence              TEXT NOT NULL CHECK (cadence IN ('monthly','one_time','hourly')),
   scope_notes          TEXT,
 
-  template_version     TEXT,
+  template_version     TEXT,  -- "notion:<page_id>@<retrieved_at>" or "bundled:<git_sha>"
   token                TEXT NOT NULL UNIQUE,
   expires_at           TIMESTAMPTZ NOT NULL,
 
@@ -44,9 +44,9 @@ CREATE TABLE contracts (
 );
 
 CREATE INDEX idx_contracts_client_created     ON contracts(client_id, created_at DESC);
-CREATE INDEX idx_contracts_status             ON contracts(status, sent_at DESC);
+CREATE INDEX idx_contracts_status             ON contracts(status, sent_at DESC); -- admin dashboard listing
 CREATE INDEX idx_contracts_pending_reminder   ON contracts(sent_at)    WHERE status = 'sent' AND reminder_sent_at IS NULL;
 CREATE INDEX idx_contracts_pending_expiry     ON contracts(expires_at) WHERE status = 'sent';
 
 ALTER TABLE contracts ENABLE ROW LEVEL SECURITY;
-CREATE POLICY contracts_service_role_only ON contracts FOR ALL USING (false);
+CREATE POLICY "service role only" ON contracts FOR ALL USING (false);

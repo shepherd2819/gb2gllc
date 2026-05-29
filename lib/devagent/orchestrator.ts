@@ -49,10 +49,14 @@ For any non-trivial task:
 If verification stays red after 3 cycles, call \`ship\` anyway with \`reviewer_must_fix\` populated — it will open a PR labeled \`needs-review\` (no auto-merge).
 `;
 
-export function buildOrchestratorSystemPrompt() {
+export function buildOrchestratorSystemPrompt(opts?: { mission?: string }) {
+  const mission = opts?.mission && opts.mission.length > 0 ? opts.mission : null;
+  const append = mission
+    ? `## Your mission\n\n${mission}\n\n${PROJECT_RULES}`
+    : PROJECT_RULES;
   return {
     type: "preset" as const,
     preset: "claude_code" as const,
-    append: PROJECT_RULES,
+    append,
   };
 }

@@ -47,6 +47,19 @@ export const devagentRun = inngest.createFunction(
       );
     }
 
+    const overrides = await step.run("load-assignment", async () => {
+      const { supabaseAdmin } = await import("@/lib/supabase");
+      const { data: assignment } = await supabaseAdmin
+        .from("client_devagent_assignments")
+        .select("mission, budget_overrides")
+        .eq("client_id", data.clientId)
+        .maybeSingle<{ mission: string | null; budget_overrides: Record<string, number> | null }>();
+      return {
+        missionOverride:    assignment?.mission ?? null,
+        budgetOverrideJson: assignment?.budget_overrides ? JSON.stringify(assignment.budget_overrides) : null,
+      };
+    });
+
     await step.run("mark-running", () => markRunning(runId));
 
     // Wrap in NonRetriableError so Inngest does not retry invoke-ada on failure.
@@ -55,7 +68,11 @@ export const devagentRun = inngest.createFunction(
     try {
       const outcome = await step.run("invoke-ada", async () => {
         try {
-          return await runInSandbox({ taskDescription: data.taskText });
+          return await runInSandbox({
+              taskDescription: data.taskText,
+              ...(overrides.missionOverride    !== null ? { missionOverride:    overrides.missionOverride    } : {}),
+              ...(overrides.budgetOverrideJson !== null ? { budgetOverrideJson: overrides.budgetOverrideJson } : {}),
+            });
         } catch (err) {
           throw new NonRetriableError(
             err instanceof Error ? err.message : String(err),

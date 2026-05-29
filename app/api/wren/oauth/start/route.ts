@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { googleInstallUrl } from "@/lib/gmail";
+import { WREN_REDIRECT_URI } from "@/lib/wren/oauth-config";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "john@gb2gllc.com";
-const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL ?? "https://admin.gb2gllc.com";
-const WREN_REDIRECT_URI = `${ADMIN_URL}/api/wren/oauth/callback`;
 
 // GET /api/wren/oauth/start
 // Admin clicks "Connect mailbox" → generate state nonce, set cookie, redirect to Google.

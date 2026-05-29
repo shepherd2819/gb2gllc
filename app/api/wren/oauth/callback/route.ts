@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { exchangeGoogleCode, getGoogleUserInfo, getGmailProfile, getGmailSendAs } from "@/lib/gmail";
 import { logEvent } from "@/lib/logger";
+import { WREN_REDIRECT_URI } from "@/lib/wren/oauth-config";
 
 const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL ?? "https://admin.gb2gllc.com";
-const WREN_REDIRECT_URI = `${ADMIN_URL}/api/wren/oauth/callback`;
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");

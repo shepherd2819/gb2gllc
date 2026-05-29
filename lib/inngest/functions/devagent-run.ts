@@ -31,6 +31,7 @@ export const devagentRun = inngest.createFunction(
         triggeringTicketId: data.ticketId,
         trigger:            data.trigger,
         taskText:           data.taskText,
+        idempotencyKey:     `${event.id}:insert`,
       })
     );
 
@@ -80,7 +81,7 @@ export const devagentRun = inngest.createFunction(
     }
 
     await step.run("finalize", async () => {
-      await finalizeRun({ runId, result });
+      await finalizeRun({ runId, result, clientId: data.clientId });
       if (data.ticketId) {
         const kind = result.status === "failed" ? "ada_failed" : "ada_completed";
         const body =

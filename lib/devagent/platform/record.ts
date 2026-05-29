@@ -6,8 +6,7 @@
 // sink used by the Inngest function.
 //
 // NOTE: supabaseAdmin is imported dynamically inside each function so this
-// module stays env-free at require time (mirrors trigger.ts and
-// ticket-update.ts patterns).
+// module stays env-free at require time (mirrors trigger.ts pattern).
 
 import type { RunResult } from "@/lib/devagent/types";
 
@@ -16,19 +15,32 @@ export type CreateRunInput = {
   triggeringTicketId: string | null;
   trigger: "ticket" | "manual" | "scheduled";
   taskText: string;
+  /**
+   * Idempotency key for the run row. Inngest step.run that retries after the
+   * insert succeeded but the checkpoint failed would otherwise duplicate the
+   * row. Pass Inngest's event.id (or event.id + ":insert") here; the unique
+   * partial index on devagent_runs(idempotency_key) WHERE idempotency_key IS
+   * NOT NULL turns the duplicate INSERT into an UPSERT that returns the
+   * existing row.
+   */
+  idempotencyKey: string;
 };
 
 export async function createRun(input: CreateRunInput): Promise<{ id: string }> {
   const { supabaseAdmin } = await import("@/lib/supabase");
   const { data, error } = await supabaseAdmin
     .from("devagent_runs")
-    .insert({
-      client_id:            input.clientId,
-      triggering_ticket_id: input.triggeringTicketId,
-      trigger:              input.trigger,
-      task_text:            input.taskText,
-      status:               "queued",
-    })
+    .upsert(
+      {
+        client_id:            input.clientId,
+        triggering_ticket_id: input.triggeringTicketId,
+        trigger:              input.trigger,
+        task_text:            input.taskText,
+        status:               "queued",
+        idempotency_key:      input.idempotencyKey,
+      },
+      { onConflict: "idempotency_key", ignoreDuplicates: false }
+    )
     .select("id")
     .single<{ id: string }>();
   if (error || !data) throw new Error(`createRun failed: ${error?.message ?? "no row returned"}`);
@@ -49,7 +61,12 @@ export function statusFromResult(result: RunResult): "completed_merged" | "compl
   return result.ship?.merged ? "completed_merged" : "completed_needs_review";
 }
 
-export async function finalizeRun(args: { runId: string; result: RunResult }): Promise<void> {
+export async function finalizeRun(args: {
+  runId: string;
+  result: RunResult;
+  /** Caller supplies clientId so we don't re-fetch (Phase 2 did an extra round-trip). */
+  clientId: string;
+}): Promise<void> {
   const { supabaseAdmin } = await import("@/lib/supabase");
   const status = statusFromResult(args.result);
   const completedAt = new Date().toISOString();
@@ -67,15 +84,8 @@ export async function finalizeRun(args: { runId: string; result: RunResult }): P
     .eq("id", args.runId);
 
   // Touch the assignment row's last_run_at / last_run_status for the admin UI.
-  const { data: run } = await supabaseAdmin
-    .from("devagent_runs")
-    .select("client_id")
-    .eq("id", args.runId)
-    .single<{ client_id: string }>();
-  if (run) {
-    await supabaseAdmin
-      .from("client_devagent_assignments")
-      .update({ last_run_at: completedAt, last_run_status: status, updated_at: completedAt })
-      .eq("client_id", run.client_id);
-  }
+  await supabaseAdmin
+    .from("client_devagent_assignments")
+    .update({ last_run_at: completedAt, last_run_status: status, updated_at: completedAt })
+    .eq("client_id", args.clientId);
 }

@@ -57,7 +57,7 @@ Ada Phase 2 turns Ada into a platform-resident agent. A portal ticket arrives �
 ## Components
 
 ```
-supabase/migrations/022_devagent_phase2.sql     schema additions
+supabase/migrations/023_devagent_phase2.sql     schema additions
 
 lib/devagent/platform/                          Phase 2 platform glue
   ticket-trigger.ts    shouldTrigger({assignment, ticket}) + enqueueFromTicket()
@@ -78,7 +78,7 @@ app/(admin)/support/[id]/page.tsx                extended to render ticket_event
 vercel.json                                      add cron entry for devagent-cleanup
 ```
 
-## Schema (`022_devagent_phase2.sql`)
+## Schema (`023_devagent_phase2.sql`)
 
 ```sql
 -- ── tickets: category + Ada link + awaiting_review status ─────────────────
@@ -185,7 +185,7 @@ CREATE POLICY "service role only" ON ticket_events                FOR ALL USING 
 
 ## Build order
 
-1. Migration `022_devagent_phase2.sql`.
+1. Migration `023_devagent_phase2.sql`.
 2. `lib/devagent/platform/*` modules (TDD on the pure-function logic in `ticket-trigger.ts`).
 3. `lib/inngest/functions/devagent-run.ts` + integration test.
 4. Admin route + `DevAgentManager.tsx` component.

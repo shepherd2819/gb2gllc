@@ -4,7 +4,7 @@
 
 **Goal:** Make Ada autonomous on the GB2G platform: a portal ticket with a configured category fires an Inngest event → an Inngest function spins up a Vercel Sandbox, clones the repo, runs Ada's Phase 1 core via the CLI, then updates the originating ticket (status + timeline events) so the client sees Ada working.
 
-**Architecture:** One new migration (`022_devagent_phase2.sql`) adds `tickets.category`, `tickets.ada_run_id`, an `awaiting_review` status, and three new tables (`client_devagent_assignments`, `devagent_runs`, `ticket_events`). One new Inngest function (`devagent-run`) handles the lifecycle inside a Vercel Sandbox. A per-client `DevAgentManager` component at `app/(admin)/clients/[id]/` provides config + history + manual dispatch. The portal ticket form gets a category dropdown; the portal POST handler emits the Inngest event in its existing `after()` block.
+**Architecture:** One new migration (`023_devagent_phase2.sql`) adds `tickets.category`, `tickets.ada_run_id`, an `awaiting_review` status, and three new tables (`client_devagent_assignments`, `devagent_runs`, `ticket_events`). One new Inngest function (`devagent-run`) handles the lifecycle inside a Vercel Sandbox. A per-client `DevAgentManager` component at `app/(admin)/clients/[id]/` provides config + history + manual dispatch. The portal ticket form gets a category dropdown; the portal POST handler emits the Inngest event in its existing `after()` block.
 
 **Tech Stack:** Node 20+, TypeScript 5, `@anthropic-ai/claude-agent-sdk` (Phase 1), `@vercel/sandbox` (new dep — verify the API via context7 before relying on the calls in the sandbox task), Inngest, Supabase, Next.js 16. The Phase 2 spec lives at `docs/superpowers/specs/2026-05-29-ada-dev-agent-phase-2-design.md` — keep it open while you build.
 
@@ -52,16 +52,16 @@ Expected: all three files exist (Phase 1 already shipped to `main`).
 
 ---
 
-## Task 1: Migration `022_devagent_phase2.sql`
+## Task 1: Migration `023_devagent_phase2.sql`
 
 **Files:**
-- Create: `supabase/migrations/022_devagent_phase2.sql`
+- Create: `supabase/migrations/023_devagent_phase2.sql`
 
 - [ ] **Step 1: Create the migration file**
 
 ```sql
 -- ============================================================
--- 022_devagent_phase2.sql — Ada Phase 2 (ticket-triggered, per-client)
+-- 023_devagent_phase2.sql — Ada Phase 2 (ticket-triggered, per-client)
 -- ============================================================
 -- Sibling tables to client_steward_assignments / steward_runs. Ada
 -- targets the GB2G repo (multi-tenant is Phase 3). Each client has one
@@ -140,15 +140,15 @@ CREATE POLICY "service role only" ON ticket_events                FOR ALL USING 
 
 ```bash
 # If you have psql installed, you can lint with:
-psql --version >/dev/null 2>&1 && cat supabase/migrations/022_devagent_phase2.sql | head -5
+psql --version >/dev/null 2>&1 && cat supabase/migrations/023_devagent_phase2.sql | head -5
 # Otherwise, just visually verify by reading the file.
 ```
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add supabase/migrations/022_devagent_phase2.sql
-git commit -m "feat(devagent): migration 022 — Phase 2 schema
+git add supabase/migrations/023_devagent_phase2.sql
+git commit -m "feat(devagent): migration 023 — Phase 2 schema
 
 tickets.category + tickets.ada_run_id + awaiting_review status.
 client_devagent_assignments (per-client config).
@@ -1922,7 +1922,7 @@ emits a manual-trigger event into Inngest. Operator watches Inngest dev UI.
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 ```
 
-**Do NOT push and do NOT merge.** The user reviews the branch, applies migration 022 via `supabase db push`, sets the new env vars in Vercel, then decides when to push + merge.
+**Do NOT push and do NOT merge.** The user reviews the branch, applies migration 023 via `supabase db push`, sets the new env vars in Vercel, then decides when to push + merge.
 
 ---
 

@@ -10,6 +10,7 @@ import { MayaManager } from "./MayaManager";
 import { ReeseManager } from "./ReeseManager";
 import { DevAgentManager } from "./DevAgentManager";
 import { SendInviteButton } from "./SendInviteButton";
+import { ContractManager } from "./ContractManager";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -34,6 +35,7 @@ export default async function ClientDetailPage({ params }: Params) {
     { data: linkedinPosts },
     { data: devagentAssignment },
     { data: devagentRuns },
+    { data: contracts },
   ] = await Promise.all([
     supabaseAdmin.from("clients").select("*, client_products(*), invoices(id, amount_cents, description, status, sent_at, created_at)").eq("id", id).single(),
     supabaseAdmin.from("client_logs").select("*").eq("client_id", id).order("created_at", { ascending: false }).limit(50),
@@ -61,6 +63,12 @@ export default async function ClientDetailPage({ params }: Params) {
       .eq("client_id", id)
       .order("started_at", { ascending: false })
       .limit(50),
+    supabaseAdmin
+      .from("contracts")
+      .select("id, product, amount_cents, cadence, status, sent_at, signed_at, voided_at, expires_at, signer_name, token")
+      .eq("client_id", id)
+      .order("created_at", { ascending: false })
+      .limit(20),
   ]);
 
   if (!client) notFound();
@@ -197,6 +205,12 @@ export default async function ClientDetailPage({ params }: Params) {
             subscription={(linkedinToken?.token_data as any) ?? null}
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             posts={(linkedinPosts ?? []) as any}
+          />
+
+          <ContractManager
+            clientId={id}
+            contracts={contracts ?? []}
+            marketingUrl={process.env.NEXT_PUBLIC_BASE_URL ?? "https://gb2gllc.com"}
           />
 
           <DevAgentManager

@@ -9,28 +9,12 @@
       "schedule": "0 13 * * *"
     },
     {
-      "path": "/api/cron/iris-poll",
-      "schedule": "*/2 * * * *"
-    },
-    {
       "path": "/api/cron/iris-purge",
       "schedule": "0 4 * * *"
     },
     {
-      "path": "/api/cron/wren-poll",
-      "schedule": "*/2 * * * *"
-    },
-    {
       "path": "/api/cron/wren-purge",
       "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron/holt-prebrief",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/nora-poll",
-      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/devagent-cleanup",

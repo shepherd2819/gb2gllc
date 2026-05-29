@@ -42,7 +42,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
     .eq("token", token)
     .eq("status", "sent")
     .gt("expires_at", now.toISOString())
-    .select("id, client_id, product, amount_cents, cadence, scope_notes, template_version, clients(name, email, company)")
+    .select("id, client_id, product, amount_cents, cadence, scope_notes, template_version, sent_at, clients(name, email, company)")
     .maybeSingle();
 
   if (upErr) return NextResponse.json({ error: "Sign failed", detail: upErr.message }, { status: 500 });
@@ -63,13 +63,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
       const tmpl = await loadMasterTemplate();
       const product = updated.product as Product;
       const cadence = updated.cadence as Cadence;
+      const sentAt = updated.sent_at ? new Date(updated.sent_at as string) : now;
       const vars: SubstitutionVars = {
         client_company:       client.company || client.name || client.email,
         product_label:        PRODUCT_LABELS[product],
         scope_paragraph:      (updated.scope_notes as string | null)?.trim() || DEFAULT_SCOPE[product],
         amount_formatted:     formatAmount(updated.amount_cents as number),
         cadence_label:        cadenceLabel(cadence),
-        generated_date:       now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+        generated_date:       sentAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
         signer_name:          body.signer_name,
         signer_representing:  body.signer_representing,
         signed_date:          now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),

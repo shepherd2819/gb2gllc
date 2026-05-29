@@ -22,7 +22,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   const client = c.clients as unknown as { id: string; name: string | null; email: string; company: string | null };
   if (!client?.email) return NextResponse.json({ error: "Client has no email" }, { status: 400 });
 
-  const signingUrl = `${process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://gb2gllc.com"}/sign/${c.token}`;
+  const signingUrl = `${process.env.NEXT_PUBLIC_BASE_URL ?? "https://gb2gllc.com"}/sign/${c.token}`;
 
   await sendForSignature(client.email, {
     clientName:       client.name || "there",

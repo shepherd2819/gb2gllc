@@ -25,6 +25,9 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
   if (c.status === "signed") {
     return <Shell><Message title="Already signed" body={`Signed${c.signer_name ? ` by ${c.signer_name}` : ""}${c.signed_at ? ` on ${new Date(c.signed_at as string).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}` : ""}.`} /></Shell>;
   }
+  if (c.status !== "sent") {
+    return <Shell><Message title="This link is not yet active" body="Contact john@gb2gllc.com if you believe this is a mistake." /></Shell>;
+  }
 
   const client = c.clients as unknown as { name: string | null; company: string | null; email: string };
   const product = c.product as Product;

@@ -20,7 +20,7 @@ export default async function VeraDetailPage({ params }: { params: Promise<{ con
   if (!c) notFound();
 
   const client = c.clients as unknown as { name: string | null; company: string | null; email: string };
-  const marketingUrl = process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://gb2gllc.com";
+  const marketingUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://gb2gllc.com";
   const signingUrl = `${marketingUrl}/sign/${c.token}`;
 
   const unsignedUrl = c.unsigned_pdf_path ? await signedContractPdfUrl(c.unsigned_pdf_path as string).catch(() => null) : null;

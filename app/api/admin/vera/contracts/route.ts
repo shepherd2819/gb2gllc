@@ -33,6 +33,9 @@ export async function POST(req: Request) {
   if (!body.client_id || !body.product || typeof body.amount_cents !== "number" || !body.cadence) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
+  if (!Number.isInteger(body.amount_cents) || body.amount_cents <= 0) {
+    return NextResponse.json({ error: "Amount must be a positive whole number of cents" }, { status: 400 });
+  }
   if (!["herald", "atrium", "steward", "custom"].includes(body.product)) {
     return NextResponse.json({ error: "Invalid product" }, { status: 400 });
   }
@@ -86,7 +89,7 @@ export async function POST(req: Request) {
 
     const pdf = await renderContractPdf({ sections: tmpl.sections, vars, signed: false });
     const path = await uploadContractPdf(contractId, "unsigned", pdf);
-    const signingUrl = `${process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://gb2gllc.com"}/sign/${token}`;
+    const signingUrl = `${process.env.NEXT_PUBLIC_BASE_URL ?? "https://gb2gllc.com"}/sign/${token}`;
 
     await sendForSignature(client.email, {
       clientName:       client.name || "there",

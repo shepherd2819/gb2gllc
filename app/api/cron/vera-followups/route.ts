@@ -11,14 +11,15 @@ export const maxDuration = 300;
 const REMIND_AFTER_DAYS = 3;
 
 export async function GET(req: Request) {
+  const secret = process.env.CRON_SECRET;
   const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!secret || auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const now = new Date();
   const remindCutoff = new Date(now.getTime() - REMIND_AFTER_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  const marketingUrl = process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://gb2gllc.com";
+  const marketingUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://gb2gllc.com";
 
   // 1. Reminders
   const { data: toRemind } = await supabaseAdmin

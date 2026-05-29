@@ -210,7 +210,7 @@ export default async function ClientDetailPage({ params }: Params) {
           <ContractManager
             clientId={id}
             contracts={contracts ?? []}
-            marketingUrl={process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://gb2gllc.com"}
+            marketingUrl={process.env.NEXT_PUBLIC_BASE_URL ?? "https://gb2gllc.com"}
           />
 
           <DevAgentManager

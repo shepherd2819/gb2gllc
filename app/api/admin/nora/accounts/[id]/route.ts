@@ -11,7 +11,6 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (body.status === "active" || body.status === "paused") update.status = body.status;
   if (typeof body.label === "string" && body.label.trim()) update.label = body.label.trim();
-  if (typeof body.webhook_secret === "string") update.stripe_webhook_secret = body.webhook_secret || null;
 
   const { error } = await supabaseAdmin.from("nora_accounts").update(update).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

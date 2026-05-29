@@ -9,7 +9,6 @@ type Account = {
   stripe_account_id: string | null;
   livemode: boolean;
   status: string;
-  stripe_webhook_secret: string | null;
   last_polled_at: string | null;
   last_poll_error: string | null;
   last_metrics_json: {
@@ -27,7 +26,7 @@ type Account = {
 export default async function NoraIndexPage() {
   const { data: accounts } = await supabaseAdmin
     .from("nora_accounts")
-    .select("id, label, stripe_account_id, livemode, status, stripe_webhook_secret, last_polled_at, last_poll_error, last_metrics_json, last_metrics_at")
+    .select("id, label, stripe_account_id, livemode, status, last_polled_at, last_poll_error, last_metrics_json, last_metrics_at")
     .order("updated_at", { ascending: false });
 
   // Pending dunning drafts + open critical events per account

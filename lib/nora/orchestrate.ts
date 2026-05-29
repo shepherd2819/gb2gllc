@@ -6,6 +6,7 @@ import { classifyStripeEvent, type Classified } from "./classify";
 import { draftDunning, DUNNING_MODEL_NAME } from "./dunning";
 import { writeWeeklyDigest } from "./digest";
 import { sendAlertEmail, sendDunningEmail, sendDigestEmail } from "./email";
+import { getStripeSecretOrThrow } from "./env";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "john@gb2gllc.com";
 
@@ -24,18 +25,19 @@ export async function processStripeEvent(accountId: string, stripeEvent: Stripe.
 
   const { data: acct } = await supabaseAdmin
     .from("nora_accounts")
-    .select("id, stripe_secret_key, livemode")
+    .select("id, livemode")
     .eq("id", accountId)
     .single();
   if (!acct) return { ok: false, error: "account not found" };
 
+  const stripeKey = getStripeSecretOrThrow();
   const cls = classifyStripeEvent(stripeEvent);
 
   // Enrich customer info (the event payload sometimes doesn't include the email)
   let customerEmail: string | null = null;
   let customerName: string | null = null;
   if (cls.stripe_customer_id) {
-    const c = await getCustomer(acct.stripe_secret_key, cls.stripe_customer_id);
+    const c = await getCustomer(stripeKey, cls.stripe_customer_id);
     if (c) { customerEmail = c.email; customerName = c.name; }
   }
   // Some events (invoice.*) include customer_email directly on the payload
@@ -146,10 +148,13 @@ export async function processStripeEvent(accountId: string, stripeEvent: Stripe.
 // ─── Nightly reconciliation: catch anything the webhook missed ──────────
 export async function nightlyReconcile(accountId: string): Promise<{ scanned: number; new_events: number; errors: string[] }> {
   const { data: acct } = await supabaseAdmin
-    .from("nora_accounts").select("id, stripe_secret_key").eq("id", accountId).single();
+    .from("nora_accounts").select("id").eq("id", accountId).single();
   if (!acct) return { scanned: 0, new_events: 0, errors: ["account not found"] };
 
-  const s = stripeFor(acct.stripe_secret_key);
+  let stripeKey: string;
+  try { stripeKey = getStripeSecretOrThrow(); }
+  catch (err) { return { scanned: 0, new_events: 0, errors: [err instanceof Error ? err.message : String(err)] }; }
+  const s = stripeFor(stripeKey);
   const since = Math.floor(Date.now() / 1000) - 36 * 3600;     // 36-hour lookback
   let scanned = 0, newEvents = 0;
   const errors: string[] = [];
@@ -220,7 +225,10 @@ export async function maybeSendWeeklyDigest(accountId: string, opts?: { force?: 
 
   // Fetch metrics
   let metrics;
-  try { metrics = await fetchMetrics(acct.stripe_secret_key); }
+  try {
+    const stripeKey = getStripeSecretOrThrow();
+    metrics = await fetchMetrics(stripeKey);
+  }
   catch (err) { return { sent: false, reason: `metrics fetch failed: ${err instanceof Error ? err.message : String(err)}` }; }
 
   // Pull previous digest's metrics for week-over-week
@@ -307,7 +315,7 @@ export async function runNoraForAllActive(): Promise<{ accounts: number; new_eve
 
     // Refresh metrics cache for the dashboard
     try {
-      const m = await fetchMetrics((await supabaseAdmin.from("nora_accounts").select("stripe_secret_key").eq("id", a.id).single()).data?.stripe_secret_key ?? "");
+      const m = await fetchMetrics(getStripeSecretOrThrow());
       await supabaseAdmin.from("nora_accounts").update({ last_metrics_json: m, last_metrics_at: new Date().toISOString() }).eq("id", a.id);
     } catch (err) { errors.push(`${a.id}: metrics: ${err instanceof Error ? err.message : String(err)}`); }
 

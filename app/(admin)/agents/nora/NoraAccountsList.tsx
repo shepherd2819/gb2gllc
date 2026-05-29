@@ -7,7 +7,6 @@ type Account = {
   stripe_account_id: string | null;
   livemode: boolean;
   status: string;
-  stripe_webhook_secret: string | null;
   last_polled_at: string | null;
   last_poll_error: string | null;
   last_metrics_json: {
@@ -66,7 +65,7 @@ export function NoraAccountsList({
     <>
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
         {!connecting && (
-          <button className="admin-btn admin-btn-sm" onClick={() => setConnecting(true)}>+ Connect Stripe account</button>
+          <button className="admin-btn admin-btn-sm" onClick={() => setConnecting(true)}>+ Initialize Stripe account</button>
         )}
       </div>
 
@@ -75,9 +74,9 @@ export function NoraAccountsList({
       {accounts.length === 0 && !connecting ? (
         <div className="admin-card" style={{ padding: 24 }}>
           <div className="admin-empty">
-            No Stripe account connected. Click <strong>+ Connect Stripe account</strong> to get started.
+            No Stripe account connected. Click <strong>+ Initialize Stripe account</strong> to get started.
             <div style={{ marginTop: 10, fontSize: 12, color: "var(--text-mute)" }}>
-              You&apos;ll paste a restricted API key + webhook signing secret you create in your Stripe dashboard.
+              Your keys live in Vercel env vars — never our database.
             </div>
           </div>
         </div>
@@ -97,9 +96,6 @@ export function NoraAccountsList({
                       <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3, background: a.livemode ? "#2c7a4a" : "#b07a3a", color: "white", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--mono)" }}>
                         {a.livemode ? "live" : "test"}
                       </span>
-                      {!a.stripe_webhook_secret && (
-                        <span style={{ fontSize: 10, color: "var(--orange, #b07a3a)", fontFamily: "var(--mono)" }}>! webhook not wired</span>
-                      )}
                     </div>
                     {a.stripe_account_id && (
                       <div style={{ fontSize: 11, color: "var(--text-mute)", fontFamily: "var(--mono)" }}>{a.stripe_account_id}</div>
@@ -170,8 +166,6 @@ function money(cents: number, currency: string): string {
 }
 
 function ConnectForm({ onCancel, onConnected }: { onCancel: () => void; onConnected: () => void }) {
-  const [secret, setSecret] = useState("");
-  const [webhook, setWebhook] = useState("");
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -181,7 +175,7 @@ function ConnectForm({ onCancel, onConnected }: { onCancel: () => void; onConnec
     const res = await fetch("/api/admin/nora/connect", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ secret_key: secret, webhook_secret: webhook || null, label: label || undefined }),
+      body: JSON.stringify({ label: label || undefined }),
     });
     const json = await res.json().catch(() => ({}));
     setBusy(false);
@@ -191,44 +185,34 @@ function ConnectForm({ onCancel, onConnected }: { onCancel: () => void; onConnec
 
   return (
     <div className="admin-card" style={{ padding: 18, marginBottom: 16 }}>
-      <h3 style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 500 }}>Connect Stripe</h3>
+      <h3 style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 500 }}>Initialize Nora</h3>
       <div style={{ fontSize: 12, color: "var(--text-mute)", marginBottom: 14, lineHeight: 1.55 }}>
+        Your Stripe credentials live in <strong>Vercel env vars only</strong> (never in our database). Set these in the Vercel dashboard, then redeploy:
+        <ul style={{ margin: "8px 0", paddingLeft: 18, fontFamily: "var(--mono)", fontSize: 12 }}>
+          <li><code>NORA_STRIPE_SECRET_KEY</code> — your <code>rk_live_...</code> restricted key</li>
+          <li><code>NORA_STRIPE_WEBHOOK_SECRET</code> — your <code>whsec_...</code> from the webhook endpoint</li>
+        </ul>
         In your Stripe dashboard:
         <ol style={{ margin: "8px 0", paddingLeft: 18 }}>
-          <li><strong>Developers → API keys → Create restricted key</strong>. Grant <em>Read</em> on: Balance, Charges, Customers, Disputes, Invoices, Payouts, Refunds, Subscriptions, Events. <em>Write</em> on: Customers (so we can update notes). Paste the <code>rk_live_...</code> key below.</li>
-          <li><strong>Developers → Webhooks → Add endpoint</strong>. URL: <code>https://admin.gb2gllc.com/api/stripe/webhook</code>. Subscribe to: <code>invoice.payment_failed, customer.subscription.created/updated/deleted, charge.failed, charge.refunded, charge.dispute.created, payout.failed, invoice.upcoming</code>. After creating, copy the <em>Signing secret</em> (<code>whsec_...</code>) and paste below.</li>
+          <li><strong>Developers → API keys → Create restricted key</strong>. Grant <em>Read</em> on: Balance, Charges, Customers, Disputes, Invoices, Payouts, Refunds, Subscriptions, Events. <em>Write</em> on: Customers. Copy the <code>rk_live_...</code> value into Vercel as <code>NORA_STRIPE_SECRET_KEY</code>.</li>
+          <li><strong>Developers → Webhooks → Add endpoint</strong>. URL: <code>https://admin.gb2gllc.com/api/stripe/webhook</code>. Subscribe to: <code>invoice.payment_failed, customer.subscription.created/updated/deleted, charge.failed, charge.refunded, charge.dispute.created, payout.failed, invoice.upcoming</code>. Copy the <em>Signing secret</em> into Vercel as <code>NORA_STRIPE_WEBHOOK_SECRET</code>.</li>
+          <li>Redeploy on Vercel so the new env vars load, then click <strong>Initialize</strong> below.</li>
         </ol>
       </div>
 
-      <div style={{ display: "grid", gap: 10 }}>
-        <div>
-          <label style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-mute)" }}>Stripe restricted key</label>
-          <input
-            type="password" value={secret} onChange={(e) => setSecret(e.target.value)}
-            placeholder="rk_live_..." className="admin-input" style={{ marginTop: 4, fontFamily: "var(--mono)", fontSize: 12 }} autoComplete="off"
-          />
-        </div>
-        <div>
-          <label style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-mute)" }}>Webhook signing secret (optional — set later)</label>
-          <input
-            type="password" value={webhook} onChange={(e) => setWebhook(e.target.value)}
-            placeholder="whsec_..." className="admin-input" style={{ marginTop: 4, fontFamily: "var(--mono)", fontSize: 12 }} autoComplete="off"
-          />
-        </div>
-        <div>
-          <label style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-mute)" }}>Label (optional — defaults to your business name)</label>
-          <input
-            type="text" value={label} onChange={(e) => setLabel(e.target.value)}
-            placeholder="e.g. GB2GLLC main" className="admin-input" style={{ marginTop: 4 }}
-          />
-        </div>
+      <div>
+        <label style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-mute)" }}>Label (optional)</label>
+        <input
+          type="text" value={label} onChange={(e) => setLabel(e.target.value)}
+          placeholder="e.g. GB2GLLC main" className="admin-input" style={{ marginTop: 4 }}
+        />
       </div>
 
       {err && <div style={{ marginTop: 12, color: "var(--red, #be5050)", fontSize: 12 }}>{err}</div>}
 
       <div style={{ marginTop: 14, display: "flex", gap: 8 }}>
-        <button className="admin-btn admin-btn-sm" onClick={submit} disabled={busy || !secret}>
-          {busy ? "Validating…" : "Connect"}
+        <button className="admin-btn admin-btn-sm" onClick={submit} disabled={busy}>
+          {busy ? "Validating env vars against Stripe…" : "Initialize"}
         </button>
         <button className="admin-btn-ghost admin-btn-sm" onClick={onCancel} disabled={busy}>Cancel</button>
       </div>

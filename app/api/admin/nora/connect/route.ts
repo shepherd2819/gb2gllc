@@ -2,34 +2,32 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { testStripeKey } from "@/lib/nora/stripe";
+import { getNoraSecrets } from "@/lib/nora/env";
 
 export const dynamic = "force-dynamic";
 
 // POST /api/admin/nora/connect
-// body: { secret_key: "rk_live_..."  OR  "sk_..."  , webhook_secret?: "whsec_..."  , label?: "..." }
-// Validates the key by calling /v1/account, then upserts a nora_accounts row.
+// body: { label?: "..." }
+// Reads NORA_STRIPE_SECRET_KEY + NORA_STRIPE_WEBHOOK_SECRET from env,
+// validates the Stripe key, and creates the Nora account row. The key
+// itself is NEVER stored — it lives only in the Vercel env vault.
 export async function POST(req: NextRequest) {
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
 
+  const secrets = getNoraSecrets();
+  if (!secrets.ok) {
+    return NextResponse.json({
+      error: `Set these env vars in Vercel, then redeploy: ${secrets.missing.join(", ")}`,
+    }, { status: 400 });
+  }
+
   const body = await req.json().catch(() => ({}));
-  const secret_key: unknown = body.secret_key;
-  const webhook_secret: unknown = body.webhook_secret;
   const labelOverride: unknown = body.label;
 
-  if (typeof secret_key !== "string" || !secret_key.trim()) {
-    return NextResponse.json({ error: "secret_key required" }, { status: 400 });
-  }
-  if (!/^(sk|rk)_(live|test)_/.test(secret_key)) {
-    return NextResponse.json({ error: "key must start with sk_live_, sk_test_, rk_live_, or rk_test_" }, { status: 400 });
-  }
-  if (webhook_secret !== undefined && webhook_secret !== null && (typeof webhook_secret !== "string" || (webhook_secret && !webhook_secret.startsWith("whsec_")))) {
-    return NextResponse.json({ error: "webhook_secret must start with whsec_" }, { status: 400 });
-  }
-
-  // Validate the key against Stripe
-  const test = await testStripeKey(secret_key);
-  if (!test.ok) return NextResponse.json({ error: `Stripe rejected the key: ${test.error}` }, { status: 400 });
+  // Validate the key against Stripe (live or test — auto-detected from prefix)
+  const test = await testStripeKey(secrets.stripeSecretKey);
+  if (!test.ok) return NextResponse.json({ error: `Stripe rejected NORA_STRIPE_SECRET_KEY: ${test.error}` }, { status: 400 });
 
   const label = (typeof labelOverride === "string" && labelOverride.trim()) ? labelOverride.trim() : test.account.label;
 
@@ -38,8 +36,6 @@ export async function POST(req: NextRequest) {
       workos_user_id: guard.user.id,
       label,
       stripe_account_id: test.account.id,
-      stripe_secret_key: secret_key,
-      stripe_webhook_secret: webhook_secret || null,
       livemode: test.account.livemode,
       status: "active",
       updated_at: new Date().toISOString(),

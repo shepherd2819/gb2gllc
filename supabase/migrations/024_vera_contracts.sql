@@ -1,5 +1,5 @@
 -- ============================================================
--- 021_vera_contracts.sql — Vera (contract generation + signing agent)
+-- 024_vera_contracts.sql — Vera (contract generation + signing agent)
 -- ============================================================
 -- Admin-only. One row per generated contract. Tokens are random 32-byte
 -- URL-safe strings (no enumeration). Signed PDFs land in Supabase Storage

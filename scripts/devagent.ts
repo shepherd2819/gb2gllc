@@ -1,4 +1,5 @@
 // scripts/devagent.ts
+import { writeFile } from "node:fs/promises";
 import { prepareWorkspace } from "../lib/devagent/workspace";
 import { runDevAgent } from "../lib/devagent/run";
 
@@ -23,6 +24,14 @@ async function main() {
       task: { description },
       workspace: ws,
     });
+    const resultFile = process.env.ADA_RESULT_FILE;
+    if (resultFile) {
+      try {
+        await writeFile(resultFile, JSON.stringify(result, null, 2), "utf8");
+      } catch (e) {
+        console.error(`failed to write ADA_RESULT_FILE: ${(e as Error).message}`);
+      }
+    }
     process.exit(result.status === "completed" ? 0 : 2);
   } finally {
     await ws.cleanup();

@@ -76,7 +76,16 @@ export function normalizeClassification(raw: Partial<Classification> | Record<st
  * - Returns "" if the input draft is empty/whitespace.
  */
 export function finalizeDraftBody(draft: string, signature: string | undefined): string {
-  let body = draft.replace(/\n+(best|thanks|thank you|cheers|sincerely|warmly|regards|—|--)[\s\S]*$/i, "").trim();
+  // Strip a real sign-off without eating a legit "Thanks!" paragraph.
+  // Two shapes count as sign-offs:
+  //   (a) Named word followed by comma+newline: "Best,\nJohn", "Thanks,\nWren", etc.
+  //   (b) Divider line: "—" or "--" optionally followed by whitespace and a newline,
+  //       or with a signature on the same line ("— Wren").
+  // A word like "Thanks!" followed by sentence continuation no longer matches.
+  let body = draft.replace(
+    /\n+(?:(?:best|thanks|thank you|cheers|sincerely|warmly|regards)\s*,\s*\n|(?:—|--)\s*\n?)[\s\S]*$/i,
+    ""
+  ).trim();
   if (!body) return "";
   body = `${body}\n${supportFooterText()}`;
   if (signature?.trim()) body = `${body}\n\n${signature.trim()}`;

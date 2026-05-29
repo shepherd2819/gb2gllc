@@ -67,3 +67,29 @@ test("finalizeDraftBody returns empty string when draft is empty", () => {
   assert.equal(finalizeDraftBody("", "John"), "");
   assert.equal(finalizeDraftBody("   ", "John"), "");
 });
+
+// Sign-off regex false-positive fix (2026-05-29):
+// The previous regex stripped any line starting with Best/Thanks/etc. after a
+// blank line, including legit "Thanks! …" paragraphs. The new regex requires
+// the word to be followed by comma+newline, or to be an em-dash/double-dash
+// divider line.
+
+test("finalizeDraftBody does NOT strip a 'Thanks!' paragraph that's real content", () => {
+  process.env.NEXT_PUBLIC_HOME_URL = "https://home.gb2gllc.com";
+  const out = finalizeDraftBody("Fixed it.\n\nThanks! We really appreciate your patience.", undefined);
+  assert.match(out, /Thanks! We really appreciate/);
+  assert.match(out, /Fixed it/);
+});
+
+test("finalizeDraftBody does NOT strip 'Thanks for …' mid-paragraph", () => {
+  process.env.NEXT_PUBLIC_HOME_URL = "https://home.gb2gllc.com";
+  const out = finalizeDraftBody("Looking into it.\n\nThanks for your patience while we investigate.", undefined);
+  assert.match(out, /Thanks for your patience/);
+});
+
+test("finalizeDraftBody strips an em-dash divider sign-off with name on the same line", () => {
+  process.env.NEXT_PUBLIC_HOME_URL = "https://home.gb2gllc.com";
+  const out = finalizeDraftBody("Fix is going out today.\n\n— Wren", undefined);
+  assert.doesNotMatch(out, /— Wren/);
+  assert.match(out, /Fix is going out today/);
+});

@@ -60,23 +60,32 @@ export type AdaEventInput = {
 export async function applyAdaEvent(input: AdaEventInput): Promise<void> {
   const { supabaseAdmin } = await import("@/lib/supabase");
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabaseAdmin.from("ticket_events") as any)
-    .insert(
-      {
-        ticket_id: input.ticketId,
-        kind:      input.kind,
-        actor:     "ada",
-        payload:   { ...input.payload, run_id: input.runId },
-        body:      input.body ?? null,
-      },
-      { ignoreDuplicates: true }
-    );
+  const { error: insertErr } = await supabaseAdmin
+    .from("ticket_events")
+    .insert({
+      ticket_id: input.ticketId,
+      kind:      input.kind,
+      actor:     "ada",
+      payload:   { ...input.payload, run_id: input.runId },
+      body:      input.body ?? null,
+    });
+
+  // PG error 23505 = unique_violation. The 025 unique partial index on
+  // (ticket_id, kind, payload->>'run_id') for actor='ada' lets us safely
+  // swallow this — it means an Inngest step retry already wrote the row.
+  // Any other error must propagate.
+  if (insertErr && insertErr.code !== "23505") {
+    throw new Error(`applyAdaEvent: ticket_events insert: ${insertErr.message}`);
+  }
 
   const patch = buildTicketUpdatePayload(input.kind, input.runId, input.payload);
 
-  await supabaseAdmin
+  const { error: updateErr } = await supabaseAdmin
     .from("tickets")
     .update(patch)
     .eq("id", input.ticketId);
+
+  if (updateErr) {
+    throw new Error(`applyAdaEvent: tickets update: ${updateErr.message}`);
+  }
 }

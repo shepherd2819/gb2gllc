@@ -1,9 +1,20 @@
 "use client";
 import { useState } from "react";
 
+const CATEGORY_OPTIONS = [
+  "Question",
+  "Bug Report",
+  "Feature Request",
+  "Code Fix",
+  "Other",
+] as const;
+
+type Category = (typeof CATEGORY_OPTIONS)[number];
+
 export function TicketForm({ clientId }: { clientId: string }) {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [category, setCategory] = useState<Category>("Question");
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
 
   async function submit(e: React.FormEvent) {
@@ -12,10 +23,14 @@ export function TicketForm({ clientId }: { clientId: string }) {
     const res = await fetch("/api/portal/tickets", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientId, subject, body }),
+      body: JSON.stringify({ clientId, subject, body, category }),
     });
     setStatus(res.ok ? "done" : "error");
-    if (res.ok) { setSubject(""); setBody(""); }
+    if (res.ok) {
+      setSubject("");
+      setBody("");
+      setCategory("Question");
+    }
   }
 
   return (
@@ -31,6 +46,16 @@ export function TicketForm({ clientId }: { clientId: string }) {
         required
         disabled={status === "sending"}
       />
+      <select
+        className="ticket-input"
+        value={category}
+        onChange={(e) => setCategory(e.target.value as Category)}
+        disabled={status === "sending"}
+      >
+        {CATEGORY_OPTIONS.map((c) => (
+          <option key={c} value={c}>{c}</option>
+        ))}
+      </select>
       <textarea
         className="ticket-textarea"
         placeholder="Describe the issue or request..."

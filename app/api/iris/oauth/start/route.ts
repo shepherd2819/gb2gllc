@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { googleInstallUrl } from "@/lib/gmail";
+import { IRIS_REDIRECT_URI } from "@/lib/iris/oauth-config";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "john@gb2gllc.com";
-const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL ?? "https://admin.gb2gllc.com";
-const IRIS_REDIRECT_URI = `${ADMIN_URL}/api/iris/oauth/callback`;
 
 // GET /api/iris/oauth/start
 // Admin clicks "Connect inbox" → we generate a state nonce, set a cookie,

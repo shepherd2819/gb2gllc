@@ -16,7 +16,7 @@ const OAUTH_TOKEN = "https://oauth2.googleapis.com/token";
 const GMAIL_API   = "https://gmail.googleapis.com/gmail/v1";
 const USERINFO    = "https://openidconnect.googleapis.com/v1/userinfo";
 
-const SCOPES = [
+const GMAIL_SCOPES = [
   "https://www.googleapis.com/auth/gmail.modify",
   "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/userinfo.profile",
@@ -24,14 +24,16 @@ const SCOPES = [
 ];
 
 // ─── OAuth start ─────────────────────────────────────────────────────────
-export function googleInstallUrl(opts: { state: string; redirectUri: string }): string {
+// `scopes` is optional — defaults to the Gmail-modify set used by Iris/Wren.
+// Holt passes a calendar-only set; future agents can pass their own.
+export function googleInstallUrl(opts: { state: string; redirectUri: string; scopes?: string[] }): string {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if (!clientId) throw new Error("GOOGLE_CLIENT_ID not set");
   const url = new URL(OAUTH_AUTH);
   url.searchParams.set("client_id", clientId);
   url.searchParams.set("redirect_uri", opts.redirectUri);
   url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", SCOPES.join(" "));
+  url.searchParams.set("scope", (opts.scopes ?? GMAIL_SCOPES).join(" "));
   url.searchParams.set("access_type", "offline");      // required to get refresh_token
   url.searchParams.set("prompt", "consent");           // force refresh_token on every install
   url.searchParams.set("include_granted_scopes", "true");

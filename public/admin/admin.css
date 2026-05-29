@@ -505,3 +505,245 @@ a { color: inherit; text-decoration: none; }
   .at-head span:nth-child(6), .at-row span:nth-child(6) { display: none; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ── 26. DEVAGENT MANAGER + TIMELINE ────────────────────────── */
+
+/* Card wrapper — same look as .admin-card */
+.manager-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 20px;
+}
+
+/* Label + control row */
+.manager-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.manager-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  padding-top: 8px;
+}
+
+/* Textarea */
+.manager-textarea {
+  display: block;
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 9px 12px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  outline: none;
+  resize: vertical;
+  line-height: 1.5;
+  box-sizing: border-box;
+  transition: border-color .15s;
+}
+.manager-textarea:focus { border-color: var(--gold); }
+
+/* Primary save button — clones .admin-btn */
+.manager-save {
+  padding: 9px 18px;
+  background: var(--gold);
+  color: #1C1E1B;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity .15s;
+  margin-top: 4px;
+}
+.manager-save:hover { opacity: 0.85; }
+.manager-save:disabled { opacity: 0.4; cursor: default; }
+
+/* Divider */
+.manager-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 18px 0;
+}
+
+/* Run history table */
+.manager-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.manager-table th,
+.manager-table td {
+  text-align: left;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.manager-table th {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  background: var(--bg-3);
+}
+.manager-table tr:last-child td { border-bottom: none; }
+
+/* Secondary / muted text */
+.manager-muted {
+  font-size: 12px;
+  color: var(--text-mute);
+  margin: 8px 0 0;
+}
+
+/* Single-line truncation for task column */
+.manager-task-cell {
+  max-width: 240px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Flash messages */
+.manager-msg-ok  { font-family: var(--mono); font-size: 11px; color: var(--sage); margin: 0 0 10px; }
+.manager-msg-err { font-family: var(--mono); font-size: 11px; color: var(--red);  margin: 0 0 10px; }
+
+/* Chip row (category toggles) */
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.chip {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  background: none;
+  color: var(--text-mute);
+  cursor: pointer;
+  transition: all .15s;
+}
+.chip:hover { border-color: var(--text-soft); color: var(--text); }
+.chip-on {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: var(--gold-dim);
+}
+
+/* Badge variants */
+.badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 100px;
+}
+/* Ticket status badges (used by .badge.open, .badge.in_progress, etc.) */
+.badge.open           { background: var(--blue-dim); color: var(--blue); }
+.badge.in_progress    { background: var(--gold-dim); color: var(--gold); }
+.badge.awaiting_review{ background: var(--gold-dim); color: var(--gold); }
+.badge.resolved       { background: var(--sage-dim); color: var(--sage); }
+.badge.closed         { background: var(--bg-3);     color: var(--text-mute); }
+/* Semantic variant classes (used in DevAgentManager) */
+.badge-ok   { background: var(--sage-dim); color: var(--sage); }
+.badge-warn { background: var(--gold-dim); color: var(--gold); }
+.badge-err  { background: var(--red-dim);  color: var(--red); }
+.badge-info { background: var(--blue-dim); color: var(--blue); }
+.badge-muted{ background: var(--bg-3);     color: var(--text-mute); }
+
+/* Section headings (add only if not already defined) */
+.section-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  margin: 0 0 14px;
+}
+.section-subtitle {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0 0 10px;
+}
+
+/* Single-line muted run summary */
+.ada-run-summary {
+  font-size: 12px;
+  color: var(--text-mute);
+  margin: 12px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Ticket timeline */
+.ticket-timeline { margin-top: 28px; }
+
+.timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.timeline-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.timeline-row:last-child { border-bottom: none; }
+
+.timeline-time {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-mute);
+  flex-shrink: 0;
+  min-width: 140px;
+}
+.timeline-actor {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-soft);
+  flex-shrink: 0;
+}
+.timeline-kind {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 100px;
+  background: var(--blue-dim);
+  color: var(--blue);
+  flex-shrink: 0;
+}
+.timeline-body {
+  flex: 1;
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.timeline-pr {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--gold);
+  flex-shrink: 0;
+}
+.timeline-pr:hover { text-decoration: underline; }

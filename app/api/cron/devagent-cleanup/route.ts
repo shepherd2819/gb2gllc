@@ -1,10 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { logEvent } from "@/lib/logger";
 
 const STALE_AFTER_MS = 30 * 60_000; // 30 minutes
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get("authorization");
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
+
   const cutoff = new Date(Date.now() - STALE_AFTER_MS).toISOString();
 
   const { data: stale, error: selectErr } = await supabaseAdmin

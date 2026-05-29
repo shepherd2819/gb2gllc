@@ -16,8 +16,8 @@ import type { RunResult } from "@/lib/devagent/types";
 
 const REPO_URL =
   process.env.GB2G_REPO_URL ?? "https://github.com/shepherd2819/gb2gllc.git";
-const SANDBOX_REPO_PATH = "/sandbox/repo";
-const SANDBOX_RESULT_PATH = "/sandbox/.devagent-result.json";
+const SANDBOX_REPO_PATH = "/vercel/sandbox/repo";
+const SANDBOX_RESULT_PATH = "/vercel/sandbox/.devagent-result.json";
 
 export type SandboxRunOutcome = {
   /** Exit code of `npm run devagent -- "..."` inside the sandbox. */
@@ -47,6 +47,32 @@ export async function runInSandbox(
   });
 
   try {
+    // Install gh CLI — Phase 1's ship.ts shells out to it for PR ops.
+    // The @vercel/sandbox base image (Amazon Linux 2023) ships dnf.
+    await sandbox.runCommand({
+      cmd:  "dnf",
+      args: ["install", "-y", "gh"],
+      sudo: true,
+    });
+
+    // Configure git identity (git commit errors without this).
+    await sandbox.runCommand({
+      cmd:  "git",
+      args: ["config", "--global", "user.email", "ada@gb2gllc.com"],
+    });
+    await sandbox.runCommand({
+      cmd:  "git",
+      args: ["config", "--global", "user.name", "Ada"],
+    });
+
+    // Authenticate git via GH_TOKEN so HTTPS pushes succeed.
+    // gh auth setup-git reads GH_TOKEN from env (already passed in Sandbox.create)
+    // and installs a credential helper in ~/.gitconfig.
+    await sandbox.runCommand({
+      cmd:  "gh",
+      args: ["auth", "setup-git"],
+    });
+
     // Clone the repo (no cwd needed; runs from default working dir).
     await sandbox.runCommand("git", ["clone", REPO_URL, SANDBOX_REPO_PATH]);
 

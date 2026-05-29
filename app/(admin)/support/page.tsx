@@ -21,7 +21,7 @@ export default async function SupportListPage({
     .select("id, subject, status, created_at, client:clients(name, company)")
     .order("created_at", { ascending: false })
     .limit(200);
-  if (!showAll) q = q.in("status", ["open", "in_progress"]);
+  if (!showAll) q = q.in("status", ["open", "in_progress", "awaiting_review"]);
   const { data: tickets } = await q;
 
   return (

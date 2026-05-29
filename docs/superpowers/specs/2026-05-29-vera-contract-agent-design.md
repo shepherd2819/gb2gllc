@@ -360,10 +360,12 @@ A separate from-address (`contracts@gb2gllc.com`) is nicer for deliverability an
 Single PR. Migration + lib + admin UI + signing page + cron + tests. Mirrors the Wren shape (which also shipped as one PR). Estimated work: ~2 days.
 
 Operational tasks after merge (user-only, Phase N):
-- `supabase db push` to apply `021_vera_contracts.sql`
-- Create the two Notion artifacts (Contracts DB + master template page); share with integration
-- Set the new env vars in Vercel
-- Smoke test: generate a contract against a test client (John's own email), sign it, verify Notion page + Slack ping + emails
+- `supabase db push` to apply `024_vera_contracts.sql` (021 was taken at implementation time; final number is 024)
+- Create the private Supabase Storage bucket `vera` via the Supabase dashboard (or `supabaseAdmin.storage.createBucket('vera', { public: false })`)
+- Create the two Notion artifacts (Contracts DB + master template page); share with the GB2G Notion integration
+- Set the new env vars in Vercel: `NOTION_CONTRACT_TEMPLATE_PAGE_ID`, `NOTION_CONTRACTS_DATABASE_ID`, `VERA_SLACK_CHANNEL` (or rely on `SUPPORT_SLACK_CHANNEL` fallback), optional `VERA_RESEND_FROM`
+- Smoke test: generate a contract against a test client (John's own email), sign it, verify signed PDF + Notion page + Slack ping + emails
+- Known follow-up (Phase 2): the Notion file URL is signed for 7 days. For a permanent record either set the `vera` bucket public + use permanent URLs, or add a periodic cron that re-signs the URL weekly.
 
 ---
 

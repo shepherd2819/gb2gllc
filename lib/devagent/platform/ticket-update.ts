@@ -1,7 +1,11 @@
+// lib/devagent/platform/ticket-update.ts
 //
 // applyAdaEvent writes one ticket_events row AND transitions the parent
-// ticket's status. The status decision is pulled out as a pure function
-// (decideTicketStatus) so it's testable without supabase.
+// ticket's status. The status decision and the full UPDATE payload are
+// pulled out as pure functions so they're testable without supabase.
+//
+// NOTE: supabaseAdmin is imported dynamically inside the function so this
+// module stays env-free at require time (mirrors trigger.ts pattern).
 
 export type AdaEventKind = "ada_dispatched" | "ada_completed" | "ada_failed";
 
@@ -18,6 +22,27 @@ export function decideTicketStatus(
   return payload.merged === true ? "resolved" : "awaiting_review";
 }
 
+/**
+ * Pure helper: build the partial UPDATE payload for the tickets row given
+ * an Ada event. Crucially, `resolved_at` is ONLY included when the new
+ * status is 'resolved' — for non-resolved transitions the key is OMITTED
+ * (so a stale ada_failed after a manual admin resolution leaves the
+ * resolved_at timestamp alone).
+ */
+export function buildTicketUpdatePayload(
+  kind: AdaEventKind,
+  runId: string,
+  payload: Record<string, unknown>
+): { status: TicketStatus; ada_run_id: string; resolved_at?: string } {
+  const status = decideTicketStatus(kind, payload);
+  const out: { status: TicketStatus; ada_run_id: string; resolved_at?: string } = {
+    status,
+    ada_run_id: runId,
+  };
+  if (status === "resolved") out.resolved_at = new Date().toISOString();
+  return out;
+}
+
 export type AdaEventInput = {
   ticketId: string;
   runId: string;
@@ -27,31 +52,31 @@ export type AdaEventInput = {
 };
 
 /**
- * Write a ticket_events row and update tickets.status + tickets.ada_run_id.
- * Sets tickets.resolved_at iff the new status is 'resolved'.
- *
- * NOTE: supabaseAdmin is imported dynamically inside the function so this
- * module stays env-free at require time (mirrors trigger.ts pattern), which
- * keeps decideTicketStatus pure-function tests working without env vars.
+ * Write a ticket_events row (idempotently — the unique partial index on
+ * (ticket_id, kind, payload->>'run_id') for actor='ada' lets us safely
+ * ignore duplicates on Inngest step retry) and update tickets.status /
+ * ada_run_id / resolved_at via buildTicketUpdatePayload.
  */
 export async function applyAdaEvent(input: AdaEventInput): Promise<void> {
   const { supabaseAdmin } = await import("@/lib/supabase");
-  const nextStatus = decideTicketStatus(input.kind, input.payload);
 
-  await supabaseAdmin.from("ticket_events").insert({
-    ticket_id: input.ticketId,
-    kind:      input.kind,
-    actor:     "ada",
-    payload:   { ...input.payload, run_id: input.runId },
-    body:      input.body ?? null,
-  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabaseAdmin.from("ticket_events") as any)
+    .insert(
+      {
+        ticket_id: input.ticketId,
+        kind:      input.kind,
+        actor:     "ada",
+        payload:   { ...input.payload, run_id: input.runId },
+        body:      input.body ?? null,
+      },
+      { ignoreDuplicates: true }
+    );
+
+  const patch = buildTicketUpdatePayload(input.kind, input.runId, input.payload);
 
   await supabaseAdmin
     .from("tickets")
-    .update({
-      status:      nextStatus,
-      ada_run_id:  input.runId,
-      resolved_at: nextStatus === "resolved" ? new Date().toISOString() : null,
-    })
+    .update(patch)
     .eq("id", input.ticketId);
 }

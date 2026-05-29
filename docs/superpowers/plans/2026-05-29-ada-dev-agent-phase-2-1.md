@@ -38,16 +38,16 @@ Expected: all three exist.
 
 ---
 
-## Task 1: Migration `024_devagent_phase2_1.sql`
+## Task 1: Migration `025_devagent_phase2_1.sql`
 
 **Files:**
-- Create: `supabase/migrations/024_devagent_phase2_1.sql`
+- Create: `supabase/migrations/025_devagent_phase2_1.sql`
 
 - [ ] **Step 1: Create the migration file**
 
 ```sql
 -- ============================================================
--- 024_devagent_phase2_1.sql — Ada Phase 2.1 (step idempotency)
+-- 025_devagent_phase2_1.sql — Ada Phase 2.1 (step idempotency)
 -- ============================================================
 -- Adds the idempotency support Phase 2 deferred:
 --   * devagent_runs.idempotency_key + unique index → createRun UPSERT
@@ -68,8 +68,8 @@ CREATE UNIQUE INDEX uq_ticket_events_ada
 - [ ] **Step 2: Commit**
 
 ```bash
-git add supabase/migrations/024_devagent_phase2_1.sql
-git commit -m "feat(devagent): migration 024 — Phase 2.1 idempotency
+git add supabase/migrations/025_devagent_phase2_1.sql
+git commit -m "feat(devagent): migration 025 — Phase 2.1 idempotency
 
 devagent_runs.idempotency_key + unique partial index for createRun UPSERT.
 Unique partial index on ticket_events(ticket_id, kind, payload->>'run_id')
@@ -565,7 +565,7 @@ Run typecheck again. Expected: PASS now.
 git add lib/devagent/platform/record.ts lib/devagent/platform/record.test.ts lib/inngest/functions/devagent-run.ts
 git commit -m "fix(devagent): record idempotency + finalizeRun accepts clientId
 
-createRun now UPSERTs on idempotency_key (from migration 024). The Inngest
+createRun now UPSERTs on idempotency_key (from migration 025). The Inngest
 function passes \`\${event.id}:insert\` so step.run retries after a partial
 checkpoint don't create a second devagent_runs row.
 
@@ -1115,7 +1115,7 @@ npm run build
 
 Expected: succeeds OR fails with the same pre-existing Supabase env-var error as Phases 1/2 (`Error: supabaseUrl is required.`). Anything else → STOP and report.
 
-- [ ] **Step 5: DO NOT push and DO NOT merge.** Leave the branch local. The user reviews, applies migration 024 via `supabase db push`, then decides when to push + merge.
+- [ ] **Step 5: DO NOT push and DO NOT merge.** Leave the branch local. The user reviews, applies migration 025 via `supabase db push`, then decides when to push + merge.
 
 ---
 

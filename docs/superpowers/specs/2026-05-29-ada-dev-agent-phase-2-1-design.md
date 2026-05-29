@@ -39,7 +39,7 @@ When `client_devagent_assignments` has no row, or `mission` / `budget_overrides`
 
 ### 2. Step idempotency for `ticket_events` + `devagent_runs`
 
-New migration `024_devagent_phase2_1.sql`:
+New migration `025_devagent_phase2_1.sql`:
 
 ```sql
 -- Idempotency for devagent_runs (createRun via Inngest step retry).
@@ -86,7 +86,8 @@ Code changes:
 
 - 022 = Nora
 - 023 = Ada Phase 2
-- **024 = Ada Phase 2.1** (the migration in §2)
+- 024 = Nora drop-stripe-secrets follow-up
+- **025 = Ada Phase 2.1** (the migration in §2)
 
 ## Testing
 
@@ -109,7 +110,7 @@ Integration / smoke notes:
 
 ## Build order
 
-1. Migration `024_devagent_phase2_1.sql`.
+1. Migration `025_devagent_phase2_1.sql`.
 2. `record.ts` — `createRun` UPSERT + `finalizeRun` clientId parameter.
 3. `ticket-update.ts` — `resolved_at` preservation + `ignoreDuplicates`.
 4. `orchestrator.ts` — `{mission}` option.

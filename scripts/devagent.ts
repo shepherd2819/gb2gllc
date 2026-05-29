@@ -20,9 +20,26 @@ async function main() {
   console.log(`Workspace: ${ws.cwd}\nBranch:    ${ws.branch}\n`);
 
   try {
+    const missionOverride =
+      typeof process.env.ADA_MISSION_OVERRIDE === "string" && process.env.ADA_MISSION_OVERRIDE.length > 0
+        ? process.env.ADA_MISSION_OVERRIDE
+        : undefined;
+
+    let budgetOverride: import("@/lib/devagent/types").GuardrailsConfig["budget"] | undefined;
+    const budgetJson = process.env.ADA_BUDGET_OVERRIDE_JSON;
+    if (budgetJson) {
+      try {
+        budgetOverride = JSON.parse(budgetJson);
+      } catch (e) {
+        console.error(`ignoring malformed ADA_BUDGET_OVERRIDE_JSON: ${(e as Error).message}`);
+      }
+    }
+
     const result = await runDevAgent({
       task: { description },
       workspace: ws,
+      ...(missionOverride !== undefined ? { mission: missionOverride } : {}),
+      ...(budgetOverride !== undefined ? { guardrails: { budget: budgetOverride } } : {}),
     });
     const resultFile = process.env.ADA_RESULT_FILE;
     if (resultFile) {

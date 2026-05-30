@@ -36,13 +36,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <a href="/submissions">Submissions</a>
             <a href="/support">Support</a>
             <a href="/billing">Billing</a>
-            <a href="/agents/iris">Iris</a>
-            <a href="/agents/avery">Avery</a>
-            <a href="/agents/june">June</a>
-            <a href="/agents/wren">Wren</a>
-            <a href="/agents/vera">Vera</a>
-            <a href="/agents/holt">Holt</a>
-            <a href="/agents/nora">Nora</a>
+            <a href="/agents">Agents</a>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <AdminThemeToggle />

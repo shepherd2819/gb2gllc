@@ -747,3 +747,194 @@ a { color: inherit; text-decoration: none; }
   flex-shrink: 0;
 }
 .timeline-pr:hover { text-decoration: underline; }
+
+/* ── Agents rail ────────────────────────────────────────────────────── */
+/* Persistent left rail rendered by app/(admin)/agents/layout.tsx.
+   Breaks out of .admin-main's centered 1100px column to true full-bleed,
+   so the rail sits flush against the viewport's left edge. */
+
+.agents-shell {
+  display: grid;
+  grid-template-columns: 248px 1fr;
+  gap: 0;
+  /* Escape .admin-main's centered 1100px column to true viewport-edge full-bleed. */
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  margin-top: -36px;
+  margin-bottom: -80px;
+  min-height: calc(100vh - 56px);
+}
+
+.agents-rail {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: calc(100vh - 56px);
+  overflow-y: auto;
+  padding: 24px 14px 32px;
+  background: var(--bg-2);
+  border-right: 1px solid var(--border);
+  font-family: var(--sans);
+}
+
+.agents-rail-group {
+  margin-top: 22px;
+}
+
+.agents-rail-group-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  padding: 0 10px;
+  margin-bottom: 8px;
+}
+
+.agents-rail-overview,
+.agents-rail-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--text-soft);
+  transition: background .12s, color .12s;
+  position: relative;
+}
+
+.agents-rail-overview { margin-bottom: 4px; }
+
+.agents-rail-overview:hover,
+.agents-rail-item:hover {
+  background: var(--bg-3);
+  color: var(--text);
+}
+
+.agents-rail-overview.is-active,
+.agents-rail-item.is-active {
+  background: var(--sage-dim);
+  color: var(--text);
+}
+
+.agents-rail-overview.is-active::before,
+.agents-rail-item.is-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--sage);
+}
+
+.agents-rail-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--bg-3);
+  color: var(--text-soft);
+  font-family: var(--mono);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.agents-rail-overview.is-active .agents-rail-glyph,
+.agents-rail-item.is-active .agents-rail-glyph {
+  background: var(--bg-2);
+  color: var(--sage);
+}
+
+.agents-rail-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.agents-rail-name {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  line-height: 1.25;
+}
+
+.agents-rail-tagline {
+  font-size: 11px;
+  color: var(--text-mute);
+  line-height: 1.3;
+  margin-top: 1px;
+}
+
+.agents-rail-overview.is-active .agents-rail-tagline,
+.agents-rail-item.is-active .agents-rail-tagline { color: var(--text-soft); }
+
+/* Status indicators */
+.agents-rail-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-mute);
+}
+.agents-rail-dot.is-live         { background: var(--sage); box-shadow: 0 0 0 3px var(--sage-dim); }
+.agents-rail-dot.is-idle         { background: var(--text-mute); }
+.agents-rail-dot.is-paused       { background: var(--gold); }
+.agents-rail-dot.is-unconfigured { background: transparent; border: 1px dashed var(--text-mute); width: 7px; height: 7px; }
+
+.agents-rail-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--sage);
+  color: var(--bg-2);
+  letter-spacing: 0;
+  line-height: 1.4;
+  flex-shrink: 0;
+  min-width: 16px;
+  text-align: center;
+}
+
+/* Content column inside the agents shell */
+.agents-content {
+  padding: 36px 32px 80px;
+  max-width: 1100px;
+  width: 100%;
+  min-width: 0; /* allow grid child to shrink */
+}
+
+/* Overview-card hover */
+a.admin-card:hover {
+  border-color: var(--sage);
+  transform: translateY(-1px);
+}
+
+/* Mobile: stack the rail above content */
+@media (max-width: 900px) {
+  .agents-shell {
+    grid-template-columns: 1fr;
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+    margin-top: -36px;
+    margin-bottom: -80px;
+  }
+  .agents-rail {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 4px;
+  }
+  .agents-rail-group { margin-top: 0; grid-column: 1 / -1; display: contents; }
+  .agents-rail-group-label { display: none; }
+  .agents-content { padding: 24px 20px 60px; }
+}

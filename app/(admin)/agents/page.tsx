@@ -26,8 +26,8 @@ export default function AgentsOverviewPage() {
                 <Link
                   key={a.slug}
                   href={`/agents/${a.slug}`}
-                  className="admin-card"
-                  style={{ padding: 18, display: "block", textDecoration: "none", color: "var(--text)", transition: "transform .12s, border-color .12s" }}
+                  className="admin-card agent-card"
+                  style={{ padding: 18, display: "block", textDecoration: "none", color: "var(--text)", position: "relative", transition: "transform .12s, border-color .12s" }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, borderRadius: 8, background: "var(--bg-3)", fontFamily: "var(--mono)", fontSize: 18, color: "var(--text-soft)" }}>
@@ -38,6 +38,7 @@ export default function AgentsOverviewPage() {
                       <div style={{ fontSize: 12, color: "var(--text-soft)", marginTop: 2 }}>{a.tagline}</div>
                     </div>
                   </div>
+                  <span className="agent-card-tooltip" role="tooltip">{a.description}</span>
                 </Link>
               ))}
             </div>

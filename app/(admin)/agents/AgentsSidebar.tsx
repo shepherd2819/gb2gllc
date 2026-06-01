@@ -53,6 +53,7 @@ function RailItem({ agent, active, status }: { agent: AgentManifestEntry; active
         <span className="agents-rail-tagline">{agent.tagline}</span>
       </span>
       <StatusDot status={status} />
+      <span className="agents-rail-tooltip" role="tooltip">{agent.description}</span>
     </Link>
   );
 }

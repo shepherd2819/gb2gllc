@@ -938,3 +938,73 @@ a.admin-card:hover {
   .agents-rail-group-label { display: none; }
   .agents-content { padding: 24px 20px 60px; }
 }
+
+/* ── Agent hover tooltips ────────────────────────────────────────
+   Surfaces: cards on /agents (.agent-card) and rail items in the left
+   sidebar (.agents-rail-item). Description text comes from
+   agents-manifest.ts. Hidden by default, fade in on hover or
+   keyboard focus (focus-visible / focus-within for keyboard users). */
+
+.agent-card { position: relative; }
+
+.agent-card-tooltip,
+.agents-rail-tooltip {
+  position: absolute;
+  z-index: 60;
+  width: max-content;
+  max-width: 280px;
+  padding: 10px 12px;
+  background: var(--text);
+  color: var(--bg);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  text-align: left;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .14s ease, transform .14s ease;
+}
+
+/* Cards on /agents — tooltip drops below center. */
+.agent-card-tooltip {
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+}
+.agent-card:hover .agent-card-tooltip,
+.agent-card:focus-visible .agent-card-tooltip,
+.agent-card:focus-within .agent-card-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Rail items — tooltip flies out to the right of the sidebar. */
+.agents-rail-tooltip {
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+}
+.agents-rail-item:hover .agents-rail-tooltip,
+.agents-rail-item:focus-visible .agents-rail-tooltip,
+.agents-rail-item:focus-within .agents-rail-tooltip {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+/* Mobile: the rail flips to a horizontal strip — make its tooltips
+   drop below like the card variant so they don't fly off the right edge. */
+@media (max-width: 900px) {
+  .agents-rail-tooltip {
+    left: 50%;
+    top: calc(100% + 6px);
+    transform: translateX(-50%) translateY(-4px);
+  }
+  .agents-rail-item:hover .agents-rail-tooltip,
+  .agents-rail-item:focus-visible .agents-rail-tooltip,
+  .agents-rail-item:focus-within .agents-rail-tooltip {
+    transform: translateX(-50%) translateY(0);
+  }
+}

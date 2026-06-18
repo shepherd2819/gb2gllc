@@ -849,4 +849,21 @@ These run outside the PR; list them in the PR description.
 - **Latency budget:** the tool route (Task 13) is on the critical path — keep it warm, lightweight, `supabaseAdmin` singleton; defer all slow work to the Inngest function.
 - **Tenant scoping:** every Supabase query filters by `client_id`/`line_id`. There is no DB-level isolation.
 - **Build order:** Tasks 1–11 (schema + pure libs, TDD) → 12–15 (routes + Inngest) → 16–19 (admin/UI) → 20–21 (verify + operate).
+
+---
+
+## Build log & deltas (2026-06-18, branch `feat/hollis`)
+
+Tasks 1–19 implemented + committed (17 commits). Status: all `lib/hollis/*` unit tests green (52); full suite **165/165 passing when run serially** (`node --import tsx --test --test-concurrency=1 'lib/**/*.test.ts'`); `tsc --noEmit` clean. Note: the default parallel `npm test` intermittently reports 1 failure on `lib/devagent/run.test.ts` with `Unable to deserialize cloned data` — a Node 25 test-runner IPC artifact (the file passes 3/3 in isolation and serially); not introduced by Hollis. Consider adding `--test-concurrency=1` to the `test` script.
+
+Corrections made vs the plan, after confirming the live Retell API (docs.retellai.com):
+- **Signature/auth:** Retell verifies webhooks with the **API key** (header `x-retell-signature`, format `v={ms},d={hmac(rawBody+ts, apiKey)}`, 5-min replay) — there is **no separate `RETELL_WEBHOOK_SECRET`**. `env.ts` now requires only `RETELL_API_KEY`. Drop `RETELL_WEBHOOK_SECRET` from the spec's env list.
+- **Inbound webhook:** response uses `call_inbound.override_agent_id` + `agent_override.agent.voice_id` + `agent_override.retell_llm.begin_message` (greeting) + `dynamic_variables` + `metadata`. One template agent serves all tenants; per-call voice/greeting/variables are injected here. Reject = 200 without `override_agent_id`.
+- **Provisioning:** `POST /create-phone-number` with `area_code` + `inbound_agents:[{agent_id}]` + `inbound_webhook_url`; numbers are keyed by their E.164 string (used as `retell_number_id`).
+- **Route paths:** admin routes live under `app/api/admin/clients/[id]/hollis/...` (the repo's dynamic segment is `[id]`, not `[clientId]`).
+- **Provision-first flow:** `hollis_lines.phone_number` is `NOT NULL`, so a line is created by **provision** (which buys the number); the **config** route updates the existing line. The Manager shows a "Provision a number" CTA until a line exists (mirrors Reese's connect-first UX).
+- **`lib/supabase` is imported lazily** (`await import`) inside DB functions in `calls.ts`/`config.ts`/`tools.ts` — a top-level import throws in unit tests (no Supabase env), per the repo convention.
+- **Folded `notify.ts` into `delivery.ts`** (email + CRM webhook + Slack in one module); added `lib/hollis/calls.ts` (record-tool-use / finalize) which the plan implied via `ctx.record` + the Inngest persist step.
+
+Still **unverified — confirm at the Task 21 smoke test:** the exact response field a Retell custom function expects (we return `{ result }`), and whether warm transfer is purely agent-config or needs a tool-route signal.
 ```

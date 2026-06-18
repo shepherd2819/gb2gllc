@@ -1,10 +1,15 @@
 // Thin Retell REST client. ALL Retell HTTP lives here so a future swap to
 // Vapi/LiveKit touches one file (the portability commitment in the spec).
 //
-// ⚠️ CONFIRM AGAINST docs.retellai.com AT BUILD TIME: exact endpoint paths,
-// request/response bodies, and the number-provisioning flow. Response types are
-// intentionally loose (unknown) so we don't over-commit to shapes we haven't
-// verified against the live API.
+// Endpoints/params confirmed against docs.retellai.com (2026):
+//   POST   /create-phone-number   — provision a Retell-managed (Twilio/Telnyx) number
+//   POST   /import-phone-number    — bring a SIP/BYO number
+//   PATCH  /update-phone-number/{phone_number}
+//   DELETE /delete-phone-number/{phone_number}
+// Auth is `Authorization: Bearer <RETELL_API_KEY>`. Numbers are identified by
+// their E.164 string in the path. Warm transfer is configured on the agent
+// (transfer destination) and triggered by the transfer_to_human tool, so it is
+// NOT a REST call here.
 
 import { getHollisSecrets } from "./env";
 
@@ -12,7 +17,7 @@ const RETELL_BASE = process.env.RETELL_BASE_URL ?? "https://api.retellai.com";
 
 function authHeader(): string {
   const s = getHollisSecrets();
-  if (!s.ok) throw new Error(`Retell secrets missing in env: ${s.missing.join(", ")}`);
+  if (!s.ok) throw new Error(`Retell secret missing in env: ${s.missing.join(", ")}`);
   return `Bearer ${s.retellApiKey}`;
 }
 
@@ -31,54 +36,65 @@ async function retellFetch<T = unknown>(path: string, init: RequestInit = {}): P
   return res.json() as Promise<T>;
 }
 
-export type RetellCall = {
-  call_id: string;
-  to_number?: string;
-  from_number?: string;
-  transcript?: unknown;
-  recording_url?: string;
-  duration_ms?: number;
-  disconnection_reason?: string;
-  [k: string]: unknown;
-};
-
-export type ProvisionedNumber = {
+export type RetellPhoneNumber = {
   phone_number: string;
-  phone_number_id?: string;
+  phone_number_pretty?: string;
+  phone_number_type?: "retell-twilio" | "retell-telnyx" | "custom";
+  nickname?: string;
   [k: string]: unknown;
 };
 
-export function getCall(callId: string): Promise<RetellCall> {
-  return retellFetch<RetellCall>(`/v2/get-call/${callId}`, { method: "GET" });
-}
+export type CreateNumberOpts = {
+  areaCode?: number;
+  inboundAgentId?: string;
+  nickname?: string;
+  inboundWebhookUrl?: string;
+  numberProvider?: "twilio" | "telnyx";
+};
 
-export function buyNumber(opts: { areaCode?: number; inboundAgentId?: string }): Promise<ProvisionedNumber> {
-  return retellFetch<ProvisionedNumber>(`/create-phone-number`, {
+export function createPhoneNumber(opts: CreateNumberOpts): Promise<RetellPhoneNumber> {
+  return retellFetch<RetellPhoneNumber>("/create-phone-number", {
     method: "POST",
     body: JSON.stringify({
       ...(opts.areaCode ? { area_code: opts.areaCode } : {}),
-      ...(opts.inboundAgentId ? { inbound_agent_id: opts.inboundAgentId } : {}),
+      ...(opts.inboundAgentId ? { inbound_agents: [{ agent_id: opts.inboundAgentId }] } : {}),
+      ...(opts.nickname ? { nickname: opts.nickname } : {}),
+      ...(opts.inboundWebhookUrl ? { inbound_webhook_url: opts.inboundWebhookUrl } : {}),
+      ...(opts.numberProvider ? { number_provider: opts.numberProvider } : {}),
     }),
   });
 }
 
-export function bindNumberWebhooks(numberId: string, opts: { inboundAgentId?: string }): Promise<unknown> {
-  return retellFetch(`/update-phone-number/${numberId}`, {
+export function importPhoneNumber(opts: {
+  phoneNumber: string;
+  terminationUri: string;
+  inboundAgentId?: string;
+  inboundWebhookUrl?: string;
+}): Promise<RetellPhoneNumber> {
+  return retellFetch<RetellPhoneNumber>("/import-phone-number", {
+    method: "POST",
+    body: JSON.stringify({
+      phone_number: opts.phoneNumber,
+      termination_uri: opts.terminationUri,
+      ...(opts.inboundAgentId ? { inbound_agents: [{ agent_id: opts.inboundAgentId }] } : {}),
+      ...(opts.inboundWebhookUrl ? { inbound_webhook_url: opts.inboundWebhookUrl } : {}),
+    }),
+  });
+}
+
+export function updatePhoneNumber(
+  phoneNumber: string,
+  opts: { inboundAgentId?: string; inboundWebhookUrl?: string },
+): Promise<RetellPhoneNumber> {
+  return retellFetch<RetellPhoneNumber>(`/update-phone-number/${encodeURIComponent(phoneNumber)}`, {
     method: "PATCH",
     body: JSON.stringify({
-      ...(opts.inboundAgentId ? { inbound_agent_id: opts.inboundAgentId } : {}),
+      ...(opts.inboundAgentId ? { inbound_agents: [{ agent_id: opts.inboundAgentId }] } : {}),
+      ...(opts.inboundWebhookUrl ? { inbound_webhook_url: opts.inboundWebhookUrl } : {}),
     }),
   });
 }
 
-export function releaseNumber(numberId: string): Promise<unknown> {
-  return retellFetch(`/delete-phone-number/${numberId}`, { method: "DELETE" });
-}
-
-// Warm-transfer an in-progress call to a human. Confirm the exact endpoint/body.
-export function transferCall(callId: string, toNumber: string): Promise<unknown> {
-  return retellFetch(`/transfer-call`, {
-    method: "POST",
-    body: JSON.stringify({ call_id: callId, transfer_to: toNumber }),
-  });
+export function deletePhoneNumber(phoneNumber: string): Promise<unknown> {
+  return retellFetch(`/delete-phone-number/${encodeURIComponent(phoneNumber)}`, { method: "DELETE" });
 }

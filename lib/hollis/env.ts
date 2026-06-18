@@ -1,18 +1,18 @@
-// Central source for Hollis's Retell credentials. Both live in Vercel
-// encrypted env vars — never in the database (mirrors lib/nora/env.ts).
+// Central source for Hollis's Retell credential. Lives in a Vercel encrypted
+// env var — never in the database (mirrors lib/nora/env.ts).
+//
+// Retell verifies webhook signatures with the API KEY itself (the key that has
+// the webhook badge) — there is no separate webhook secret. The same key
+// authenticates REST calls (provisioning numbers, etc.).
 
 export type HollisSecretsResult =
-  | { ok: true; retellApiKey: string; retellWebhookSecret: string }
-  | { ok: false; missing: ("RETELL_API_KEY" | "RETELL_WEBHOOK_SECRET")[] };
+  | { ok: true; retellApiKey: string }
+  | { ok: false; missing: "RETELL_API_KEY"[] };
 
 export function getHollisSecrets(): HollisSecretsResult {
   const key = process.env.RETELL_API_KEY?.trim();
-  const wh = process.env.RETELL_WEBHOOK_SECRET?.trim();
-  const missing: ("RETELL_API_KEY" | "RETELL_WEBHOOK_SECRET")[] = [];
-  if (!key) missing.push("RETELL_API_KEY");
-  if (!wh) missing.push("RETELL_WEBHOOK_SECRET");
-  if (missing.length) return { ok: false, missing };
-  return { ok: true, retellApiKey: key!, retellWebhookSecret: wh! };
+  if (!key) return { ok: false, missing: ["RETELL_API_KEY"] };
+  return { ok: true, retellApiKey: key };
 }
 
 export function hasHollisSecrets(): boolean {

@@ -23,7 +23,7 @@ async function fetchAgentStatuses(): Promise<Record<string, AgentStatus>> {
   for (const a of AGENTS) statuses[a.slug] = { state: "unconfigured" };
 
   const [
-    iris, wren, holt, nora, vera, avery, june, mark,
+    iris, wren, holt, nora, vera, avery, june, mark, hollis,
   ] = await Promise.all([
     rowsOf(supabaseAdmin.from("iris_inbox_accounts").select("id, status").limit(5)),
     rowsOf(supabaseAdmin.from("wren_inbox_accounts").select("id, status").limit(5)),
@@ -33,10 +33,11 @@ async function fetchAgentStatuses(): Promise<Record<string, AgentStatus>> {
     rowsOf(supabaseAdmin.from("avery_campaigns").select("id, status").limit(5)),
     rowsOf(supabaseAdmin.from("june_audits").select("id").limit(5)),
     rowsOf(supabaseAdmin.from("steward_platform_tokens").select("id").eq("platform", "slack").limit(5)),
+    rowsOf(supabaseAdmin.from("hollis_lines").select("id, status").neq("status", "released").limit(5)),
   ]);
 
   const [
-    irisPending, wrenPending, noraPendingDrafts, holtUpcoming, averyDrafted,
+    irisPending, wrenPending, noraPendingDrafts, holtUpcoming, averyDrafted, hollisFollowups,
   ] = await Promise.all([
     countOf(supabaseAdmin.from("iris_messages").select("id", { count: "exact", head: true }).eq("status", "classified")),
     countOf(supabaseAdmin.from("wren_messages").select("id", { count: "exact", head: true }).eq("status", "classified")),
@@ -46,6 +47,9 @@ async function fetchAgentStatuses(): Promise<Record<string, AgentStatus>> {
       .gte("event_start_at", new Date().toISOString())
       .lt("event_start_at", new Date(Date.now() + 24 * 3600_000).toISOString())),
     countOf(supabaseAdmin.from("avery_leads").select("id", { count: "exact", head: true }).eq("status", "drafted")),
+    countOf(supabaseAdmin.from("hollis_calls").select("id", { count: "exact", head: true })
+      .in("outcome", ["booking_request", "message", "transfer"])
+      .gte("created_at", new Date(Date.now() - 7 * 24 * 3600_000).toISOString())),
   ]);
 
   statuses.iris  = mapStatus(iris,  irisPending);
@@ -58,6 +62,7 @@ async function fetchAgentStatuses(): Promise<Record<string, AgentStatus>> {
     : avery.length > 0 ? { state: avery.some((c) => c.status === "active") ? "live" : "idle" } : { state: "unconfigured" };
   statuses.june  = june.length > 0 ? { state: "live" } : { state: "idle" };
   statuses.mark  = mark.length > 0 ? { state: "live" } : { state: "unconfigured" };
+  statuses.hollis = mapStatus(hollis, hollisFollowups);
 
   void safe; // exported helper retained for future use
   return statuses;

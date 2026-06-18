@@ -34,6 +34,8 @@ export const AGENTS: AgentManifestEntry[] = [
   // ── Client agents ──────────────────────────────────────────────────
   { slug: "mark",  name: "Mark",  tagline: "Real estate · sqft", glyph: "▢", group: "client",
     description: "Slack slash command /sqft <address>. Looks up property data via ATTOM (primary), falls back to RentCast, and replies with sqft, beds, baths, year built, and property type in the channel. Every lookup is logged for audit." },
+  { slug: "hollis", name: "Hollis", tagline: "AI phone receptionist", glyph: "☎", group: "client",
+    description: "Answers each client's business phone in a chosen human voice — books appointments, qualifies leads, answers FAQs, and takes messages, delivered to the business by email and CRM. Inbound calls are recorded and AI-disclosed. Realtime loop runs on Retell with Claude as the brain." },
 ];
 
 export const GROUP_LABELS: Record<AgentManifestEntry["group"], string> = {

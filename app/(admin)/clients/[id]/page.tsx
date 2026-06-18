@@ -11,6 +11,7 @@ import { ReeseManager } from "./ReeseManager";
 import { DevAgentManager } from "./DevAgentManager";
 import { SendInviteButton } from "./SendInviteButton";
 import { ContractManager } from "./ContractManager";
+import { HollisManager } from "./HollisManager";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -36,6 +37,9 @@ export default async function ClientDetailPage({ params }: Params) {
     { data: devagentAssignment },
     { data: devagentRuns },
     { data: contracts },
+    { data: hollisLine },
+    { data: hollisCalls },
+    { data: hollisFaq },
   ] = await Promise.all([
     supabaseAdmin.from("clients").select("*, client_products(*), invoices(id, amount_cents, description, status, sent_at, created_at)").eq("id", id).single(),
     supabaseAdmin.from("client_logs").select("*").eq("client_id", id).order("created_at", { ascending: false }).limit(50),
@@ -69,6 +73,9 @@ export default async function ClientDetailPage({ params }: Params) {
       .eq("client_id", id)
       .order("created_at", { ascending: false })
       .limit(20),
+    supabaseAdmin.from("hollis_lines").select("*").eq("client_id", id).order("created_at", { ascending: true }).limit(1).maybeSingle(),
+    supabaseAdmin.from("hollis_calls").select("id, outcome, duration_ms, caller_number, created_at").eq("client_id", id).order("created_at", { ascending: false }).limit(20),
+    supabaseAdmin.from("hollis_kb").select("question, answer").eq("client_id", id).order("created_at", { ascending: true }),
   ]);
 
   if (!client) notFound();
@@ -211,6 +218,16 @@ export default async function ClientDetailPage({ params }: Params) {
             clientId={id}
             contracts={contracts ?? []}
             marketingUrl={process.env.NEXT_PUBLIC_BASE_URL ?? "https://gb2gllc.com"}
+          />
+
+          <HollisManager
+            clientId={id}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            initialLine={(hollisLine as any) ?? null}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            calls={(hollisCalls ?? []) as any}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            faq={(hollisFaq ?? []) as any}
           />
 
           <DevAgentManager

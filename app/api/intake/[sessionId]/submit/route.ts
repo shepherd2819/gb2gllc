@@ -69,11 +69,14 @@ export async function POST(_req: NextRequest, { params }: Params) {
     after(async () => {
       try {
         const name = contact.name || "there";
+        const nameHtml = name.replace(/[&<>"']/g, (c) =>
+          ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
+        );
         await resend().emails.send({
           from: DEFAULT_FROM,
           to: contact.email,
           subject: "We got your intake — welcome to GB2G",
-          html: `<p>Hi ${name},</p><p>Thanks for sharing your details with GB2G. We've received everything and our team is reviewing it now — we'll be in touch shortly with your next steps.</p><p>— The GB2G team</p>`,
+          html: `<p>Hi ${nameHtml},</p><p>Thanks for sharing your details with GB2G. We've received everything and our team is reviewing it now — we'll be in touch shortly with your next steps.</p><p>— The GB2G team</p>`,
           text: `Hi ${name},\n\nThanks for sharing your details with GB2G. We've received everything and our team is reviewing it now — we'll be in touch shortly with your next steps.\n\n— The GB2G team`,
         });
       } catch (err) {

@@ -91,6 +91,15 @@ Call the number and run each flow. Confirm in the app/DB:
 1. The exact response field Retell expects from a custom function — our `/api/hollis/tool` returns `{ "result": "<spoken text>" }`. If the agent doesn't speak the result, check Retell's custom-function response format and adjust that one line.
 2. Warm **transfer** actually connects to `{{escalation_number}}`.
 
+## 9b. (Optional) Public browser-voice demo — `/hollis-demo.html`
+
+Lets prospects click and talk to Hollis live in the browser (no phone number). Great for sales.
+1. In Retell, **duplicate the template agent** → name it "Hollis Demo". Give it a self-explaining prompt (it's talking to prospects, not real callers) and set a short **`max_call_duration_ms`** (e.g. 180000 = 3 min) to cap cost. The page already injects demo dynamic variables (a fictional business "Maple & Co"), so the prompt can just use `{{business_name}}`, `{{services}}`, `{{faq}}`, `{{greeting}}` like the production agent.
+2. Copy the demo agent's ID → Vercel: `HOLLIS_DEMO_AGENT_ID=agent_...`
+3. `supabase db push` also applies `028_hollis_demo.sql` (the per-IP rate-limit table). The route allows 5 demo calls/IP/day.
+4. Share the page: **`https://gb2gllc.com/hollis-demo.html`** (works on the marketing host; the page calls `/api/hollis/demo/web-call` for a token, then connects via the Retell web SDK loaded from esm.sh). Optionally add a "Hear it live" button linking there from the homepage.
+5. Test: open the page, click **Tap to talk**, allow the mic, and have a conversation. If Hollis connects but doesn't speak, that's the same custom-function/response check as §9 (only matters once she calls a tool).
+
 ## 10. Go-live checks
 - Greeting includes the AI disclosure + (if recording) "this call may be recorded".
 - Latency feels < ~1s; tune endpointing/filler if not.

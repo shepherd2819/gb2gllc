@@ -10,6 +10,8 @@ import { sendSignedToClient, sendSignedToAdmin, pingSlackOnSign } from "@/lib/ve
 import { formatAmount, cadenceLabel, type Cadence } from "@/lib/vera/format";
 import { DEFAULT_SCOPE, PRODUCT_LABELS, type Product } from "@/lib/vera/product-scopes";
 import { validateSignBody } from "@/lib/vera/sign-validation";
+import { inngest } from "@/lib/inngest/client";
+import { ONBOARDING_EVENTS } from "@/lib/onboarding/events";
 
 export async function POST(req: Request, ctx: { params: Promise<{ token: string }> }) {
   const { token } = await ctx.params;
@@ -55,6 +57,25 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
     if (existing.status === "signed")    return NextResponse.json({ error: "Already signed" }, { status: 409 });
     return NextResponse.json({ error: "Not signable" }, { status: 409 });
   }
+
+  // Onboarding: kick off the provisioning pipeline (journey + invite + invoice).
+  // Idempotent downstream; failure here must not affect the sign response.
+  after(async () => {
+    try {
+      await inngest.send({
+        name: ONBOARDING_EVENTS.CONTRACT_SIGNED,
+        data: {
+          clientId: updated.client_id as string,
+          contractId: updated.id as string,
+          product: updated.product as string,
+          amountCents: updated.amount_cents as number,
+          cadence: updated.cadence as string,
+        },
+      });
+    } catch (err) {
+      console.error("[sign] onboarding contract.signed emit failed:", err instanceof Error ? err.message : err);
+    }
+  });
 
   // after() — generate countersigned PDF, store, Notion, notifications
   after(async () => {

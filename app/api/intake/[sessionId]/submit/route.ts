@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { createIntakePage } from "@/lib/notion";
+import { resend, DEFAULT_FROM } from "@/lib/resend";
 
 type Params = { params: Promise<{ sessionId: string }> };
 
@@ -50,19 +51,35 @@ export async function POST(_req: NextRequest, { params }: Params) {
     .eq("id", sessionId);
 
   // Auto-create client portal account from intake contact info
-  if (notionPageId) {
-    const contact = (state as Record<string, Record<string,string>>).contact ?? {};
-    if (contact.email) {
-      await supabaseAdmin.from("clients").upsert(
-        {
-          intake_session_id: sessionId,
-          name: contact.name || null,
-          email: contact.email,
-          company: contact.company || null,
-        },
-        { onConflict: "email", ignoreDuplicates: true }
-      );
-    }
+  const contact = (state as Record<string, Record<string, string>>).contact ?? {};
+  if (notionPageId && contact.email) {
+    await supabaseAdmin.from("clients").upsert(
+      {
+        intake_session_id: sessionId,
+        name: contact.name || null,
+        email: contact.email,
+        company: contact.company || null,
+      },
+      { onConflict: "email", ignoreDuplicates: true }
+    );
+  }
+
+  // Welcome / acknowledgement email (best-effort; previously missing).
+  if (contact.email) {
+    after(async () => {
+      try {
+        const name = contact.name || "there";
+        await resend().emails.send({
+          from: DEFAULT_FROM,
+          to: contact.email,
+          subject: "We got your intake — welcome to GB2G",
+          html: `<p>Hi ${name},</p><p>Thanks for sharing your details with GB2G. We've received everything and our team is reviewing it now — we'll be in touch shortly with your next steps.</p><p>— The GB2G team</p>`,
+          text: `Hi ${name},\n\nThanks for sharing your details with GB2G. We've received everything and our team is reviewing it now — we'll be in touch shortly with your next steps.\n\n— The GB2G team`,
+        });
+      } catch (err) {
+        console.error("[intake/submit] welcome email failed:", err instanceof Error ? err.message : err);
+      }
+    });
   }
 
   return NextResponse.json({

@@ -20,6 +20,27 @@
   --serif:  "EB Garamond", Georgia, serif;
   --mono:   "JetBrains Mono", ui-monospace, monospace;
   --radius: 14px;
+
+  /* ── Semantic design-system tokens (consumed by tokens.css ds-* classes) ── */
+  --color-bg:        var(--parchment);
+  --color-bg-raised: var(--parchment-2);
+  --color-bg-sunken: #EFE8D6;
+  --color-border:    var(--rule);
+  --color-text:      var(--ink);
+  --color-text-soft: var(--ink-soft);
+  --color-text-mute: var(--ink-mute);
+  --color-gold:      var(--warm-gold);
+  --color-gold-dim:  rgba(201,169,97,0.14);
+  --color-sage:      var(--sage);
+  --color-sage-dim:  var(--sage-bg);
+  --color-red:       var(--red);
+  --color-red-dim:   rgba(201,123,92,0.12);
+  --color-blue:      var(--dusty-blue);
+  --color-blue-dim:  rgba(127,157,185,0.12);
+  --color-on-gold:   #1C1E1B;
+  --color-gold-text: var(--warm-gold-deep);  /* deep gold for badge text on dim bg (≥4.5:1) */
+  --color-red-text:  #943220;                /* deep red for badge text on dim bg */
+  --focus-ring-color: var(--warm-gold-deep); /* solid, ~3.2:1 on parchment */
 }
 
 *, *::before, *::after { box-sizing: border-box; }

@@ -1,0 +1,575 @@
+/* ============================================================
+   GB2G DESIGN SYSTEM — tokens.css
+   Loaded FIRST (before portal.css / admin.css) on both surfaces.
+
+   This file is ADDITIVE and non-breaking:
+   - Universal scales (space / elevation / radius / motion / z-index)
+     under brand-new token names — no collision with existing tokens.
+   - ds-*-namespaced component classes that consume SEMANTIC color
+     tokens (--color-bg, --color-gold, …). Each surface stylesheet
+     maps those semantic tokens to its own palette, so one component
+     set themes correctly on portal, admin light, and admin dark.
+   - No existing class is modified here.
+   ============================================================ */
+
+:root {
+  /* ── Spacing scale (4px base) ─────────────────────────────── */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+  --sp-20: 80px;
+
+  /* ── Radius scale ─────────────────────────────────────────── */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-pill: 100px;
+
+  /* ── Elevation scale ──────────────────────────────────────── */
+  --el-1: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --el-2: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --el-3: 0 8px 24px rgba(0, 0, 0, 0.18);
+
+  /* ── Motion ───────────────────────────────────────────────── */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 120ms;
+  --dur: 150ms;
+  --dur-slow: 1s;
+
+  /* ── Z-index scale ──────────────────────────────────────────
+     Set above the legacy values that coexist during migration
+     (legacy .modal-overlay = 100, legacy tooltips = 60, navs = 40)
+     so ds-* overlays always layer correctly over old chrome. */
+  --z-nav: 40;
+  --z-dropdown: 45;
+  --z-drawer: 110;
+  --z-modal: 120;
+  --z-toast: 130;
+  --z-tooltip: 140;
+
+  /* ── Semantic color fallbacks ─────────────────────────────────
+     Each surface (portal.css / admin.css) overrides these in its
+     own :root. Fallbacks here keep ds-* components legible even if
+     a surface forgets to map one. */
+  --color-bg: #f4eee2;
+  --color-bg-raised: #faf6ec;
+  --color-bg-sunken: #f0ede5;
+  --color-border: #e4ddcc;
+  --color-text: #1c1e1b;
+  --color-text-soft: #4a4d47;
+  --color-text-mute: #8a8c85;
+  --color-gold: #c9a961;
+  --color-gold-dim: rgba(201, 169, 97, 0.12);
+  --color-sage: #a6b49b;
+  --color-sage-dim: rgba(166, 180, 155, 0.12);
+  --color-red: #c97b5c;
+  --color-red-dim: rgba(201, 123, 92, 0.12);
+  --color-blue: #7f9db9;
+  --color-blue-dim: rgba(127, 157, 185, 0.12);
+  --color-on-gold: #1c1e1b;
+  --color-gold-text: var(--color-gold);
+  --color-red-text: var(--color-red);
+  --focus-ring-color: var(--color-gold);
+}
+
+/* ── Keyframes ──────────────────────────────────────────────── */
+@keyframes ds-shimmer {
+  0% { background-position: -150% 0; }
+  100% { background-position: 150% 0; }
+}
+@keyframes ds-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes ds-caret {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+@keyframes ds-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes ds-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ds-drawer-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes ds-modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ============================================================
+   SKELETON SYSTEM (content-shaped loading)
+   ============================================================ */
+.skel {
+  --skel-base: var(--color-bg-sunken);
+  --skel-hi: var(--color-bg-raised);
+  background-color: var(--skel-base);
+  background-image: linear-gradient(
+    90deg,
+    var(--skel-base) 0%,
+    var(--skel-hi) 50%,
+    var(--skel-base) 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: ds-shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--r-sm);
+}
+.skel-text { height: 0.75em; border-radius: var(--r-pill); }
+.skel-text.w-40 { width: 40%; }
+.skel-text.w-60 { width: 60%; }
+.skel-text.w-80 { width: 80%; }
+.skel-text.w-100 { width: 100%; }
+.skel-line { height: 1px; }
+.skel-circle { border-radius: 50%; aspect-ratio: 1; }
+.skel-stat { height: 88px; border-radius: var(--r-md); }
+.skel-card { height: 120px; border-radius: var(--r-lg); }
+.skel-row { height: 44px; border-radius: var(--r-sm); }
+.skel-stack { display: flex; flex-direction: column; gap: var(--sp-3); }
+
+/* ============================================================
+   BUTTON — .ds-btn (variants / sizes / states)
+   ============================================================ */
+.ds-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  font-family: var(--sans, "Inter", system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  padding: 0 var(--sp-4);
+  height: 36px;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background var(--dur), border-color var(--dur), color var(--dur), opacity var(--dur);
+}
+.ds-btn:disabled,
+.ds-btn[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.ds-btn--sm { height: 30px; font-size: 12px; padding: 0 var(--sp-3); }
+.ds-btn--lg { height: 42px; font-size: 14px; padding: 0 var(--sp-5); }
+.ds-btn--block { width: 100%; }
+
+.ds-btn--primary {
+  background: var(--color-gold);
+  color: var(--color-on-gold);
+}
+.ds-btn--primary:hover:not(:disabled) { opacity: 0.88; }
+
+.ds-btn--ghost {
+  background: transparent;
+  border-color: var(--color-border);
+  color: var(--color-text-soft);
+}
+.ds-btn--ghost:hover:not(:disabled) { border-color: var(--color-text); color: var(--color-text); }
+
+.ds-btn--subtle {
+  background: var(--color-bg-sunken);
+  color: var(--color-text);
+}
+.ds-btn--subtle:hover:not(:disabled) { background: var(--color-border); }
+
+.ds-btn--danger {
+  background: transparent;
+  border-color: var(--color-red-dim);
+  color: var(--color-red);
+}
+.ds-btn--danger:hover:not(:disabled) { background: var(--color-red-dim); border-color: var(--color-red); }
+
+.ds-btn--danger-solid {
+  background: var(--color-red);
+  color: #fff;
+}
+.ds-btn--danger-solid:hover:not(:disabled) { opacity: 0.9; }
+
+/* Loading state: hide label, show spinner */
+.ds-btn[data-loading="true"] { color: transparent !important; position: relative; }
+.ds-btn[data-loading="true"]::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  color: var(--color-on-gold);
+  animation: ds-spin 0.6s linear infinite;
+}
+.ds-btn--ghost[data-loading="true"]::after,
+.ds-btn--subtle[data-loading="true"]::after,
+.ds-btn--danger[data-loading="true"]::after { color: var(--color-text-soft); }
+
+/* ============================================================
+   CARD — .ds-card
+   ============================================================ */
+.ds-card {
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-md);
+  padding: var(--sp-5);
+}
+.ds-card--pad-lg { padding: var(--sp-6); }
+.ds-card--flush { padding: 0; overflow: hidden; }
+.ds-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+.ds-card-title { font-size: 14px; font-weight: 500; margin: 0; }
+
+/* ============================================================
+   FORM CONTROLS — .ds-input / .ds-textarea / .ds-select
+   ============================================================ */
+.ds-field { display: flex; flex-direction: column; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.ds-label {
+  font-family: var(--mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-soft);
+}
+.ds-hint { font-size: 12px; color: var(--color-text-soft); }
+.ds-error-text { font-size: 12px; color: var(--color-red); }
+
+.ds-input,
+.ds-textarea,
+.ds-select {
+  display: block;
+  width: 100%;
+  font-family: var(--sans, "Inter", system-ui, sans-serif);
+  font-size: 14px;
+  color: var(--color-text);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-sm);
+  padding: 9px 12px;
+  outline: none;
+  transition: border-color var(--dur), box-shadow var(--dur);
+}
+.ds-textarea { resize: vertical; line-height: 1.5; min-height: 80px; }
+.ds-input::placeholder,
+.ds-textarea::placeholder { color: var(--color-text-mute); }
+.ds-input:focus,
+.ds-textarea:focus,
+.ds-select:focus { border-color: var(--color-gold); }
+.ds-input[aria-invalid="true"],
+.ds-textarea[aria-invalid="true"],
+.ds-select[aria-invalid="true"] { border-color: var(--color-red); }
+.ds-input[aria-invalid="true"]:focus,
+.ds-textarea[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px var(--color-red-dim); }
+
+/* ============================================================
+   BADGE / STATUS PILL — .ds-badge
+   ============================================================ */
+.ds-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--mono, "JetBrains Mono", monospace);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+.ds-badge--sage { background: var(--color-sage-dim); color: var(--color-sage); }
+.ds-badge--gold { background: var(--color-gold-dim); color: var(--color-gold-text); }
+.ds-badge--red { background: var(--color-red-dim); color: var(--color-red-text); }
+.ds-badge--blue { background: var(--color-blue-dim); color: var(--color-blue); }
+.ds-badge--muted { background: var(--color-bg-sunken); color: var(--color-text-mute); }
+.ds-badge-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor; flex-shrink: 0;
+}
+
+/* ============================================================
+   EMPTY STATE — .ds-empty
+   ============================================================ */
+.ds-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--sp-3);
+  padding: var(--sp-12) var(--sp-6);
+  color: var(--color-text-soft);
+}
+.ds-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
+  background: var(--color-bg-sunken);
+  color: var(--color-text-mute);
+}
+.ds-empty-title {
+  font-family: var(--serif, "EB Garamond", Georgia, serif);
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+  margin: 0;
+}
+.ds-empty-body { font-size: 14px; color: var(--color-text-soft); max-width: 42ch; margin: 0; }
+.ds-empty-actions { margin-top: var(--sp-2); display: flex; gap: var(--sp-2); }
+
+/* ============================================================
+   SPINNER — .ds-spinner
+   ============================================================ */
+.ds-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-gold);
+  border-radius: 50%;
+  animation: ds-spin 0.6s linear infinite;
+}
+.ds-spinner--sm { width: 12px; height: 12px; border-width: 1.5px; }
+.ds-spinner--lg { width: 22px; height: 22px; border-width: 2.5px; }
+
+/* Streaming caret (Claude-style perceived performance) */
+.ds-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 1px;
+  background: var(--color-gold);
+  vertical-align: text-bottom;
+  animation: ds-caret 1s steps(1) infinite;
+}
+
+/* ============================================================
+   MODAL + DRAWER — .ds-modal / .ds-drawer
+   ============================================================ */
+.ds-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: var(--z-modal);
+  display: flex;
+  animation: ds-overlay-in var(--dur) ease both;
+}
+.ds-overlay--center { align-items: center; justify-content: center; padding: var(--sp-4); }
+.ds-overlay--right { justify-content: flex-end; z-index: var(--z-drawer); }
+
+.ds-modal {
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--el-3);
+  padding: var(--sp-6);
+  width: 440px;
+  max-width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: ds-modal-in var(--dur) var(--ease) both;
+}
+.ds-drawer {
+  background: var(--color-bg-raised);
+  border-left: 1px solid var(--color-border);
+  box-shadow: var(--el-3);
+  width: 460px;
+  max-width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--sp-6);
+  animation: ds-drawer-in var(--dur) var(--ease) both;
+}
+.ds-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-5);
+}
+.ds-modal-title {
+  font-size: 17px;
+  font-weight: 500;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.ds-modal-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--color-text-mute);
+  cursor: pointer;
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-sm);
+  transition: color var(--dur), background var(--dur);
+}
+.ds-modal-close:hover { color: var(--color-text); background: var(--color-bg-sunken); }
+.ds-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  margin-top: var(--sp-6);
+}
+
+/* ============================================================
+   TOAST + UNDO — .ds-toast
+   ============================================================ */
+.ds-toast-region {
+  position: fixed;
+  bottom: var(--sp-5);
+  right: var(--sp-5);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  width: 360px;
+  max-width: calc(100vw - var(--sp-8));
+  pointer-events: none;
+}
+.ds-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-text-mute);
+  border-radius: var(--r-md);
+  box-shadow: var(--el-2);
+  padding: var(--sp-3) var(--sp-4);
+  animation: ds-fade-up var(--dur) var(--ease) both;
+}
+.ds-toast--success { border-left-color: var(--color-sage); }
+.ds-toast--info { border-left-color: var(--color-blue); }
+.ds-toast--warning { border-left-color: var(--color-gold); }
+.ds-toast--error { border-left-color: var(--color-red); }
+.ds-toast-body { flex: 1; min-width: 0; }
+.ds-toast-label {
+  font-family: var(--mono, "JetBrains Mono", monospace);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-soft);
+  margin-bottom: 2px;
+}
+.ds-toast-msg { font-size: 13px; color: var(--color-text); line-height: 1.4; }
+.ds-toast-action {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  font-family: var(--mono, "JetBrains Mono", monospace);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--r-sm);
+  transition: opacity var(--dur);
+}
+.ds-toast-action:hover { opacity: 0.7; }
+.ds-toast-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--color-text-mute);
+  cursor: pointer;
+  padding: 0 2px;
+}
+.ds-toast-close:hover { color: var(--color-text); }
+
+/* ============================================================
+   ACCESSIBILITY FLOOR — focus-visible rings
+   Additive: existing components keep their look, but every
+   focusable element now shows a visible keyboard-focus ring.
+   box-shadow respects the element's own border-radius and does
+   not affect layout.
+   ============================================================ */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  /* Solid outline (not box-shadow): immune to overflow:hidden clipping,
+     repainted in forced-colors mode, follows border-radius, and does not
+     clobber an element's own shadow. Per-surface color clears 3:1. */
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
+/* Visually-hidden utility (skip links, screen-reader labels) */
+.ds-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.ds-skip-link {
+  position: fixed;
+  top: var(--sp-2);
+  left: var(--sp-2);
+  z-index: var(--z-tooltip);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-sm);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: 13px;
+  color: var(--color-text);
+  transform: translateY(-200%);
+  transition: transform var(--dur);
+}
+.ds-skip-link:focus { transform: translateY(0); }
+
+/* ============================================================
+   REDUCED MOTION — honor user preference everywhere
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .skel { animation: none; background: var(--color-bg-sunken); }
+  .ds-caret { animation: none; opacity: 1; }
+}

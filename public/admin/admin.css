@@ -42,6 +42,29 @@
 
   /* Misc */
   --r: 10px;
+
+  /* ── Semantic design-system tokens (consumed by tokens.css ds-* classes).
+     These map to admin's own palette, which flips under [data-theme="dark"],
+     so the ds-* component set auto-themes in dark mode. ── */
+  --color-bg:        var(--bg);
+  --color-bg-raised: var(--bg-2);
+  --color-bg-sunken: var(--bg-3);
+  --color-border:    var(--border);
+  --color-text:      var(--text);
+  --color-text-soft: var(--text-soft);
+  --color-text-mute: var(--text-mute);
+  --color-gold:      var(--gold);
+  --color-gold-dim:  var(--gold-dim);
+  --color-sage:      var(--sage);
+  --color-sage-dim:  var(--sage-dim);
+  --color-red:       var(--red);
+  --color-red-dim:   var(--red-dim);
+  --color-blue:      var(--blue);
+  --color-blue-dim:  var(--blue-dim);
+  --color-on-gold:   #1C1E1B;
+  --color-gold-text: var(--gold);   /* admin gold is already dark enough on light, light on dark */
+  --color-red-text:  var(--red);
+  --focus-ring-color: var(--gold);  /* #8A6B28 ~5:1 on white; flips light on dark */
 }
 
 [data-theme="dark"] {
@@ -74,6 +97,10 @@
   --blue:     #7F9DB9;
   --blue-dim: rgba(127,157,185,0.12);
 }
+
+/* Skeleton shimmer in dark mode: the sweeping highlight must be LIGHTER than
+   the base, otherwise it reads as a dark sweep. --border (#2C2E2B) > --bg-3. */
+[data-theme="dark"] .skel { --skel-hi: var(--border); }
 
 /* ── 2. RESET & BASE ────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }

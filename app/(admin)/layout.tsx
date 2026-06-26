@@ -1,6 +1,7 @@
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { redirect } from "next/navigation";
 import { AdminThemeToggle } from "./AdminThemeToggle";
+import { ToastProvider } from "@/components/ui/toast";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "john@gb2gllc.com";
 
@@ -21,6 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+        <link rel="stylesheet" href="/tokens.css" />
         <link rel="stylesheet" href="/admin/admin.css" />
         <script src="/admin/theme-init.js" />
       </head>
@@ -43,7 +45,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <a href="/auth/signout" className="admin-signout">Sign out</a>
           </div>
         </nav>
-        <main className="admin-main">{children}</main>
+        <main className="admin-main">
+          <ToastProvider>{children}</ToastProvider>
+        </main>
       </body>
     </html>
   );

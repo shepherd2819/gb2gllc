@@ -2,6 +2,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import { after } from "next/server";
+import { ToastProvider } from "@/components/ui/toast";
 
 // Only re-write last_signed_in_at if the stored value is older than this.
 // Prevents hammering the DB on every nav within the portal.
@@ -75,6 +76,15 @@ export default async function PortalLayout({
 
   if (!client) redirect("/auth/no-account");
 
+  // Gate access on account status — a disabled/paused client must not reach the
+  // portal (previously they could sign in regardless; a security/compliance gap).
+  const { data: statusRow } = await supabaseAdmin
+    .from("clients")
+    .select("status")
+    .eq("id", client.id)
+    .maybeSingle<{ status: string | null }>();
+  const suspended = statusRow?.status === "disabled" || statusRow?.status === "paused";
+
   // Touch last_signed_in_at (debounced, fire-and-forget via after())
   const now = new Date();
   const isOwnerVisit = !memberRowId;
@@ -103,6 +113,7 @@ export default async function PortalLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+        <link rel="stylesheet" href="/tokens.css" />
         <link rel="stylesheet" href="/portal/portal.css" />
       </head>
       <body data-client-id={client.id}>
@@ -113,6 +124,7 @@ export default async function PortalLayout({
           </a>
           <div className="portal-nav-links">
             <a href="/dashboard">Dashboard</a>
+            <a href="/onboarding">Onboarding</a>
             <a href="/connections">Connections</a>
             <a href="/tickets">Support</a>
             <a href="/account">Account</a>
@@ -123,7 +135,20 @@ export default async function PortalLayout({
           </div>
         </nav>
         <main className="portal-main">
-          {children}
+          {suspended ? (
+            <div style={{ maxWidth: 520, margin: "80px auto", textAlign: "center", padding: "0 20px" }}>
+              <h1 style={{ fontFamily: "var(--serif, 'EB Garamond', Georgia, serif)", fontWeight: 400 }}>
+                Your account is {statusRow?.status === "paused" ? "paused" : "not active"}
+              </h1>
+              <p style={{ color: "var(--ink-soft, #4A4D47)", lineHeight: 1.6 }}>
+                Please reach out to your GB2G contact to restore access. If you think this is a mistake, email{" "}
+                <a href="mailto:john@gb2gllc.com">john@gb2gllc.com</a>.
+              </p>
+              <p style={{ marginTop: 24 }}><a href="/auth/signout" className="portal-signout">Sign out</a></p>
+            </div>
+          ) : (
+            <ToastProvider>{children}</ToastProvider>
+          )}
         </main>
       </body>
     </html>

@@ -36,6 +36,8 @@ export const config = {
     "/connections/:path*",
     "/tickets/:path*",
     "/account/:path*",
+    "/onboarding/:path*",
+    "/journeys/:path*",
     "/admin/:path*",
     "/clients/:path*",
     "/submissions/:path*",

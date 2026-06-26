@@ -98,3 +98,19 @@ export function updatePhoneNumber(
 export function deletePhoneNumber(phoneNumber: string): Promise<unknown> {
   return retellFetch(`/delete-phone-number/${encodeURIComponent(phoneNumber)}`, { method: "DELETE" });
 }
+
+export type WebCall = { access_token: string; call_id: string; [k: string]: unknown };
+
+// Browser voice demo: no phone number — the frontend connects with the returned
+// access_token via RetellWebClient.startCall(). Token is single-use within 30s.
+// docs.retellai.com/deploy/web-call
+export function createWebCall(agentId: string, dynamicVariables?: Record<string, string>): Promise<WebCall> {
+  return retellFetch<WebCall>("/v2/create-web-call", {
+    method: "POST",
+    body: JSON.stringify({
+      agent_id: agentId,
+      ...(dynamicVariables ? { retell_llm_dynamic_variables: dynamicVariables } : {}),
+      metadata: { source: "web_demo" },
+    }),
+  });
+}

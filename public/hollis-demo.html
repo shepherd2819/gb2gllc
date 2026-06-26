@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Talk to Hollis — GB2G's AI Receptionist</title>
+<meta name="description" content="Talk live to Hollis, the AI phone receptionist GB2G builds for businesses. Click to start a real voice conversation in your browser." />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<meta name="theme-color" content="#1C1E1B" />
+<meta property="og:title" content="Talk to Hollis — GB2G's AI Receptionist" />
+<meta property="og:description" content="Click and have a real voice conversation with the AI receptionist GB2G builds for businesses." />
+<meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --parchment: #F4EEE2;
+    --parchment-2: #FAF6EC;
+    --ink: #1C1E1B;
+    --ink-soft: #4A4D47;
+    --ink-mute: #8A8C85;
+    --rule: #E4DDCC;
+    --dusty-blue: #7F9DB9;
+    --dusty-blue-deep: #4E6E8C;
+    --warm-gold: #C9A961;
+    --sage: #A6B49B;
+    --terracotta: #C97B5C;
+    --sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+    --mono: "Geist Mono", ui-monospace, monospace;
+    --serif: "Instrument Serif", Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; font-family: var(--sans); color: var(--ink);
+    background: radial-gradient(120% 80% at 50% -10%, var(--parchment-2), var(--parchment));
+    min-height: 100vh; -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--dusty-blue-deep); }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 28px 22px 80px; }
+  nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 48px; }
+  .word { font-family: var(--mono); font-weight: 500; letter-spacing: .04em; font-size: 14px; }
+  nav a { font-size: 13px; text-decoration: none; color: var(--ink-soft); }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--warm-gold); margin: 0 0 12px; }
+  h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(40px, 8vw, 68px); line-height: 1.02; margin: 0 0 16px; letter-spacing: -.01em; }
+  h1 em { font-style: italic; color: var(--dusty-blue-deep); }
+  .lede { font-size: 18px; line-height: 1.55; color: var(--ink-soft); max-width: 52ch; margin: 0 0 40px; }
+
+  .stage {
+    border: 1px solid var(--rule); border-radius: 22px; background: var(--parchment-2);
+    padding: 40px 28px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,.02), 0 24px 60px -40px rgba(28,30,27,.25);
+  }
+  .orb {
+    --size: 132px; width: var(--size); height: var(--size); border-radius: 50%; margin: 0 auto 22px;
+    border: none; cursor: pointer; position: relative; color: var(--parchment-2);
+    background: radial-gradient(120% 120% at 30% 25%, var(--dusty-blue), var(--dusty-blue-deep));
+    font-family: var(--sans); font-size: 15px; font-weight: 500; letter-spacing: .01em;
+    display: grid; place-items: center; transition: transform .2s ease, box-shadow .3s ease;
+    box-shadow: 0 14px 30px -12px rgba(78,110,140,.6);
+  }
+  .orb:hover { transform: translateY(-2px); }
+  .orb:disabled { cursor: default; opacity: .9; }
+  .orb.live { background: radial-gradient(120% 120% at 30% 25%, var(--sage), #7d9170); box-shadow: 0 0 0 0 rgba(166,180,155,.6); animation: pulse 1.8s ease-out infinite; }
+  .orb.speaking { background: radial-gradient(120% 120% at 30% 25%, var(--warm-gold), #9b7e3f); }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(166,180,155,.55);} 70%{ box-shadow: 0 0 0 22px rgba(166,180,155,0);} 100%{ box-shadow: 0 0 0 0 rgba(166,180,155,0);} }
+  @media (prefers-reduced-motion: reduce){ .orb.live{ animation: none; } }
+
+  .status { font-family: var(--mono); font-size: 13px; letter-spacing: .03em; color: var(--ink-mute); min-height: 20px; }
+  .status strong { color: var(--ink); font-weight: 500; }
+  .hint { font-size: 13px; color: var(--ink-mute); margin-top: 8px; }
+  .end { margin-top: 18px; background: transparent; border: 1px solid var(--rule); color: var(--ink-soft); border-radius: 100px; padding: 8px 18px; font-family: var(--mono); font-size: 12px; cursor: pointer; }
+  .end:hover { border-color: var(--terracotta); color: var(--terracotta); }
+
+  .transcript { margin-top: 24px; text-align: left; max-height: 280px; overflow-y: auto; display: none; border-top: 1px solid var(--rule); padding-top: 18px; }
+  .transcript.show { display: block; }
+  .turn { margin-bottom: 12px; font-size: 14px; line-height: 1.5; }
+  .turn .who { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mute); display: block; margin-bottom: 2px; }
+  .turn.agent .who { color: var(--dusty-blue-deep); }
+
+  .err { color: var(--terracotta); font-size: 13px; margin-top: 12px; min-height: 18px; }
+
+  .caps { margin-top: 56px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .cap { border: 1px solid var(--rule); border-radius: 14px; padding: 18px; background: var(--parchment-2); }
+  .cap h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+  .cap p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
+  .cap .g { font-size: 18px; }
+  .foot { margin-top: 56px; text-align: center; font-size: 14px; color: var(--ink-soft); }
+  .foot a { font-weight: 500; }
+  .legal { margin-top: 14px; font-size: 11px; color: var(--ink-mute); font-family: var(--mono); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <span class="word">GB2G</span>
+      <a href="/">← back to gb2gllc.com</a>
+    </nav>
+
+    <p class="eyebrow">Live demo · AI phone receptionist</p>
+    <h1>Say hello to <em>Hollis</em>.</h1>
+    <p class="lede">This is the AI receptionist we build for businesses — answering every call in a natural voice, booking appointments, qualifying leads, and taking messages. Click below and talk to her right now, in your browser.</p>
+
+    <div class="stage">
+      <button id="orb" class="orb" aria-label="Start a voice call with Hollis">Tap&nbsp;to&nbsp;talk</button>
+      <div id="status" class="status">Ready when you are.</div>
+      <div id="hint" class="hint">You'll be asked for microphone access. Try: "What are your hours?" or "I'd like to book an appointment."</div>
+      <button id="end" class="end" style="display:none">End call</button>
+      <div id="err" class="err" role="alert"></div>
+      <div id="transcript" class="transcript" aria-live="polite"></div>
+    </div>
+
+    <div class="caps">
+      <div class="cap"><div class="g">📅</div><h3>Books appointments</h3><p>Captures the who, what, and when, then hands a confirmed request to your team by email or CRM.</p></div>
+      <div class="cap"><div class="g">🎯</div><h3>Qualifies leads</h3><p>Asks the right questions, captures contact details, and flags hot prospects instantly.</p></div>
+      <div class="cap"><div class="g">💬</div><h3>Answers questions</h3><p>Knows your hours, services, and pricing — and never makes things up.</p></div>
+      <div class="cap"><div class="g">📝</div><h3>Takes messages & transfers</h3><p>Takes a message or warm-transfers to a human when it matters.</p></div>
+    </div>
+
+    <div class="foot">
+      <p>Want this answering <strong>your</strong> phone? <a href="/#contact">Let's set up your line →</a></p>
+      <p class="legal">This is a live AI demo. Calls may be recorded for quality. Hollis runs on GB2G + Retell + Claude.</p>
+    </div>
+  </div>
+
+<script type="module">
+  import { RetellWebClient } from "https://esm.sh/retell-client-js-sdk@2";
+
+  const orb = document.getElementById("orb");
+  const statusEl = document.getElementById("status");
+  const hintEl = document.getElementById("hint");
+  const endBtn = document.getElementById("end");
+  const errEl = document.getElementById("err");
+  const tEl = document.getElementById("transcript");
+
+  const client = new RetellWebClient();
+  let active = false;
+
+  function setStatus(html) { statusEl.innerHTML = html; }
+  function setErr(msg) { errEl.textContent = msg || ""; }
+
+  function renderTranscript(turns) {
+    if (!Array.isArray(turns) || turns.length === 0) return;
+    tEl.classList.add("show");
+    tEl.innerHTML = turns.map((t) => {
+      const who = t.role === "agent" ? "Hollis" : "You";
+      const cls = t.role === "agent" ? "turn agent" : "turn";
+      const text = (t.content || "").replace(/[<>&]/g, (c) => ({ "<":"&lt;", ">":"&gt;", "&":"&amp;" }[c]));
+      return `<div class="${cls}"><span class="who">${who}</span>${text}</div>`;
+    }).join("");
+    tEl.scrollTop = tEl.scrollHeight;
+  }
+
+  async function start() {
+    setErr("");
+    orb.disabled = true;
+    setStatus("<strong>Connecting…</strong>");
+    try {
+      const res = await fetch("/api/hollis/demo/web-call", { method: "POST" });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        setErr(e.error || "Couldn't start the demo. Try again shortly.");
+        reset();
+        return;
+      }
+      const { access_token } = await res.json();
+      await client.startCall({ accessToken: access_token });
+    } catch (e) {
+      setErr("Microphone access is needed to talk to Hollis. Allow it and try again.");
+      reset();
+    }
+  }
+
+  function reset() {
+    active = false;
+    orb.disabled = false;
+    orb.classList.remove("live", "speaking");
+    orb.textContent = "Tap to talk";
+    endBtn.style.display = "none";
+    hintEl.style.display = "";
+  }
+
+  client.on("call_started", () => {
+    active = true;
+    orb.disabled = false;
+    orb.classList.add("live");
+    orb.textContent = "● live";
+    endBtn.style.display = "";
+    hintEl.style.display = "none";
+    setStatus("<strong>Listening…</strong> just start talking.");
+  });
+  client.on("agent_start_talking", () => { orb.classList.add("speaking"); setStatus("<strong>Hollis is speaking…</strong>"); });
+  client.on("agent_stop_talking", () => { orb.classList.remove("speaking"); if (active) setStatus("<strong>Listening…</strong>"); });
+  client.on("update", (u) => renderTranscript(u && u.transcript));
+  client.on("call_ended", () => { setStatus("Call ended. Thanks for trying Hollis!"); reset(); });
+  client.on("error", () => { setErr("The call hit a snag. Please try again."); try { client.stopCall(); } catch {} reset(); });
+
+  orb.addEventListener("click", () => { if (!active) start(); });
+  endBtn.addEventListener("click", () => { try { client.stopCall(); } catch {} });
+</script>
+</body>
+</html>

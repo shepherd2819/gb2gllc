@@ -64,19 +64,22 @@ export async function createProposal(input: CreateInput): Promise<Proposal> {
 
 export async function getProposal(id: string): Promise<Proposal | null> {
   const { supabaseAdmin } = await import("@/lib/supabase");
-  const { data } = await supabaseAdmin.from("proposals").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await supabaseAdmin.from("proposals").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
   return data ? rowToProposal(data) : null;
 }
 
 export async function getProposalByToken(token: string): Promise<Proposal | null> {
   const { supabaseAdmin } = await import("@/lib/supabase");
-  const { data } = await supabaseAdmin.from("proposals").select("*").eq("public_token", token).maybeSingle();
+  const { data, error } = await supabaseAdmin.from("proposals").select("*").eq("public_token", token).maybeSingle();
+  if (error) throw error;
   return data ? rowToProposal(data) : null;
 }
 
 export async function listProposals(): Promise<Proposal[]> {
   const { supabaseAdmin } = await import("@/lib/supabase");
-  const { data } = await supabaseAdmin.from("proposals").select("*").order("updated_at", { ascending: false });
+  const { data, error } = await supabaseAdmin.from("proposals").select("*").order("updated_at", { ascending: false });
+  if (error) throw error;
   return (data ?? []).map(rowToProposal);
 }
 
@@ -107,24 +110,27 @@ export async function updateProposal(id: string, patch: UpdatePatch): Promise<Pr
 
 export async function markViewed(token: string): Promise<void> {
   const { supabaseAdmin } = await import("@/lib/supabase");
-  await supabaseAdmin
+  const { error } = await supabaseAdmin
     .from("proposals")
     .update({ viewed_at: new Date().toISOString() })
     .eq("public_token", token)
     .is("viewed_at", null);
+  if (error) throw error;
 }
 
 export async function appendMessage(proposalId: string, role: "user" | "assistant", content: string): Promise<void> {
   const { supabaseAdmin } = await import("@/lib/supabase");
-  await supabaseAdmin.from("proposal_messages").insert({ proposal_id: proposalId, role, content });
+  const { error } = await supabaseAdmin.from("proposal_messages").insert({ proposal_id: proposalId, role, content });
+  if (error) throw error;
 }
 
 export async function getMessages(proposalId: string): Promise<ChatMessage[]> {
   const { supabaseAdmin } = await import("@/lib/supabase");
-  const { data } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from("proposal_messages")
     .select("role, content")
     .eq("proposal_id", proposalId)
     .order("created_at");
+  if (error) throw error;
   return (data ?? []) as ChatMessage[];
 }

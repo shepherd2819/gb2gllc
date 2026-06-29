@@ -30,6 +30,8 @@ export const AGENTS: AgentManifestEntry[] = [
     description: "Internal cold-outreach tool. Upload a leads CSV or PDF; Avery scrapes each lead's website, drafts a personalized email against your campaign briefing (Sonnet), and queues drafts for your approval. Sends via Resend with a configurable daily cap." },
   { slug: "june",  name: "June",  tagline: "Homepage audits",    glyph: "◎", group: "growth",
     description: "The live chat agent on gb2gllc.com. Talks with visitors, scrapes their site, generates a PDF \"AI Opportunity Audit\" with 3–5 agent ideas tailored to their business, and emails it. Rate-limited to one audit per visitor IP." },
+  { slug: "sawyer", name: "Sawyer", tagline: "Proposals", glyph: "✎", group: "growth",
+    description: "Drafts formal, send-ready client proposals from a chat. Knows GB2G's products, rate card, and voice, and pulls the target client's live account data. Exports a branded shareable link and a PDF. Upstream of Vera (contracts)." },
 
   // ── Client agents ──────────────────────────────────────────────────
   { slug: "mark",  name: "Mark",  tagline: "Real estate · sqft", glyph: "▢", group: "client",

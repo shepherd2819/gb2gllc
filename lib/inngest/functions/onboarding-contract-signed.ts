@@ -7,7 +7,7 @@ import { inngest } from "@/lib/inngest/client";
 import { logEvent } from "@/lib/logger";
 import { ONBOARDING_EVENTS, type ContractSignedPayload } from "@/lib/onboarding/events";
 import { ensureJourney, completeMilestone } from "@/lib/onboarding/store";
-import { sendPortalInvite } from "@/lib/onboarding/provision";
+import { sendPortalInvite, ensureWorkosOrg } from "@/lib/onboarding/provision";
 import { createInvoiceForContract } from "@/lib/onboarding/billing";
 import type { OnboardingTier } from "@/lib/onboarding/types";
 
@@ -33,6 +33,8 @@ export const onboardingContractSigned = inngest.createFunction(
       await completeMilestone(data.clientId, "sign_contract", "system");
     });
 
+    const orgId = await step.run("ensure-org", () => ensureWorkosOrg(data.clientId));
+
     await step.run("invite", async () => {
       const { supabaseAdmin } = await import("@/lib/supabase");
       const { data: client } = await supabaseAdmin
@@ -40,7 +42,9 @@ export const onboardingContractSigned = inngest.createFunction(
         .select("email")
         .eq("id", data.clientId)
         .maybeSingle<{ email: string | null }>();
-      if (client?.email) await sendPortalInvite(client.email);
+      if (client?.email) {
+        await sendPortalInvite(client.email, orgId ? { organizationId: orgId, roleSlug: "admin" } : undefined);
+      }
     });
 
     await step.run("invoice", async () => {

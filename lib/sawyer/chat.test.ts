@@ -44,3 +44,14 @@ test("rejects empty title", () => {
   const r = validateFinalizePayload({ ...good, title: "" });
   assert.equal(r.ok, false);
 });
+
+test("rejects pricing item with string amount", () => {
+  const bad = { ...good, pricing: { ...good.pricing, items: [{ label: "X", amount: "3000", cadence: "monthly" }] } };
+  const r = validateFinalizePayload(bad);
+  assert.equal(r.ok, false);
+});
+
+test("rejects whitespace-only title", () => {
+  const r = validateFinalizePayload({ ...good, title: "   " });
+  assert.equal(r.ok, false);
+});

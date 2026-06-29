@@ -34,37 +34,40 @@ export default function SawyerConsole() {
     setMessages((m) => [...m, { role: "user", content: userMsg }, { role: "assistant", content: "" }]);
     setInput("");
     setStreaming(true);
-    const res = await fetch("/api/admin/sawyer/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ proposalId: activeId, clientId, message: userMsg }),
-    });
-    const reader = res.body!.getReader();
-    const dec = new TextDecoder();
-    let buf = "";
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += dec.decode(value, { stream: true });
-      const lines = buf.split("\n\n");
-      buf = lines.pop() ?? "";
-      for (const line of lines) {
-        if (!line.startsWith("data: ")) continue;
-        const payload = line.slice(6);
-        if (payload === "[DONE]" || payload === '"[DONE]"') continue;
-        try {
-          const obj = JSON.parse(payload);
-          if (obj.token) setMessages((m) => { const c = [...m]; c[c.length - 1] = { role: "assistant", content: c[c.length - 1].content + obj.token }; return c; });
-          if (obj.proposal) { setActiveId(obj.proposal.id); setActiveToken(obj.proposal.public_token); refresh(); }
-        } catch { /* ignore keepalive */ }
+    try {
+      const res = await fetch("/api/admin/sawyer/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proposalId: activeId, clientId, message: userMsg }),
+      });
+      const reader = res.body!.getReader();
+      const dec = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split("\n\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const payload = line.slice(6);
+          if (payload === "[DONE]" || payload === '"[DONE]"') continue;
+          try {
+            const obj = JSON.parse(payload);
+            if (obj.token) setMessages((m) => { const c = [...m]; c[c.length - 1] = { role: "assistant", content: c[c.length - 1].content + obj.token }; return c; });
+            if (obj.proposal) { setActiveId(obj.proposal.id); setActiveToken(obj.proposal.public_token); refresh(); }
+          } catch { /* ignore keepalive */ }
+        }
       }
+    } finally {
+      setStreaming(false);
     }
-    setStreaming(false);
   }
 
   function openProposal(p: ProposalRow) {
     setActiveId(p.id); setActiveToken(p.public_token); setClientId(p.client_id);
-    fetch(`/api/admin/sawyer/proposals/${p.id}`).then((r) => r.json()).then(() => setMessages([]));
+    setMessages([]);
   }
   function newProposal() { setActiveId(null); setActiveToken(null); setMessages([]); setClientId(null); }
 

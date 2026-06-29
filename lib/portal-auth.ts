@@ -40,3 +40,49 @@ export async function isClientOwner(workosUserId: string, clientId: string): Pro
     .maybeSingle();
   return !!owner;
 }
+
+/**
+ * RBAC role + permission context from the WorkOS AuthKit session JWT (no DB).
+ * role/permissions are undefined unless the session is in an org context.
+ */
+export async function getSessionContext(): Promise<{
+  role?: string;
+  roles?: string[];
+  permissions?: string[];
+  organizationId?: string;
+}> {
+  const { withAuth } = await import("@workos-inc/authkit-nextjs");
+  const session = (await withAuth()) as {
+    role?: string;
+    roles?: string[];
+    permissions?: string[];
+    organizationId?: string;
+  };
+  return {
+    role: session.role,
+    roles: session.roles,
+    permissions: session.permissions,
+    organizationId: session.organizationId,
+  };
+}
+
+/** True if the current session carries the given WorkOS permission slug. */
+export async function hasPermission(permission: string): Promise<boolean> {
+  const { permissions } = await getSessionContext();
+  return !!permissions?.includes(permission);
+}
+
+/**
+ * The caller's role for a client: 'owner' if they own the client row, else the
+ * client_members.role (member/admin/billing/read_only), else null.
+ */
+export async function getMemberRole(workosUserId: string, clientId: string): Promise<string | null> {
+  if (await isClientOwner(workosUserId, clientId)) return "owner";
+  const { data: member } = await supabaseAdmin
+    .from("client_members")
+    .select("role")
+    .eq("workos_user_id", workosUserId)
+    .eq("client_id", clientId)
+    .maybeSingle<{ role: string | null }>();
+  return member?.role ?? null;
+}

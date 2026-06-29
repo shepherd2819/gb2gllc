@@ -63,6 +63,36 @@ export default async function OnboardingPage() {
       </div>
 
       <OnboardingChecklist milestones={views} />
+
+      {journey.tier !== "self_serve" && (
+        <div style={{ marginTop: 36, paddingTop: 24, borderTop: "1px solid var(--rule, #E4DDCC)" }}>
+          <h2 style={{ fontFamily: "var(--serif, 'EB Garamond', Georgia, serif)", fontWeight: 400, fontSize: 22, margin: "0 0 6px" }}>Enterprise setup</h2>
+          <p style={{ color: "var(--ink-soft, #4A4D47)", fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+            Have your IT team connect single sign-on and automatic user provisioning. These open a secure WorkOS setup page.
+          </p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
+            {[
+              { href: "/api/portal/workos-portal?intent=sso", label: "Set up SSO →" },
+              { href: "/api/portal/workos-portal?intent=dsync", label: "Set up directory sync (SCIM) →" },
+            ].map((b) => (
+              <a
+                key={b.href}
+                href={b.href}
+                style={{
+                  border: "1px solid var(--ink, #1C1E1B)",
+                  borderRadius: 100,
+                  padding: "8px 16px",
+                  fontSize: 13,
+                  textDecoration: "none",
+                  color: "var(--ink, #1C1E1B)",
+                }}
+              >
+                {b.label}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

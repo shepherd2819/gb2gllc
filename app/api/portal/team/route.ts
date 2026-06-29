@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { refreshSession, getWorkOS } from "@workos-inc/authkit-nextjs";
 import { supabaseAdmin } from "@/lib/supabase";
 import { isClientOwner } from "@/lib/portal-auth";
-
-const MAX_TEAMMATES = 1;
+import { getSeatCap } from "@/lib/onboarding/seats";
 
 export async function POST(req: NextRequest) {
   const { user } = await refreshSession({ ensureSignedIn: false });
@@ -30,13 +29,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "That email is already the account owner" }, { status: 400 });
   }
 
-  // Enforce cap
+  // Enforce the tier-driven seat cap
+  const cap = await getSeatCap(client.id);
   const { count: existingCount } = await supabaseAdmin
     .from("client_members")
     .select("id", { count: "exact", head: true })
     .eq("client_id", client.id);
-  if ((existingCount ?? 0) >= MAX_TEAMMATES) {
-    return NextResponse.json({ error: `You can invite at most ${MAX_TEAMMATES} teammate.` }, { status: 400 });
+  if ((existingCount ?? 0) >= cap) {
+    return NextResponse.json({ error: `You can invite at most ${cap} teammate${cap === 1 ? "" : "s"} on your plan.` }, { status: 400 });
   }
 
   // Check duplicate

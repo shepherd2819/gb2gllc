@@ -26,3 +26,8 @@ create table proposal_messages (
   created_at  timestamptz not null default now()
 );
 create index proposal_messages_proposal_id_idx on proposal_messages(proposal_id);
+
+alter table proposals         enable row level security;
+alter table proposal_messages enable row level security;
+create policy prop_service_role_only         on proposals         for all using (false);
+create policy prop_messages_service_role_only on proposal_messages for all using (false);

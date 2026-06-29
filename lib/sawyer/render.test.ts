@@ -38,3 +38,9 @@ test("renderProposalHtml escapes HTML in body to prevent injection", () => {
   assert.ok(!html.includes("<script>alert(1)</script>"));
   assert.match(html, /&lt;script&gt;/);
 });
+
+test("renderProposalHtml escapes single quotes (attribute hardening)", () => {
+  const html = renderProposalHtml({ ...proposal, title: "O'Brien & Sons" });
+  assert.ok(!html.includes("O'Brien"));
+  assert.match(html, /O&#39;Brien/);
+});

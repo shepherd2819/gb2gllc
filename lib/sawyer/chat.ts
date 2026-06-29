@@ -100,7 +100,9 @@ export function streamSawyerTurn(args: { system: string; messages: ChatMessage[]
   return anthropic.messages.stream({
     model: SAWYER_MODEL,
     max_tokens: SAWYER_MAX_TOKENS,
-    system: args.system,
+    // Cache the (stable) system prompt so multi-turn proposal refinement
+    // reuses it instead of re-billing the full company knowledge each turn.
+    system: [{ type: "text", text: args.system, cache_control: { type: "ephemeral" } }],
     tools: [FINALIZE_TOOL],
     messages: args.messages.map((m) => ({ role: m.role, content: m.content })),
   });

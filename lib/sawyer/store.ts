@@ -8,7 +8,7 @@ export function generateToken(): string {
 const CADENCE_SUFFIX: Record<string, string> = { monthly: "/mo", annual: "/yr", one_time: "" };
 
 function formatAmount(amount: number | null, cadence: string): string {
-  if (amount == null) return "TBD (to confirm)";
+  if (amount == null) return "To confirm";
   return `$${amount.toLocaleString("en-US")}${CADENCE_SUFFIX[cadence] ?? ""}`;
 }
 

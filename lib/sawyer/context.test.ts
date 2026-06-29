@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { shapeClientContext, buildProspectContext } from "./context";
+import { shapeClientContext, buildProspectContext, escapeSearchTerm } from "./context";
 
 const base = {
   client: { id: "c1", name: "Jane Doe", company: "BrightLens Media", email: "jane@bright.io", status: "active" },
@@ -37,4 +37,16 @@ test("buildProspectContext trims and carries notes", () => {
   assert.equal(p.kind, "prospect");
   assert.equal(p.name, "Acme Corp");
   assert.equal(p.notes, "referred by X");
+});
+
+test("escapeSearchTerm escapes special characters", () => {
+  const result = escapeSearchTerm('100%_a"b\\c');
+  assert.ok(result.includes("\\\\"), "should escape backslash");
+  assert.ok(result.includes('\\"'), "should escape double quote");
+  assert.ok(result.includes("\\%"), "should escape percent");
+  assert.ok(result.includes("\\_"), "should escape underscore");
+});
+
+test("escapeSearchTerm returns plain term unchanged", () => {
+  assert.equal(escapeSearchTerm("acme"), "acme");
 });

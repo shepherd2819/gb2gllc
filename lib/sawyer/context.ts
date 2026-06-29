@@ -41,6 +41,13 @@ export function buildProspectContext(input: { name: string; company?: string; no
   };
 }
 
+// Escape PostgREST/ilike special chars so user input cannot alter the filter.
+// Backslash first, then quote and the ilike wildcards. The value is wrapped in
+// double quotes at the call site, which neutralizes structural delimiters (, . : ( )).
+export function escapeSearchTerm(term: string): string {
+  return term.replace(/[\\"%_]/g, (m) => "\\" + m);
+}
+
 export async function getClientContext(clientId: string): Promise<ClientContext | null> {
   const { supabaseAdmin } = await import("@/lib/supabase");
   const { data: client } = await supabaseAdmin
@@ -58,8 +65,7 @@ export async function getClientContext(clientId: string): Promise<ClientContext 
         .from("hollis_lines")
         .select("agent_name, voice_profile")
         .eq("client_id", clientId)
-        .maybeSingle()
-        .then((r) => r),
+        .maybeSingle(),
       supabaseAdmin.from("tickets").select("id", { count: "exact", head: true }).eq("client_id", clientId),
     ]);
 
@@ -76,7 +82,10 @@ export async function searchClients(q: string): Promise<Array<{ id: string; name
   const { supabaseAdmin } = await import("@/lib/supabase");
   const term = q.trim();
   let query = supabaseAdmin.from("clients").select("id, name, company").order("name").limit(20);
-  if (term) query = query.or(`name.ilike.%${term}%,company.ilike.%${term}%`);
+  if (term) {
+    const safe = escapeSearchTerm(term);
+    query = query.or(`name.ilike."%${safe}%",company.ilike."%${safe}%"`);
+  }
   const { data } = await query;
   return (data ?? []) as Array<{ id: string; name: string; company: string }>;
 }

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { supabaseAdmin } from "@/lib/supabase";
+import { HERALD_PRODUCT } from "@/lib/intake/herald";
 
 type Params = { params: Promise<{ sessionId: string }> };
 
@@ -11,7 +12,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
   // Validate session exists and is not expired
   const { data, error } = await supabaseAdmin
     .from("intake_sessions")
-    .select("id, expires_at")
+    .select("id, expires_at, intended_product")
     .eq("id", sessionId)
     .single();
 
@@ -25,13 +26,17 @@ export async function GET(_req: NextRequest, { params }: Params) {
     );
   }
 
-  let html = readFileSync(join(process.cwd(), "public", "intake.html"), "utf-8");
+  const isHerald = data.intended_product === HERALD_PRODUCT;
+  let html = readFileSync(
+    join(process.cwd(), "public", isHerald ? "intake-herald.html" : "intake.html"),
+    "utf-8"
+  );
 
   // Inject session ID and Calendly URL before </head>
   const calendlyUrl = process.env.NEXT_PUBLIC_CALENDLY_URL ?? "";
   html = html.replace(
     "</head>",
-    `<script>window.GB2G_SESSION_ID = ${JSON.stringify(sessionId)};window.GB2G_CALENDLY_URL = ${JSON.stringify(calendlyUrl)};</script>\n</head>`
+    `<script>window.GB2G_SESSION_ID = ${JSON.stringify(sessionId)};window.GB2G_CALENDLY_URL = ${JSON.stringify(calendlyUrl)};${isHerald ? `window.GB2G_INTAKE_MODE = ${JSON.stringify(HERALD_PRODUCT)};` : ""}</script>\n</head>`
   );
 
   return new Response(html, {

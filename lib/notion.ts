@@ -1,4 +1,5 @@
 import { Client } from "@notionhq/client";
+import { heraldAnswers } from "@/lib/intake/herald";
 
 export const notion = new Client({ auth: process.env.NOTION_TOKEN });
 
@@ -182,6 +183,32 @@ export async function createIntakePage(
       ...(sops.pastedText ? [para(`Pasted notes:\n${sops.pastedText.slice(0, 2000)}`)] : []),
       ...(sops.additionalLinks ? [para(`Links: ${sops.additionalLinks}`)] : []),
       divider(),
+
+      ...(state.herald
+        ? (() => {
+            const ha = heraldAnswers(state);
+            return [
+              h2("Herald Setup"),
+              bullet(`Agent name: ${ha.voice.agentName || "—"} · Tone: ${ha.voice.tone || "—"}`),
+              ...(ha.voice.avoid ? [bullet(`Avoid: ${ha.voice.avoid}`)] : []),
+              bullet(
+                `Website: ${ha.website.url || "—"}`
+                + (ha.website.platform ? ` · Platform: ${ha.website.platform}` : "")
+                + (ha.website.snippetAccess ? ` · Snippet: ${ha.website.snippetAccess}` : "")
+              ),
+              para(`Products & services: ${ha.knowledge.services || "—"}`),
+              ...(ha.knowledge.faqs ? [para(`Top FAQs: ${ha.knowledge.faqs}`)] : []),
+              ...(ha.knowledge.hours ? [para(`Hours: ${ha.knowledge.hours}`)] : []),
+              ...(ha.knowledge.policies ? [para(`Policies: ${ha.knowledge.policies}`)] : []),
+              bullet(
+                `Leads → ${ha.leads.destination || "—"}`
+                + (ha.leads.contact ? ` · Handled by: ${ha.leads.contact}` : "")
+                + (ha.leads.bookingLink ? ` · Booking: ${ha.leads.bookingLink}` : "")
+              ),
+              divider(),
+            ];
+          })()
+        : []),
 
       h2("Kickoff Call"),
       para(slotLabel),

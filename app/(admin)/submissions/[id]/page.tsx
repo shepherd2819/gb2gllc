@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import { SubmissionActions } from "./SubmissionActions";
+import { HERALD_PRODUCT, heraldAnswers } from "@/lib/intake/herald";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -44,6 +45,9 @@ export default async function SubmissionDetailPage({ params }: Params) {
   const sops = (state.sops ?? {}) as { text?: string; links?: string };
   const access = (state.access ?? {}) as Record<string, { connected?: boolean; access?: string }>;
   const schedule = (state.schedule ?? {}) as { slot?: string };
+
+  const isHerald = session.intended_product === HERALD_PRODUCT;
+  const herald = isHerald ? heraldAnswers(state as Record<string, unknown>) : null;
 
   const { data: existingClient } = await supabaseAdmin
     .from("clients")
@@ -97,6 +101,27 @@ export default async function SubmissionDetailPage({ params }: Params) {
             <Field label="Company" value={contact.company} />
             <Field label="Website" value={contact.website} />
           </Section>
+
+          {herald && (
+            <Section title="Herald setup answers">
+              <div style={{ marginBottom: 10 }}>
+                <span className="prod-chip herald">Herald signup</span>
+              </div>
+              <Field label="Agent name" value={herald.voice.agentName} />
+              <Field label="Tone" value={herald.voice.tone} />
+              <Field label="Avoid" value={herald.voice.avoid} />
+              <Field label="Website" value={herald.website.url} />
+              <Field label="Platform" value={herald.website.platform} />
+              <Field label="Snippet access" value={herald.website.snippetAccess} />
+              <Field label="Products & services" value={herald.knowledge.services} />
+              <Field label="Top FAQs" value={herald.knowledge.faqs} />
+              <Field label="Hours" value={herald.knowledge.hours} />
+              <Field label="Policies" value={herald.knowledge.policies} />
+              <Field label="Leads go to" value={herald.leads.destination} />
+              <Field label="Lead handler" value={herald.leads.contact} />
+              <Field label="Booking link" value={herald.leads.bookingLink} />
+            </Section>
+          )}
 
           <Section title="About their business">
             <Field label="Role" value={about.role} />

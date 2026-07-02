@@ -7,7 +7,7 @@ export default async function SubmissionsPage() {
   // this view.
   const { data: sessions } = await supabaseAdmin
     .from("intake_sessions")
-    .select("id, state, submitted_at, notion_page_id, source")
+    .select("id, state, submitted_at, notion_page_id, source, intended_product")
     .not("submitted_at", "is", null)
     .order("submitted_at", { ascending: false });
 
@@ -39,7 +39,12 @@ export default async function SubmissionsPage() {
             <div key={s.id} className="at-row" style={{ gridTemplateColumns: "1.5fr 2fr 1fr 0.8fr 0.8fr 100px" }}>
               <span className="at-company">{displayName}</span>
               <span className="at-email">{contact.email || "—"}</span>
-              <span className="at-email">{s.source || "web"}</span>
+              <span className="at-email">
+                {s.source || "web"}
+                {s.intended_product === "herald" && (
+                  <span className="prod-chip herald" style={{ marginLeft: 6 }}>Herald</span>
+                )}
+              </span>
               <span>
                 <span className={`alr-badge ${s.notion_page_id ? "ok" : "warn"}`}>
                   {s.notion_page_id ? "Synced" : "Pending"}

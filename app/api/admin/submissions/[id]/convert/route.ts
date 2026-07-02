@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getWorkOS } from "@workos-inc/authkit-nextjs";
 import { requireAdmin } from "@/lib/admin-auth";
+import { HERALD_PRODUCT, heraldAnswers } from "@/lib/intake/herald";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -13,7 +14,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   const { data: session } = await supabaseAdmin
     .from("intake_sessions")
-    .select("id, state")
+    .select("id, state, intended_product")
     .eq("id", id)
     .single();
 
@@ -54,6 +55,35 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   if (!clientId) return NextResponse.json({ error: "Could not find or create client" }, { status: 500 });
 
+  // Herald-link parity: manual convert enables the product + maps the agent
+  // name exactly like the hands-off submit path.
+  let heraldEnabled = false;
+  if (session.intended_product === HERALD_PRODUCT) {
+    const { error: prodErr } = await supabaseAdmin
+      .from("client_products")
+      .upsert(
+        { client_id: clientId, product: HERALD_PRODUCT, active: true },
+        { onConflict: "client_id,product" }
+      );
+    if (prodErr) console.error("[convert] client_products upsert failed:", prodErr);
+    heraldEnabled = !prodErr;
+
+    const agentName = heraldAnswers(state).voice.agentName.trim();
+    if (agentName) {
+      const { data: client } = await supabaseAdmin
+        .from("clients")
+        .select("chatbot_agent_name")
+        .eq("id", clientId)
+        .single();
+      if (client && !client.chatbot_agent_name) {
+        await supabaseAdmin
+          .from("clients")
+          .update({ chatbot_agent_name: agentName })
+          .eq("id", clientId);
+      }
+    }
+  }
+
   // Send WorkOS invite
   try {
     const workos = getWorkOS();
@@ -62,5 +92,5 @@ export async function POST(_req: NextRequest, { params }: Params) {
     console.warn("WorkOS invite failed (may already exist):", e);
   }
 
-  return NextResponse.json({ ok: true, clientId });
+  return NextResponse.json({ ok: true, clientId, heraldEnabled });
 }

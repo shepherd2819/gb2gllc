@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GB2GLLC — Herald Setup</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#1C1E1B" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --abs-dark: #1C1E1B;  --abs-light: #FAF6EC;
+      --parchment: #F4EEE2; --parchment-2: #FAF6EC; --parchment-3: #EDE3CC;
+      --ink: #1C1E1B; --ink-soft: #4A4D47; --ink-mute: #8A8C85;
+      --rule: #E4DDCC; --rule-soft: #EDE7D7;
+      --dusty-blue: #7F9DB9; --dusty-blue-deep: #4E6E8C;
+      --warm-gold: #C9A961; --warm-gold-deep: #9B7E3F;
+      --sage: #A6B49B; --terracotta: #C97B5C; --burgundy: #82403C;
+      --sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+      --mono: "Geist Mono", ui-monospace, monospace;
+      --serif: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+    }
+    [data-theme="dark"] {
+      --parchment: #232522; --parchment-2: #1C1E1B; --parchment-3: #2C2E2A;
+      --ink: #FAF6EC; --ink-soft: #C9CBc4; --ink-mute: #8A8C85;
+      --rule: #3A3C37; --rule-soft: #2E302B;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--sans); background: var(--parchment); color: var(--ink);
+      min-height: 100vh; -webkit-font-smoothing: antialiased;
+    }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 28px; border-bottom: 1px solid var(--rule);
+      position: sticky; top: 0; background: var(--parchment); z-index: 10;
+    }
+    .mark { font-family: var(--mono); font-size: 15px; font-weight: 500; letter-spacing: -0.02em; }
+    .mark .two { color: var(--warm-gold-deep); }
+    .mark .llc { font-size: 9px; color: var(--ink-mute); margin-left: 3px; letter-spacing: 0.1em; }
+    .progress { display: flex; gap: 8px; align-items: center; }
+    .stage-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--rule); border: none; padding: 0; cursor: default;
+      transition: background 0.3s, transform 0.3s;
+    }
+    .stage-dot.done { background: var(--dusty-blue-deep); cursor: pointer; }
+    .stage-dot.current { background: var(--warm-gold); transform: scale(1.35); }
+    .head-right { display: flex; align-items: center; gap: 14px; }
+    .theme-toggle {
+      background: none; border: 1px solid var(--rule); border-radius: 100px;
+      width: 30px; height: 30px; cursor: pointer; color: var(--ink-soft);
+      font-size: 13px; line-height: 1;
+    }
+    .save-state { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; color: var(--ink-mute); }
+    .save-state .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sage); animation: pulse 2.4s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+    main { max-width: 680px; margin: 0 auto; padding: 56px 28px 96px; }
+    .stage-wrap { animation: stage-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+    @keyframes stage-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+    .eyebrow {
+      font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--warm-gold-deep); margin-bottom: 14px;
+    }
+    h1 { font-family: var(--serif); font-size: 42px; font-weight: 400; line-height: 1.12; letter-spacing: -0.01em; margin-bottom: 16px; }
+    .lede { font-size: 16px; line-height: 1.65; color: var(--ink-soft); margin-bottom: 36px; max-width: 56ch; }
+    .field { margin-bottom: 22px; }
+    .field label {
+      display: block; font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--ink-soft); margin-bottom: 8px;
+    }
+    .req { color: var(--terracotta); }
+    .hint { font-size: 12.5px; color: var(--ink-mute); margin-top: 6px; line-height: 1.5; }
+    .field input[type="text"], .field input[type="email"], .field input[type="url"], .field textarea {
+      width: 100%; font-family: var(--sans); font-size: 15px; color: var(--ink);
+      background: var(--parchment-2); border: 1px solid var(--rule); border-radius: 10px;
+      padding: 12px 14px; outline: none; transition: border-color 0.2s;
+    }
+    .field input:focus, .field textarea:focus { border-color: var(--dusty-blue); }
+    .field textarea { min-height: 96px; resize: vertical; line-height: 1.55; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill {
+      font-family: var(--sans); font-size: 13.5px; color: var(--ink-soft);
+      background: var(--parchment-2); border: 1px solid var(--rule); border-radius: 100px;
+      padding: 8px 16px; cursor: pointer; transition: all 0.18s;
+    }
+    .pill:hover { border-color: var(--ink-mute); }
+    .pill.selected { background: var(--ink); color: var(--abs-light); border-color: var(--ink); }
+    [data-theme="dark"] .pill.selected { background: var(--abs-light); color: var(--abs-dark); border-color: var(--abs-light); }
+    .actions { display: flex; align-items: center; justify-content: space-between; margin-top: 40px; }
+    .btn {
+      font-family: var(--sans); font-size: 14px; font-weight: 500; border-radius: 100px;
+      padding: 12px 26px; cursor: pointer; border: 1px solid transparent; transition: all 0.2s;
+    }
+    .btn .arrow { display: inline-block; transition: transform 0.2s; }
+    .btn:hover .arrow { transform: translateX(3px); }
+    .btn-primary { background: var(--ink); color: var(--abs-light); }
+    .btn-primary:hover { background: var(--dusty-blue-deep); }
+    .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-primary:disabled .arrow { transform: none; }
+    [data-theme="dark"] .btn-primary { background: var(--abs-light); color: var(--abs-dark); }
+    [data-theme="dark"] .btn-primary:hover { background: var(--dusty-blue); }
+    .btn-ghost { background: none; border-color: var(--rule); color: var(--ink-soft); }
+    .btn-ghost:hover { border-color: var(--ink-mute); }
+    .btn-back { background: none; color: var(--ink-mute); padding-left: 0; }
+    .btn-back .arrow { transform: scaleX(-1); margin-right: 4px; }
+    .btn-back:hover { color: var(--ink); }
+    .btn-back:hover .arrow { transform: scaleX(-1) translateX(3px); }
+    .drop {
+      border: 1.5px dashed var(--rule); border-radius: 14px; background: var(--parchment-2);
+      padding: 32px 24px; text-align: center; margin-bottom: 18px; transition: border-color 0.2s;
+    }
+    .drop.over { border-color: var(--dusty-blue); }
+    .drop p { font-size: 14px; margin-bottom: 6px; }
+    .drop .hint { margin-bottom: 14px; }
+    .file-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      background: var(--parchment-2); border: 1px solid var(--rule); border-radius: 10px;
+      padding: 10px 14px; margin-bottom: 8px; font-size: 13.5px;
+    }
+    .file-row .meta { font-family: var(--mono); font-size: 11px; color: var(--ink-mute); }
+    .calendly-inline-widget { border: 1px solid var(--rule); border-radius: 14px; overflow: hidden; }
+    .done-hero { text-align: center; padding-top: 12px; }
+    .done-icon {
+      width: 64px; height: 64px; border-radius: 50%; background: var(--sage);
+      color: var(--abs-light); font-size: 28px; line-height: 64px; margin: 0 auto 24px;
+      position: relative; animation: ripple 1.8s ease-out 1;
+    }
+    @keyframes ripple {
+      0% { box-shadow: 0 0 0 0 rgba(166, 180, 155, 0.5); }
+      100% { box-shadow: 0 0 0 26px rgba(166, 180, 155, 0); }
+    }
+    .summary {
+      text-align: left; background: var(--parchment-2); border: 1px solid var(--rule);
+      border-radius: 14px; padding: 22px 24px; margin: 32px 0;
+    }
+    .summary-row { display: grid; grid-template-columns: 160px 1fr; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--rule-soft); font-size: 14px; }
+    .summary-row:last-child { border-bottom: none; }
+    .summary-row .key { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-mute); padding-top: 2px; }
+    .verse-closer {
+      background: var(--ink); color: var(--abs-light); border-radius: 14px;
+      font-family: var(--serif); font-style: italic; font-size: 16px; line-height: 1.6;
+      padding: 24px 28px; margin-top: 36px; text-align: center;
+    }
+    .verse-closer .ref { display: block; font-family: var(--mono); font-style: normal; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--warm-gold); margin-top: 10px; }
+    footer.done-foot { text-align: center; margin-top: 28px; font-size: 13px; }
+    footer.done-foot a { color: var(--dusty-blue-deep); }
+    @media (prefers-reduced-motion: reduce) {
+      .stage-wrap, .done-icon, .save-state .dot { animation: none !important; }
+      .btn .arrow, .stage-dot { transition: none !important; }
+    }
+    @media (max-width: 700px) {
+      .form-row { grid-template-columns: 1fr; }
+      h1 { font-size: 32px; }
+      main { padding: 36px 20px 72px; }
+      header .progress { display: none; }
+      .summary-row { grid-template-columns: 1fr; gap: 2px; }
+    }
+  </style>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('gb2g_theme');
+        if (!t) t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <header>
+    <div class="mark">gb<span class="two">2</span>g<span class="llc">LLC</span></div>
+    <div class="progress" id="progress"></div>
+    <div class="head-right">
+      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">◐</button>
+      <div class="save-state"><span class="dot"></span><span id="save-status">Auto-saved</span></div>
+    </div>
+  </header>
+
+  <main id="main"></main>
+
+  <script>
+    (function () {
+      const params = window.location.search || '';
+      const s = document.createElement('script');
+      s.src = '/intake-herald-app.js' + params;
+      s.onerror = function () {
+        document.getElementById('main').innerHTML =
+          '<div style="padding:24px;color:#82403C;">Script load failed — please refresh.</div>';
+      };
+      document.head.appendChild(s);
+    })();
+  </script>
+</body>
+</html>

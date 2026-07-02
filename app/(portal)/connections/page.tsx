@@ -12,7 +12,17 @@ const SLACK_FLASH: Record<string, { tone: "ok" | "warn" | "err"; msg: string }> 
   exchange_failed: { tone: "err", msg: "Slack rejected the install. Email hello@gb2gllc.com." },
 };
 
-type Props = { searchParams: Promise<{ slack?: string }> };
+const META_FLASH: Record<string, { tone: "ok" | "warn" | "err"; msg: string }> = {
+  connected: { tone: "ok", msg: "Meta workspace connected — Maya is live on your Facebook Page and Instagram." },
+  missing_code: { tone: "err", msg: "Meta didn't return an authorization code. Try again." },
+  state_mismatch: { tone: "err", msg: "Sign-in session expired during install. Try again." },
+  bad_state: { tone: "err", msg: "Invalid install state. Try again." },
+  exchange_failed: { tone: "err", msg: "Meta rejected the install. Email hello@gb2gllc.com." },
+  list_pages_failed: { tone: "err", msg: "Couldn't read your Pages from Meta. Try again." },
+  no_pages: { tone: "warn", msg: "No Facebook Pages were returned. Make sure you're an admin of at least one Page and that the Page has a linked Instagram Business account." },
+};
+
+type Props = { searchParams: Promise<{ slack?: string; meta?: string }> };
 
 export default async function ConnectionsPage({ searchParams }: Props) {
   const { user } = await withAuth();
@@ -28,6 +38,7 @@ export default async function ConnectionsPage({ searchParams }: Props) {
     { data: session },
     { data: assignments },
     { data: tokens },
+    { data: metaPages },
   ] = await Promise.all([
     supabaseAdmin.from("clients").select("intake_sessions(state)").eq("id", clientId).single(),
     supabaseAdmin
@@ -39,6 +50,11 @@ export default async function ConnectionsPage({ searchParams }: Props) {
       .from("steward_platform_tokens")
       .select("platform, token_data")
       .eq("client_id", client.id),
+    supabaseAdmin
+      .from("meta_page_subscriptions")
+      .select("page_name, instagram_username")
+      .eq("client_id", client.id)
+      .eq("active", true),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -48,9 +64,16 @@ export default async function ConnectionsPage({ searchParams }: Props) {
   const access: Record<string, any> = intakeState.access ?? {};
 
   const connectedPlatforms = new Set((tokens ?? []).map((t) => t.platform));
+  if ((metaPages ?? []).length > 0) connectedPlatforms.add("meta");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const slackToken = (tokens ?? []).find((t) => t.platform === "slack")?.token_data as any | undefined;
-  const flash = (await searchParams).slack ? SLACK_FLASH[(await searchParams).slack as string] : undefined;
+  const metaSummary = (metaPages ?? [])
+    .map((p) => `${p.page_name}${p.instagram_username ? ` / @${p.instagram_username}` : ""}`)
+    .join(", ");
+  const sp = await searchParams;
+  const flashSlack = sp.slack ? SLACK_FLASH[sp.slack as string] : undefined;
+  const flashMeta = sp.meta ? META_FLASH[sp.meta as string] : undefined;
+  const flash = flashMeta ?? flashSlack;
 
   return (
     <>
@@ -85,6 +108,7 @@ export default async function ConnectionsPage({ searchParams }: Props) {
               const plat = a.steward_platform_agents as any;
               const isConnected = connectedPlatforms.has(a.platform_agent_id);
               const needsSlack = a.platform_agent_id === "slack" && !isConnected;
+              const needsMeta = a.platform_agent_id === "meta" && !isConnected;
               return (
                 <div key={i} className={`connection-row ${isConnected ? "granted" : "pending"}`}>
                   <div className="connection-name">
@@ -100,10 +124,17 @@ export default async function ConnectionsPage({ searchParams }: Props) {
                         {a.platform_agent_id === "slack" && slackToken?.team_name && (
                           <span className="conn-method">{slackToken.team_name}</span>
                         )}
+                        {a.platform_agent_id === "meta" && metaSummary && (
+                          <span className="conn-method">{metaSummary}</span>
+                        )}
                       </>
                     ) : needsSlack ? (
                       <a href="/api/slack/install" className="btn-portal-ghost" style={{ padding: "6px 14px", fontSize: 12 }}>
                         Install in Slack →
+                      </a>
+                    ) : needsMeta ? (
+                      <a href="/api/meta/install" className="btn-portal-ghost" style={{ padding: "6px 14px", fontSize: 12 }}>
+                        Connect Meta →
                       </a>
                     ) : (
                       <span className="conn-badge pending">Setup pending</span>

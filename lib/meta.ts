@@ -7,13 +7,13 @@ const OAUTH_BASE = "https://www.facebook.com/v21.0/dialog/oauth";
 export const META_REDIRECT_URI = `${ADMIN_URL}/api/meta/oauth/callback`;
 
 const SCOPES = [
+  "public_profile",
   "pages_show_list",
   "pages_messaging",
   "pages_manage_metadata",
-  "pages_read_engagement",
   "pages_manage_engagement",
-  "instagram_basic",
-  "instagram_manage_messages",
+  "instagram_business_basic",
+  "instagram_business_manage_messages",
   "instagram_manage_comments",
   "business_management",
 ];

@@ -1379,7 +1379,7 @@
         <span class="kind">AI phone receptionist</span>
       </div>
       <p class="gloss">She answers at 2 AM like it's 2 PM.</p>
-      <p>The newest member of the fleet answers your business's phone in a voice callers swear is a person — books appointments, qualifies leads, answers your FAQs, and takes messages. Then she emails your team a clean summary of every call. Go say hello: she's taking live calls on her page right now.</p>
+      <p>The newest member of the fleet answers your business's phone in a voice callers swear is a person — books appointments, qualifies leads, answers your FAQs, and takes messages. Then she emails your team a clean summary of every call. Go say hello — you can hear how she handles a call on her page.</p>
       <ul class="specs">
         <li>answers in under one ring</li>
         <li>books &amp; qualifies by voice</li>
@@ -1398,7 +1398,7 @@
     <a class="product-demo" href="/hollis" id="hollis-card" style="text-decoration:none;color:inherit;cursor:pointer;">
       <div class="head">
         <div class="title"><strong>incoming call</strong> · 9:47 PM</div>
-        <div class="badge"><span class="pulse"></span>Live on /hollis</div>
+        <div class="badge"><span class="pulse"></span>Meet her on /hollis</div>
       </div>
       <div class="body" id="hollis-mini" style="padding:20px 18px 22px;background:#1C1E1B;color:#FAF6EC;flex:1;display:flex;flex-direction:column;justify-content:center;"></div>
     </a>
@@ -2212,7 +2212,8 @@
     }
     var d = lineEl(frames[i++]);
     lines.appendChild(d);
-    requestAnimationFrame(function () { d.style.opacity = '1'; });
+    void d.offsetWidth; // flush styles so the opacity flip actually transitions
+    d.style.opacity = '1';
     setTimeout(step, 1700);
   }
   step();

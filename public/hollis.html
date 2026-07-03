@@ -41,8 +41,8 @@
     --n3: #273043;            /* 2:03 am, deepest blue */
     --n4: #3A4A66;            /* 6:58 am, pre-dawn */
     --moon: #FAF6EC;
-    --moon-soft: rgba(250,246,236,.62);
-    --moon-mute: rgba(250,246,236,.38);
+    --moon-soft: rgba(250,246,236,.72);
+    --moon-mute: rgba(250,246,236,.55);
     --moon-line: rgba(250,246,236,.14);
     --sans: "Geist", ui-sans-serif, system-ui, sans-serif;
     --mono: "Geist Mono", ui-monospace, monospace;
@@ -155,6 +155,9 @@
     user-select: none; pointer-events: none; z-index: 0;
   }
   .scene[data-i="4"] .ghost-time { color: rgba(250,246,236,.07); }
+  /* n4 pre-dawn blue is too light for the standard gold — lift it */
+  .scene[data-i="4"] .scene-time, .scene[data-i="4"] .line.h .who,
+  .scene[data-i="4"] .stat::before, .scene[data-i="4"] .stat::after { color: #EFD9A3; }
 
   .scene-time { font-family: var(--mono); font-size: 12px; letter-spacing: .2em; color: var(--warm-gold); margin-bottom: 10px; }
   .scene h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(30px, 4.2vw, 46px); line-height: 1.1; margin-bottom: 28px; }
@@ -181,14 +184,14 @@
     border: 1px solid rgba(28,30,27,.08);
   }
   .card .tag { font-family: var(--mono); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; display: inline-block; padding: 4px 10px; border-radius: 100px; margin-bottom: 14px; }
-  .tag.ok { background: rgba(166,180,155,.25); color: #5d6f51; }
-  .tag.hot { background: rgba(201,123,92,.16); color: #a35434; }
-  .tag.kb { background: rgba(127,157,185,.2); color: var(--dusty-blue-deep); }
-  .tag.xfer { background: rgba(201,169,97,.2); color: var(--warm-gold-deep); }
+  .tag.ok { background: rgba(166,180,155,.25); color: #46543C; }
+  .tag.hot { background: rgba(201,123,92,.16); color: #8C4426; }
+  .tag.kb { background: rgba(127,157,185,.2); color: #3D5872; }
+  .tag.xfer { background: rgba(201,169,97,.2); color: #6F5A2C; }
   .card h3 { font-family: var(--serif); font-weight: 400; font-size: 22px; margin-bottom: 10px; }
   .card .row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; padding: 7px 0; border-top: 1px solid var(--rule); }
   .card .row:first-of-type { border-top: none; }
-  .card .k { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mute); padding-top: 2px; }
+  .card .k { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); padding-top: 2px; }
   .card .v { color: var(--ink-soft); text-align: right; }
   .card .note { font-size: 13px; line-height: 1.55; color: var(--ink-soft); }
 
@@ -198,7 +201,7 @@
     padding: clamp(110px, 18vh, 190px) clamp(22px, 5vw, 48px) clamp(90px, 12vh, 140px);
     color: var(--ink); text-align: center;
   }
-  #act-morning .scene-time { color: rgba(28,30,27,.72); }
+  #act-morning .scene-time { color: rgba(28,30,27,.85); }
   #act-morning h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(34px, 5vw, 56px); line-height: 1.08; color: var(--ink); max-width: 18ch; margin: 0 auto 14px; }
   #act-morning .sub { color: var(--ink-soft); font-weight: 300; font-size: 16px; line-height: 1.6; max-width: 52ch; margin: 0 auto 48px; }
   .email {
@@ -210,7 +213,7 @@
   #act-morning.in .email { opacity: 1; transform: none; }
   .email .chrome { padding: 16px 22px; border-bottom: 1px solid var(--rule); background: var(--parchment-2); }
   .email .meta { display: grid; grid-template-columns: 64px 1fr; gap: 4px 12px; font-size: 13px; }
-  .email .meta .k { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mute); padding-top: 2px; }
+  .email .meta .k { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); padding-top: 2px; }
   .email .meta .v { color: var(--ink); }
   .email .meta .v.subj { font-weight: 600; }
   .email .body { padding: 22px; font-size: 14px; line-height: 1.65; color: var(--ink-soft); }
@@ -223,7 +226,7 @@
   /* ══ ACT 4 · straight answers ══ */
   #act-answers { background: var(--parchment); color: var(--ink); padding: clamp(70px, 10vh, 110px) clamp(22px, 5vw, 48px) clamp(90px, 12vh, 130px); }
   #act-answers .inner { max-width: 1060px; margin: 0 auto; }
-  #act-answers .head-line { font-family: var(--mono); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--warm-gold-deep); margin-bottom: 34px; display: flex; align-items: center; gap: 12px; }
+  #act-answers .head-line { font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--warm-gold-deep); margin-bottom: 34px; display: flex; align-items: center; gap: 12px; }
   #act-answers .head-line::after { content: ""; flex: 1; height: 1px; background: var(--rule); }
   .answers { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: clamp(20px, 3vw, 40px); }
   .answer-block h3 { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink); margin-bottom: 10px; }
@@ -245,8 +248,8 @@
   .btn-line { font-family: var(--mono); font-size: 13px; color: var(--moon-soft); text-decoration: none; padding: 14px 8px; transition: color .2s; }
   .btn-line:hover { color: var(--moon); }
   .plans { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; color: var(--moon-mute); margin-bottom: 54px; }
-  .legal { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; color: rgba(250,246,236,.28); line-height: 1.8; max-width: 60ch; margin: 0 auto; }
-  .legal a { color: rgba(250,246,236,.45); }
+  .legal { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; color: rgba(250,246,236,.55); line-height: 1.8; max-width: 60ch; margin: 0 auto; }
+  .legal a { color: rgba(250,246,236,.72); }
 
   /* ── responsive ──────────────────────────────────────── */
   @media (max-width: 880px) {
@@ -291,7 +294,7 @@
       <button id="answer" aria-label="Start a live voice call with Hollis">Answer<br>the phone</button>
     </div>
     <div id="status" class="status" aria-live="polite">She's on the line.</div>
-    <div id="captions" class="captions" aria-live="polite">
+    <div id="captions" class="captions">
       <div class="cap-label" id="cap-label"></div>
       <div class="cap-agent" id="cap-agent"></div>
       <div class="cap-user" id="cap-user"></div>
@@ -431,7 +434,7 @@
 <!-- ═══ ACT 4 · straight answers ═══ -->
 <section id="act-answers" class="act">
   <div class="inner">
-    <div class="head-line">Straight answers</div>
+    <h2 class="head-line">Straight answers</h2>
     <div class="answers">
       <div class="answer-block">
         <h3>Sounds human</h3>
@@ -462,7 +465,7 @@
     <a class="btn-line" href="mailto:hello@gb2gllc.com">hello@gb2gllc.com</a>
   </div>
   <div class="plans">Managed plans from $1,500/month</div>
-  <p class="legal">Live AI demo. Calls may be recorded for quality. Demo limited to a few calls per visitor per day.<br>Built by <a href="/">GB2G</a> — software founded in Faith.</p>
+  <p class="legal">When the live line is on, calls are a real AI demo and may be recorded for quality. Limited to a few calls per visitor per day.<br>Built by <a href="/">GB2G</a> — software founded in Faith.</p>
 </section>
 
 <script type="module">
@@ -478,6 +481,7 @@
 
   /* ── clock: fictional night, seconds tick ────────────── */
   (() => {
+    if (reduceMotion) return; // static 9:47:12 PM — no auto-updating content
     let s = 12; // 9:47:12 PM
     const clock = el("clock");
     setInterval(() => {
@@ -492,6 +496,7 @@
   let agentTalking = false;
 
   function setState(next) {
+    const prev = state;
     state = next;
     stage.classList.toggle("live", next === "live" || next === "sample");
     answerBtn.disabled = next === "connecting" || next === "live" || next === "sample";
@@ -499,14 +504,22 @@
     hintEl.style.display = next === "idle" ? "" : "none";
     if (next === "idle") {
       answerBtn.innerHTML = "Answer<br>the phone";
+      answerBtn.setAttribute("aria-label", "Start a live voice call with Hollis");
       stage.classList.remove("speaking");
+      // disabling #answer dropped keyboard focus — hand it back
+      if (prev !== "idle") answerBtn.focus({ preventScroll: true });
     }
     if (next === "live" || next === "sample") {
       answerBtn.innerHTML = "● live";
+      answerBtn.setAttribute("aria-label", "Call in progress — use End call to hang up");
+      endBtn.focus({ preventScroll: true });
       // the words are the show — bring halo + captions fully on stage
       stage.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
     }
-    if (next === "connecting") answerBtn.innerHTML = "…";
+    if (next === "connecting") {
+      answerBtn.innerHTML = "…";
+      answerBtn.setAttribute("aria-label", "Connecting to Hollis");
+    }
   }
   function setStatus(html, isErr = false) { statusEl.innerHTML = html; statusEl.classList.toggle("err", isErr); }
 
@@ -537,6 +550,8 @@
     const r = canvas.getBoundingClientRect();
     canvas.width = r.width * dpr; canvas.height = r.height * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // resizing clears the bitmap; without the rAF loop, repaint here
+    if (reduceMotion) drawHalo(0);
   }
   fitCanvas(); addEventListener("resize", fitCanvas);
 
@@ -601,6 +616,7 @@
     setState("connecting");
     setStatus("<strong>Connecting…</strong>");
     clearCaptions();
+
     let res;
     try {
       res = await fetch("/api/hollis/demo/web-call", { method: "POST" });
@@ -612,8 +628,8 @@
     if (res.status === 503) { startSample("sample call · the live line opens soon"); return; }
     if (res.status === 429) {
       const e = await res.json().catch(() => ({}));
-      setStatus(esc(e.error || "The demo line is busy today."), true);
-      startSample("sample call · while the line is busy");
+      startSample("sample call · while the line is busy",
+        esc(e.error || "You've used today's demo calls — here's a sample meanwhile."));
       return;
     }
     if (!res.ok) {
@@ -621,7 +637,24 @@
       setState("idle");
       return;
     }
-    const { access_token } = await res.json();
+    const body = await res.json().catch(() => null);
+    const access_token = body && body.access_token;
+    if (!access_token) {
+      setStatus("The line hiccuped — try again in a moment.", true);
+      setState("idle");
+      return;
+    }
+
+    // Mic preflight — the SDK never rejects on denial (it would go "live"
+    // with a dead microphone). Surface it honestly and play the sample.
+    try {
+      const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mic.getTracks().forEach((t) => t.stop());
+    } catch {
+      startSample("sample call · microphone unavailable",
+        "Microphone access is needed to talk to her live — here's a sample meanwhile.");
+      return;
+    }
 
     try {
       const { RetellWebClient } = await import("https://esm.sh/retell-client-js-sdk@2");
@@ -649,26 +682,31 @@
       });
       client.on("call_ended", endedLive);
       client.on("error", () => {
-        setStatus("The call hit a snag — try again in a moment.", true);
+        // The SDK emits 'error' (never rejects) — including from a failed
+        // connect while we're still "connecting". Recover to idle either way.
         try { client.stopCall(); } catch {}
         endedLive();
+        setStatus("The call hit a snag — try again in a moment.", true);
       });
 
       await client.startCall({ accessToken: access_token, emitRawAudioSamples: true });
     } catch {
-      setStatus("Microphone access is needed to talk to Hollis. Allow it and try again — or watch the sample.", true);
       setState("idle");
+      setStatus("Couldn't load the call — check your connection and try again.", true);
     }
   }
 
   let lastAgentText = "", callStartedAt = 0;
   function endedLive() {
-    if (state !== "live") return;
-    const secs = callStartedAt ? Math.round((Date.now() - callStartedAt) / 1000) : 0;
-    window.fbq && fbq("trackCustom", "HollisCallEnded", { seconds: secs });
+    if (state !== "live" && state !== "connecting") return;
+    const wasLive = state === "live";
+    if (wasLive) {
+      const secs = callStartedAt ? Math.round((Date.now() - callStartedAt) / 1000) : 0;
+      window.fbq && fbq("trackCustom", "HollisCallEnded", { seconds: secs });
+    }
     liveGetLevel = null; agentTalking = false; lastAgentText = "";
     setState("idle");
-    setStatus("Call ended. She's still on the line if you want to talk again.");
+    if (wasLive) setStatus("Call ended. She's still on the line if you want to talk again.");
   }
 
   /* ── the sample call (no network, inline script) ─────── */
@@ -683,15 +721,15 @@
   ];
   let sampleTimer = null;
 
-  function startSample(label) {
+  function startSample(label, statusHtml) {
     setState("sample");
     capsEl.classList.add("sample");
     capLabel.textContent = label;
-    setStatus("<strong>Sample call</strong> — this is her, verbatim.");
+    setStatus(statusHtml || "<strong>Sample call</strong> — scripted, so you can see how she works.");
     let i = 0;
     const step = () => {
       if (state !== "sample") return;
-      if (i >= SAMPLE_TURNS.length) { endSample("That's a real Hollis call. The live line opens here soon."); return; }
+      if (i >= SAMPLE_TURNS.length) { endSample("That's her booking flow. The live line opens here soon."); return; }
       const t = SAMPLE_TURNS[i++];
       agentTalking = t.role === "agent";
       stage.classList.toggle("speaking", agentTalking);

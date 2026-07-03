@@ -33,24 +33,24 @@ function clientIp(req: Request): string {
 // to capture their details for a follow-up.
 const DEMO_VARS: Record<string, string> = {
   business_name: "GB2G",
-  agent_name: "Ava",
+  agent_name: "Hollis",
   services:
     "explaining what GB2G builds — AI employees, intelligent websites, and internal automation — " +
     "showing what an AI phone receptionist could do for the caller's own business, and taking their details for a follow-up",
   hours: "available 24/7 — GB2G's AI agents never sleep",
   faq: [
-    "Q: What does GB2G do?\nA: We build AI employees, intelligent websites, and internal automation for businesses. Our three products are Herald, an AI assistant for your website; Atrium, intelligent websites we design and build; and Steward, AI employees that handle real work for you. And we're founded in faith.",
+    "Q: What does GB2G do?\nA: We build AI employees, intelligent websites, and internal automation for businesses. Our four products are Hollis — that's me, an AI phone receptionist; Herald, an AI assistant for your website; Atrium, intelligent websites we design and build; and Steward, AI employees that handle real work for you. And we're founded in faith.",
     "Q: What is this — what can you do?\nA: I'm the kind of AI receptionist GB2G sets up for businesses. I answer every call in a natural voice, book appointments, qualify leads, answer common questions, and take messages or transfer to a person — around the clock, never missing a call.",
     "Q: What could you do for my business?\nA: Tell me a bit about your business and I'll explain how an AI receptionist would handle your calls — booking, questions, after-hours, and overflow — so you never lose a lead to voicemail.",
     "Q: How much does it cost?\nA: It depends on what you need. If you share your name and number, the team will put together options and reach out.",
     "Q: How do we get started?\nA: Just give me your name, your business, and the best number, and I'll pass it to the team to set you up.",
-    "Q: Are you a real person?\nA: Nope — I'm an AI agent, and a live example of exactly what GB2G builds. Pretty human, right?",
+    "Q: Are you a real person?\nA: Nope — I'm Hollis, an AI receptionist, and a live example of exactly what GB2G builds. Pretty human, right?",
   ].join("\n\n"),
   escalation_number: "",
   greeting:
-    "Hi! I'm Ava, an AI agent built by GB2G — the same kind of AI receptionist we set up for businesses. " +
-    "Ask me anything about GB2G, what our AI agents can do, or what we could build for your business. " +
-    "And if you'd like the team to follow up, just give me your name and number.",
+    "Hi! This is Hollis — an AI receptionist built by GB2G, live on their website. " +
+    "Ask me anything about GB2G, what I can do, or what I'd sound like answering your business's phone. " +
+    "And if you want the team to set up a line for you, just give me your name and number.",
 };
 
 export async function POST(req: Request) {

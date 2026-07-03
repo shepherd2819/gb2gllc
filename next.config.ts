@@ -15,12 +15,18 @@ const nextConfig: NextConfig = {
         destination: "/admin",
         permanent: false,
       },
+      {
+        source: "/hollis-demo.html",
+        destination: "/hollis",
+        permanent: true,
+      },
     ];
   },
   async rewrites() {
     return [
       { source: "/", destination: "/workbench.html" },
       { source: "/about", destination: "/about.html" },
+      { source: "/hollis", destination: "/hollis.html" },
     ];
   },
 };

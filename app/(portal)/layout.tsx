@@ -85,6 +85,14 @@ export default async function PortalLayout({
     .maybeSingle<{ status: string | null }>();
   const suspended = statusRow?.status === "disabled" || statusRow?.status === "paused";
 
+  // Analytics tab appears only once the client has ≥1 active data source.
+  const { count: activeSourceCount } = await supabaseAdmin
+    .from("client_data_sources")
+    .select("id", { count: "exact", head: true })
+    .eq("client_id", client.id)
+    .eq("status", "active");
+  const hasAnalytics = (activeSourceCount ?? 0) > 0;
+
   // Touch last_signed_in_at (debounced, fire-and-forget via after())
   const now = new Date();
   const isOwnerVisit = !memberRowId;
@@ -124,6 +132,7 @@ export default async function PortalLayout({
           </a>
           <div className="portal-nav-links">
             <a href="/dashboard">Dashboard</a>
+            {hasAnalytics && <a href="/analytics">Analytics</a>}
             <a href="/onboarding">Onboarding</a>
             <a href="/connections">Connections</a>
             <a href="/tickets">Support</a>

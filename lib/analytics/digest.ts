@@ -234,7 +234,7 @@ export async function sendAnalyticsDigestForClient(clientId: string): Promise<Di
     }
     const resendId = sent.data?.id ?? null;
 
-    await supabaseAdmin.from("analytics_digests").insert({
+    const { error: persistErr } = await supabaseAdmin.from("analytics_digests").insert({
       client_id: clientId,
       period_start: periodStart.toISOString(),
       period_end: periodEnd.toISOString(),
@@ -247,6 +247,14 @@ export async function sendAnalyticsDigestForClient(clientId: string): Promise<Di
       resend_id: resendId,
       sent_at: new Date().toISOString(),
     });
+    if (persistErr) {
+      await logEvent({
+        clientId,
+        category: "analytics",
+        level: "error",
+        message: `Digest sent but analytics_digests persist failed: ${persistErr.message}`,
+      });
+    }
     await recordEvent(clientId, "digest.sent", "system", {
       resend_id: resendId,
       recipients: recipients.length,

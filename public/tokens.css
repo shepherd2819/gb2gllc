@@ -592,3 +592,67 @@ summary:focus-visible {
 .ds-chart-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
 .ds-chart-fig--donut { display: flex; align-items: center; gap: var(--sp-5); flex-wrap: wrap; }
 .ds-chart-fig--donut .ds-chart { max-width: 220px; }
+
+/* ============================================================
+   STAT GRID (shared, token-based fallback for the admin mirror)
+   portal.css redefines .stat-* with brand vars and wins by load
+   order; admin.css has no .stat-* rules, so these apply there and
+   flip correctly under [data-theme="dark"].
+   ============================================================ */
+.stat-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: var(--sp-3); margin-bottom: var(--sp-6); }
+.stat-card { background: var(--color-bg-raised); border: 1px solid var(--color-border); border-radius: var(--r-lg); padding: var(--sp-6) var(--sp-5); }
+.stat-card.stat-hero { background: var(--color-text); color: var(--color-bg-raised); border-color: transparent; }
+.stat-num { font-size: 44px; font-weight: 300; letter-spacing: -0.04em; line-height: 1; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+.stat-hero .stat-num { font-size: 52px; }
+.stat-label { font-family: var(--mono, monospace); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-mute); margin-bottom: 4px; }
+.stat-sub { font-size: 11px; color: var(--color-text-mute); }
+.stat-hero .stat-label, .stat-hero .stat-sub { color: color-mix(in srgb, var(--color-bg-raised) 55%, transparent); }
+
+/* ============================================================
+   ANALYTICS DASHBOARD — ds-analytics-* (portal + admin mirror)
+   ============================================================ */
+.ds-analytics { display: flex; flex-direction: column; gap: var(--sp-8); }
+.ds-analytics-block { margin: 0; }
+.ds-analytics-two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-5); }
+.ds-analytics-actions { display: flex; justify-content: flex-end; gap: var(--sp-2); margin-bottom: var(--sp-4); }
+.ds-chart-card { background: var(--color-bg-raised); border: 1px solid var(--color-border); border-radius: var(--r-md); padding: var(--sp-4); }
+
+.ds-kpi-delta { font-variant-numeric: tabular-nums; font-weight: 500; }
+.ds-kpi-delta--up { color: var(--color-sage); }
+.ds-kpi-delta--down { color: var(--color-red); }
+.ds-kpi-delta--neutral { color: var(--color-text-mute); }
+
+.ds-insight-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-3); }
+.ds-insight-card { background: var(--color-bg-raised); border: 1px solid var(--color-border); border-left: 3px solid var(--color-text-mute); border-radius: var(--r-md); padding: var(--sp-4); }
+.ds-insight-card--up { border-left-color: var(--color-sage); }
+.ds-insight-card--down { border-left-color: var(--color-red); }
+.ds-insight-card--neutral { border-left-color: var(--color-blue); }
+.ds-insight-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+.ds-insight-body { font-size: 13px; color: var(--color-text-soft); margin: 0; line-height: 1.5; }
+
+.ds-dt { border: 1px solid var(--color-border); border-radius: var(--r-md); overflow: hidden; }
+.ds-dt-head, .ds-dt-row { display: grid; grid-template-columns: 1.6fr 1fr 0.7fr; gap: var(--sp-3); align-items: center; padding: 10px var(--sp-4); }
+.ds-dt-head { background: var(--color-bg-sunken); }
+.ds-dt-row { border-top: 1px solid var(--color-border); }
+.ds-dt-h { font-family: var(--mono, monospace); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-mute); }
+.ds-dt-h--num, .ds-dt-num { text-align: right; font-variant-numeric: tabular-nums; }
+.ds-dt-name { font-size: 13px; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-dt-num { font-size: 13px; color: var(--color-text-soft); }
+.ds-dt-empty { padding: var(--sp-4); font-size: 13px; color: var(--color-text-mute); }
+
+.ds-source-health-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-3); }
+.ds-source-asof { font-family: var(--mono, monospace); font-size: 11px; color: var(--color-text-mute); }
+.ds-source-list { display: flex; flex-direction: column; gap: var(--sp-2); }
+.ds-source-row { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); padding: 10px var(--sp-4); background: var(--color-bg-raised); border: 1px solid var(--color-border); border-radius: var(--r-sm); }
+.ds-source-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ds-source-label { font-size: 13px; font-weight: 500; }
+.ds-source-provider { font-family: var(--mono, monospace); font-size: 11px; color: var(--color-text-mute); }
+.ds-source-meta { display: flex; align-items: center; gap: var(--sp-3); }
+.ds-source-sync { font-family: var(--mono, monospace); font-size: 11px; color: var(--color-text-mute); }
+.ds-source-err { font-size: 11px; color: var(--color-red); max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 700px) {
+  .ds-analytics-two { grid-template-columns: 1fr; }
+  .stat-grid { grid-template-columns: 1fr 1fr; }
+  .stat-hero { grid-column: 1 / -1; }
+}

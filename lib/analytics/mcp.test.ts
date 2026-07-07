@@ -62,6 +62,38 @@ test("mapMcpError classifies auth, network, config, and generic failures", () =>
   assert.equal(mapMcpError(new Error("boom")).ok, false);
 });
 
+test("mapMcpError classifies a StreamableHTTPError-like 401/403 (code, no message keyword) as kind 'auth'", () => {
+  // The SDK's StreamableHTTPError carries the HTTP status on a numeric
+  // `.code`; the message is just "Error POSTing to endpoint: <server body>"
+  // and contains no auth keyword or status-code digits.
+  const unauthorized = Object.assign(new Error('Error POSTing to endpoint: {"error":"invalid_token"}'), {
+    code: 401,
+  });
+  const forbidden = Object.assign(new Error("Error POSTing to endpoint: nope"), { code: 403 });
+
+  assert.equal(mapMcpError(unauthorized).kind, "auth");
+  assert.equal(mapMcpError(forbidden).kind, "auth");
+});
+
+test("mapMcpError does not over-broaden: a 500-ish code and a plain network error still map to 'network', not 'auth'", () => {
+  // code:500 must not be swept into the new 401/403 auth branch — it falls
+  // through to the existing message-based network classification.
+  const serverError = Object.assign(new Error("Error POSTing to endpoint: fetch failed with 500"), { code: 500 });
+  assert.equal(mapMcpError(serverError).kind, "network");
+
+  const plainNetwork = new Error("fetch failed");
+  assert.equal(mapMcpError(plainNetwork).kind, "network");
+
+  // A code:500 with no network-ish wording at all still falls through to the
+  // generic bucket, never 'auth'.
+  const genericServerError = Object.assign(new Error("Error POSTing to endpoint: internal error"), { code: 500 });
+  assert.equal(mapMcpError(genericServerError).kind, "error");
+
+  // A numeric `.status` (not `.code`) of 401 is also honored.
+  const statusVariant = Object.assign(new Error("Error POSTing to endpoint: denied"), { status: 401 });
+  assert.equal(mapMcpError(statusVariant).kind, "auth");
+});
+
 // ── Injected-client integration tests (offline, no network) ────────────────
 // mcpListTools/mcpCallTool accept an optional client factory so we can drive
 // the connect → operate → close lifecycle without a real transport.

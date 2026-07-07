@@ -71,6 +71,17 @@ export function mapMcpError(e: unknown): Err {
   if (/invalid url/i.test(msg)) {
     return { ok: false, kind: "config", reason: `Invalid MCP endpoint URL: ${msg.slice(0, 200)}` };
   }
+  // The SDK's StreamableHTTPError (thrown on the POST path used by
+  // initialize/tools/list/tools/call) carries the HTTP status as a numeric
+  // `.code` (some transports use `.status` instead); the message is just
+  // "Error POSTing to endpoint: <server body>" and may not mention the
+  // status at all. Duck-type rather than importing the SDK's error class so
+  // this stays robust to SDK internals changing.
+  const errLike = e as { code?: unknown; status?: unknown } | null | undefined;
+  const status = errLike?.code ?? errLike?.status;
+  if (typeof status === "number" && (status === 401 || status === 403)) {
+    return { ok: false, kind: "auth", reason: `MCP auth failed: ${msg.slice(0, 200)}` };
+  }
   if (/\b401\b|\b403\b|unauthorized|forbidden|authentication/i.test(msg)) {
     return { ok: false, kind: "auth", reason: `MCP auth failed: ${msg.slice(0, 200)}` };
   }

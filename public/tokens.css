@@ -573,3 +573,22 @@ summary:focus-visible {
   .skel { animation: none; background: var(--color-bg-sunken); }
   .ds-caret { animation: none; opacity: 1; }
 }
+
+/* ============================================================
+   ANALYTICS CHART KIT — ds-chart-* (portal light + admin dark)
+   Static SVG only (no animation → nothing extra for reduced-motion).
+   Colors flow in via inline var(--color-*) tokens on each surface.
+   ============================================================ */
+.ds-chart-fig { margin: 0; }
+.ds-chart { display: block; width: 100%; height: auto; }
+.ds-chart--spark { height: 32px; }
+.ds-chart-label { font: 10px/1 var(--mono, monospace); fill: var(--color-text-mute); }
+.ds-chart-grid { stroke: var(--color-border); stroke-width: 1; }
+.ds-chart-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.ds-chart-area { opacity: 0.14; stroke: none; }
+.ds-chart-legend { display: flex; flex-wrap: wrap; gap: var(--sp-4); margin-top: var(--sp-2); font: 11px/1.4 var(--mono, monospace); color: var(--color-text-soft); }
+.ds-chart-legend--stack { flex-direction: column; gap: var(--sp-2); }
+.ds-chart-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.ds-chart-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+.ds-chart-fig--donut { display: flex; align-items: center; gap: var(--sp-5); flex-wrap: wrap; }
+.ds-chart-fig--donut .ds-chart { max-width: 220px; }

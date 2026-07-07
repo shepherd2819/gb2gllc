@@ -168,9 +168,14 @@ async function spiroGet(
   if (!auth.ok) return auth;
   const url = new URL(`${baseUrl(ctx)}${path}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  let res: Response;
+  let text: string;
+  let status: number;
+  let ok: boolean;
   try {
-    res = await fetch(url, { headers: auth.headers, cache: "no-store" });
+    const res = await fetch(url, { headers: auth.headers, cache: "no-store" });
+    status = res.status;
+    ok = res.ok;
+    text = await res.text();
   } catch (e) {
     return {
       ok: false,
@@ -178,18 +183,17 @@ async function spiroGet(
       reason: `Network error reaching Spiro: ${(e as Error).message}`,
     };
   }
-  const text = await res.text();
-  if (!res.ok) {
+  if (!ok) {
     return {
       ok: false,
-      kind: mapSpiroStatus(res.status),
-      reason: `Spiro ${path} ${res.status}: ${text.slice(0, 200)}`,
+      kind: mapSpiroStatus(status),
+      reason: `Spiro ${path} ${status}: ${text.slice(0, 200)}`,
     };
   }
   try {
     return { ok: true, json: JSON.parse(text) };
   } catch {
-    return { ok: false, kind: "error", reason: `Spiro ${path} returned non-JSON (status ${res.status})` };
+    return { ok: false, kind: "error", reason: `Spiro ${path} returned non-JSON (status ${status})` };
   }
 }
 

@@ -7,8 +7,62 @@ import {
   capJson,
   mapSpiroStatus,
   monthWindow,
+  spiroAdapter,
   type SpiroBucket,
 } from "./spiro";
+import type { DataSourceRow, SourceCtx } from "@/lib/analytics/types";
+
+// ── HTTP integration test helpers ───────────────────────────────────────────
+// spiroGet/summarize/spiroAdapter reach the network via the global `fetch`.
+// These tests stub `global.fetch` per-test and always restore the original
+// in a `finally` so no test can leak a stub into another test or hit the
+// real network.
+
+function fakeCtx(overrides: Partial<DataSourceRow["config"]> = {}): SourceCtx {
+  const source: DataSourceRow = {
+    id: "src-1",
+    client_id: "client-1",
+    kind: "rest",
+    provider: "spiro",
+    label: "Spiro",
+    config: { baseUrl: "https://api.spiro.test", ...overrides },
+    secret_enc: null,
+    chat_tool_allowlist: [],
+    status: "active",
+    last_sync_at: null,
+    last_sync_error: null,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+  };
+  return { source, secret: "test-api-key" };
+}
+
+function jsonResponse(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+// Runs `fn` with global.fetch replaced by `impl`, restoring the original
+// fetch afterward even if `fn` throws.
+async function withStubbedFetch<T>(
+  impl: (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const original = global.fetch;
+  global.fetch = impl as typeof fetch;
+  try {
+    return await fn();
+  } finally {
+    global.fetch = original;
+  }
+}
+
+const AUTHORITATIVE_BODY = {
+  data: [{ bucketStart: "2026-06-01", bucketEnd: "2026-06-30", orderCount: 286, orderTotal: 100054.3 }],
+  meta: {},
+};
 
 // Verified live via Spiro's MCP proxy 2026-07-07: June 2026 = 286 orders / $100,054.30.
 const JUNE_2026: SpiroBucket = {
@@ -112,4 +166,112 @@ test("capJson caps stringified payloads at 20000 chars with a truncation marker"
   assert.equal(out.length, 20000);
   assert.ok(out.endsWith("…[truncated]"));
   assert.equal(capJson({ a: 1 }), '{"a":1}');
+});
+
+// ── HTTP integration (offline, fetch stubbed) ───────────────────────────────
+
+test("testConnection over a 401 response maps to Result kind 'auth'", async () => {
+  const result = await withStubbedFetch(
+    async () => jsonResponse(401, { error: "invalid api key" }),
+    () => spiroAdapter.testConnection(fakeCtx()),
+  );
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.kind, "auth");
+});
+
+test("testConnection over a 500 response maps to Result kind 'network'", async () => {
+  const result = await withStubbedFetch(
+    async () => jsonResponse(500, { error: "boom" }),
+    () => spiroAdapter.testConnection(fakeCtx()),
+  );
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.kind, "network");
+});
+
+test("testConnection over an ok response with the authoritative body succeeds and normalizes values", async () => {
+  const result = await withStubbedFetch(
+    async () => jsonResponse(200, AUTHORITATIVE_BODY),
+    () => spiroAdapter.testConnection(fakeCtx()),
+  );
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.match(result.info.detail, /286 orders/);
+    assert.match(result.info.detail, /\$100,054\.3/);
+  }
+});
+
+test("testConnection over an ok response with malformed (non-JSON) body returns a clean Err, not a throw", async () => {
+  const result = await withStubbedFetch(
+    async () =>
+      new Response("<html>not json</html>", {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      }),
+    () => spiroAdapter.testConnection(fakeCtx()),
+  );
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.kind, "error");
+    assert.match(result.reason, /non-JSON/);
+  }
+});
+
+test("testConnection maps a throwing fetch() to Result kind 'network' (not a throw)", async () => {
+  const result = await withStubbedFetch(
+    async () => {
+      throw new Error("connection reset");
+    },
+    () => spiroAdapter.testConnection(fakeCtx()),
+  );
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.kind, "network");
+    assert.match(result.reason, /connection reset/);
+  }
+});
+
+test("testConnection maps a throwing res.text() to Result kind 'network' (not a throw) — Finding 1 regression", async () => {
+  const fakeRes = {
+    ok: true,
+    status: 200,
+    text: async () => {
+      throw new Error("stream aborted mid-body");
+    },
+  } as unknown as Response;
+  const result = await withStubbedFetch(
+    async () => fakeRes,
+    () => spiroAdapter.testConnection(fakeCtx()),
+  );
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.kind, "network");
+    assert.match(result.reason, /stream aborted mid-body/);
+  }
+});
+
+test("spiroAdapter.sync happy path returns rows without throwing", async () => {
+  const result = await withStubbedFetch(
+    async () => jsonResponse(200, AUTHORITATIVE_BODY),
+    () => spiroAdapter.sync(fakeCtx(), { from: "2026-06-01", to: "2026-07-07", backfill: false }),
+  );
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.ok(result.rows.length > 0, "expected sync to produce metric rows");
+    assert.ok(result.rows.some((r) => r.metric === "orders.count"));
+    assert.ok(result.rows.some((r) => r.metric === "orders.revenue"));
+  }
+});
+
+test("chat tool search_orders execute() happy path returns JSON text without throwing", async () => {
+  const result = await withStubbedFetch(
+    async () => jsonResponse(200, { data: [{ id: "order-1" }] }),
+    async () => {
+      const tools = await spiroAdapter.chatTools(fakeCtx());
+      const searchOrders = tools.find((t) => t.name === "search_orders");
+      assert.ok(searchOrders, "expected a search_orders chat tool");
+      return searchOrders!.execute({ query: "123 Main St" });
+    },
+  );
+  assert.equal(typeof result, "string");
+  assert.match(result, /order-1/);
 });

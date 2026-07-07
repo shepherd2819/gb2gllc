@@ -80,7 +80,7 @@ export default async function ClientDetailPage({ params }: Params) {
     supabaseAdmin.from("hollis_kb").select("question, answer").eq("client_id", id).order("created_at", { ascending: true }),
     supabaseAdmin
       .from("client_data_sources")
-      .select("id, kind, provider, label, config, status, last_sync_at, last_sync_error, chat_tool_allowlist")
+      .select("id, kind, provider, label, config, status, last_sync_at, last_sync_error, chat_tool_allowlist, secret_enc")
       .eq("client_id", id)
       .order("created_at", { ascending: true }),
   ]);
@@ -239,8 +239,12 @@ export default async function ClientDetailPage({ params }: Params) {
 
           <AnalyticsManager
             clientId={id}
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            initialSources={(dataSources ?? []) as any}
+            // secret_enc is stripped here and replaced with a derived boolean —
+            // the encrypted credential blob must never reach the browser.
+            initialSources={(dataSources ?? []).map(({ secret_enc, ...s }) => ({
+              ...s,
+              has_secret: secret_enc != null,
+            }))}
             digestEnabled={client.analytics_digest_enabled ?? true}
           />
 

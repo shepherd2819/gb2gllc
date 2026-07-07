@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { StatusPill } from "@/components/ui";
 
 type Source = {
   id: string;
@@ -11,6 +12,7 @@ type Source = {
   last_sync_at: string | null;
   last_sync_error: string | null;
   chat_tool_allowlist: string[];
+  has_secret: boolean;
 };
 
 type Props = { clientId: string; initialSources: Source[]; digestEnabled: boolean };
@@ -137,8 +139,11 @@ export function AnalyticsManager({ clientId, initialSources, digestEnabled }: Pr
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                 <div>
                   <div style={{ fontWeight: 500, fontSize: 14 }}>{s.label}</div>
-                  <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-mute)" }}>
-                    {s.provider} · {s.kind} · <span className={`status-chip ${s.status}`}>{s.status}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-mute)", marginTop: 2 }}>
+                    <span>{s.provider} · {s.kind}</span>
+                    <StatusPill status={s.status} />
+                    <span>{s.last_sync_at ? `synced ${new Date(s.last_sync_at).toLocaleString()}` : "never synced"}</span>
+                    {s.has_secret && <span style={{ color: "var(--text-mute)" }}>· credential on file</span>}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -147,7 +152,7 @@ export function AnalyticsManager({ clientId, initialSources, digestEnabled }: Pr
                     ? <button className="admin-btn-ghost admin-btn-sm" disabled={!!busy} onClick={() => patchSource(s.id, { action: "pause" })}>Pause</button>
                     : <button className="admin-btn admin-btn-sm" disabled={!!busy} onClick={() => patchSource(s.id, { action: "resume" })}>Resume</button>}
                   <button className="admin-btn-ghost admin-btn-sm" disabled={!!busy} onClick={() => syncNow(s.id)}>Sync now</button>
-                  <button className="admin-btn-ghost admin-btn-sm" style={{ color: "var(--red)", borderColor: "rgba(148,50,32,0.4)" }} disabled={!!busy} onClick={() => removeSource(s.id)}>Delete</button>
+                  <button className="admin-btn-ghost admin-btn-sm" style={{ color: "var(--red)", borderColor: "var(--red)" }} disabled={!!busy} onClick={() => removeSource(s.id)}>Delete</button>
                 </div>
               </div>
               {s.last_sync_error && <div style={{ fontSize: 12, color: "var(--red)", marginTop: 6 }}>{s.last_sync_error}</div>}

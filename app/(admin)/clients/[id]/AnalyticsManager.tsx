@@ -1,0 +1,225 @@
+"use client";
+import { useState } from "react";
+
+type Source = {
+  id: string;
+  kind: "mcp" | "rest";
+  provider: string;
+  label: string;
+  config: Record<string, unknown>;
+  status: "active" | "paused" | "error";
+  last_sync_at: string | null;
+  last_sync_error: string | null;
+  chat_tool_allowlist: string[];
+};
+
+type Props = { clientId: string; initialSources: Source[]; digestEnabled: boolean };
+
+const PROVIDERS = [
+  { value: "spiro", label: "Spiro (REST)", kind: "rest" as const },
+  { value: "generic_mcp", label: "Generic MCP", kind: "mcp" as const },
+];
+
+export function AnalyticsManager({ clientId, initialSources, digestEnabled }: Props) {
+  const [sources, setSources] = useState<Source[]>(initialSources);
+  const [digest, setDigest] = useState(digestEnabled);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ text: string; tone: "ok" | "err" } | null>(null);
+  const [tools, setTools] = useState<Record<string, string[]>>({});
+
+  const [provider, setProvider] = useState("spiro");
+  const [label, setLabel] = useState("");
+  const [baseUrl, setBaseUrl] = useState("");
+  const [authScheme, setAuthScheme] = useState("bearer");
+  const [endpointUrl, setEndpointUrl] = useState("");
+  const [secret, setSecret] = useState("");
+
+  const kind = PROVIDERS.find((p) => p.value === provider)?.kind ?? "rest";
+
+  function flash(text: string, tone: "ok" | "err") {
+    setMsg({ text, tone });
+    setTimeout(() => setMsg(null), 4000);
+  }
+
+  async function addSource() {
+    if (!label.trim()) { flash("Label is required", "err"); return; }
+    setBusy("add");
+    const config = provider === "spiro" ? { baseUrl, authScheme } : { endpointUrl };
+    const res = await fetch(`/api/admin/clients/${clientId}/analytics/sources`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind, provider, label, config, secret }),
+    });
+    const data = await res.json();
+    setBusy(null);
+    if (res.ok) {
+      setSources((s) => [...s, data.source as Source]);
+      setLabel(""); setBaseUrl(""); setEndpointUrl(""); setSecret("");
+      flash("Source added — run Test connection next", "ok");
+    } else flash(data.error || "Failed to add source", "err");
+  }
+
+  async function testSource(id: string) {
+    setBusy(`test:${id}`);
+    const res = await fetch(`/api/admin/clients/${clientId}/analytics/sources/${id}/test`, { method: "POST" });
+    const data = await res.json();
+    setBusy(null);
+    // The test route always answers HTTP 200 — success/failure lives in the
+    // Result union's own `ok` field (data.ok), not the fetch-level res.ok.
+    if (res.ok && data.ok) {
+      if (Array.isArray(data.info?.toolNames)) setTools((t) => ({ ...t, [id]: data.info.toolNames as string[] }));
+      flash(data.info?.detail ? `OK · ${data.info.detail}` : "Connection OK", "ok");
+    } else flash(data.error || data.reason || "Connection failed", "err");
+  }
+
+  async function patchSource(id: string, body: Record<string, unknown>) {
+    setBusy(`patch:${id}`);
+    const res = await fetch(`/api/admin/clients/${clientId}/analytics/sources/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    setBusy(null);
+    if (res.ok) { setSources((s) => s.map((x) => (x.id === id ? { ...x, ...(data.source as Source) } : x))); flash("Saved", "ok"); }
+    else flash(data.error || "Failed", "err");
+  }
+
+  async function removeSource(id: string) {
+    if (!confirm("Remove this source? Its synced metrics are deleted too.")) return;
+    setBusy(`del:${id}`);
+    const res = await fetch(`/api/admin/clients/${clientId}/analytics/sources/${id}`, { method: "DELETE" });
+    setBusy(null);
+    if (res.ok) { setSources((s) => s.filter((x) => x.id !== id)); flash("Removed", "ok"); }
+    else flash("Failed to remove", "err");
+  }
+
+  async function syncNow(id?: string) {
+    setBusy(`sync:${id ?? "all"}`);
+    const res = await fetch(`/api/admin/clients/${clientId}/analytics/sync`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(id ? { sourceId: id } : {}),
+    });
+    setBusy(null);
+    flash(res.ok ? "Sync queued" : "Sync failed", res.ok ? "ok" : "err");
+  }
+
+  async function toggleDigest(next: boolean) {
+    setDigest(next);
+    const res = await fetch(`/api/admin/clients/${clientId}/analytics/digest`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: next }),
+    });
+    if (!res.ok) { setDigest(!next); flash("Failed to update digest", "err"); }
+  }
+
+  function toggleAllowlist(src: Source, tool: string) {
+    const cur = new Set(src.chat_tool_allowlist ?? []);
+    if (cur.has(tool)) cur.delete(tool); else cur.add(tool);
+    void patchSource(src.id, { chat_tool_allowlist: [...cur] });
+  }
+
+  return (
+    <div className="admin-card">
+      <div className="admin-card-head">
+        <h2>Analytics</h2>
+        <a className="admin-card-action" href={`/clients/${clientId}/analytics`}>View dashboard →</a>
+      </div>
+
+      {sources.length === 0 ? (
+        <div className="admin-empty">No data sources yet. Add one below to activate analytics for this client.</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+          {sources.map((s) => (
+            <div key={s.id} style={{ border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                <div>
+                  <div style={{ fontWeight: 500, fontSize: 14 }}>{s.label}</div>
+                  <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-mute)" }}>
+                    {s.provider} · {s.kind} · <span className={`status-chip ${s.status}`}>{s.status}</span>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <button className="admin-btn-ghost admin-btn-sm" disabled={busy === `test:${s.id}`} onClick={() => testSource(s.id)}>{busy === `test:${s.id}` ? "Testing…" : "Test"}</button>
+                  {s.status === "active"
+                    ? <button className="admin-btn-ghost admin-btn-sm" disabled={!!busy} onClick={() => patchSource(s.id, { action: "pause" })}>Pause</button>
+                    : <button className="admin-btn admin-btn-sm" disabled={!!busy} onClick={() => patchSource(s.id, { action: "resume" })}>Resume</button>}
+                  <button className="admin-btn-ghost admin-btn-sm" disabled={!!busy} onClick={() => syncNow(s.id)}>Sync now</button>
+                  <button className="admin-btn-ghost admin-btn-sm" style={{ color: "var(--red)", borderColor: "rgba(148,50,32,0.4)" }} disabled={!!busy} onClick={() => removeSource(s.id)}>Delete</button>
+                </div>
+              </div>
+              {s.last_sync_error && <div style={{ fontSize: 12, color: "var(--red)", marginTop: 6 }}>{s.last_sync_error}</div>}
+              {(tools[s.id]?.length ?? 0) > 0 && (
+                <div style={{ marginTop: 10, borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-mute)", marginBottom: 6 }}>Chat tool allowlist (from last test)</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                    {tools[s.id].map((t) => (
+                      <label key={t} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
+                        <input type="checkbox" checked={(s.chat_tool_allowlist ?? []).includes(t)} onChange={() => toggleAllowlist(s, t)} />
+                        <span style={{ fontFamily: "var(--mono)" }}>{t}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="admin-card-head" style={{ marginTop: 8, marginBottom: 8, borderTop: "1px solid var(--border)", paddingTop: 16 }}>
+        <h2 style={{ fontSize: 14 }}>Add a source</h2>
+      </div>
+      <div className="admin-input-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div>
+          <label>Provider</label>
+          <select className="admin-select" style={{ marginBottom: 0 }} value={provider} onChange={(e) => setProvider(e.target.value)}>
+            {PROVIDERS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label>Label</label>
+          <input className="admin-input" style={{ marginBottom: 0 }} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Spiro — production" />
+        </div>
+      </div>
+      {provider === "spiro" ? (
+        <div className="admin-input-row" style={{ marginTop: 12, display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
+          <div>
+            <label>Base URL</label>
+            <input className="admin-input" style={{ marginBottom: 0, fontFamily: "var(--mono)", fontSize: 12 }} value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://api.spiro.media" />
+          </div>
+          <div>
+            <label>Auth scheme</label>
+            <select className="admin-select" style={{ marginBottom: 0 }} value={authScheme} onChange={(e) => setAuthScheme(e.target.value)}>
+              <option value="bearer">Bearer</option>
+              <option value="apikey">API key header</option>
+            </select>
+          </div>
+        </div>
+      ) : (
+        <div className="admin-input-row" style={{ marginTop: 12 }}>
+          <label>MCP endpoint URL</label>
+          <input className="admin-input" style={{ marginBottom: 0, fontFamily: "var(--mono)", fontSize: 12 }} value={endpointUrl} onChange={(e) => setEndpointUrl(e.target.value)} placeholder="https://mcp.example.com/v1" />
+        </div>
+      )}
+      <div className="admin-input-row" style={{ marginTop: 12 }}>
+        <label>Secret (API key / bearer token) <span style={{ color: "var(--text-mute)", fontWeight: 400 }}>— write-only, stored encrypted</span></label>
+        <input className="admin-input" type="password" autoComplete="new-password" style={{ marginBottom: 0, fontFamily: "var(--mono)", fontSize: 12 }} value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="••••••••" />
+      </div>
+      <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
+        <button className="admin-btn admin-btn-sm" onClick={addSource} disabled={busy === "add"}>{busy === "add" ? "Adding…" : "Add source"}</button>
+        {msg && <span style={{ fontSize: 12, fontFamily: "var(--mono)", color: msg.tone === "ok" ? "var(--sage)" : "var(--red)" }}>{msg.text}</span>}
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 20, borderTop: "1px solid var(--border)", paddingTop: 16 }}>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+          <input type="checkbox" checked={digest} onChange={(e) => toggleDigest(e.target.checked)} />
+          <span>Weekly email digest</span>
+        </label>
+        <button className="admin-btn-ghost admin-btn-sm" disabled={busy === "sync:all"} onClick={() => syncNow()}>{busy === "sync:all" ? "Queuing…" : "Sync all now"}</button>
+      </div>
+    </div>
+  );
+}

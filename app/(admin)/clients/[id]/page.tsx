@@ -12,6 +12,7 @@ import { DevAgentManager } from "./DevAgentManager";
 import { SendInviteButton } from "./SendInviteButton";
 import { ContractManager } from "./ContractManager";
 import { HollisManager } from "./HollisManager";
+import { AnalyticsManager } from "./AnalyticsManager";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -40,6 +41,7 @@ export default async function ClientDetailPage({ params }: Params) {
     { data: hollisLine },
     { data: hollisCalls },
     { data: hollisFaq },
+    { data: dataSources },
   ] = await Promise.all([
     supabaseAdmin.from("clients").select("*, client_products(*), invoices(id, amount_cents, description, status, sent_at, created_at)").eq("id", id).single(),
     supabaseAdmin.from("client_logs").select("*").eq("client_id", id).order("created_at", { ascending: false }).limit(50),
@@ -76,6 +78,11 @@ export default async function ClientDetailPage({ params }: Params) {
     supabaseAdmin.from("hollis_lines").select("*").eq("client_id", id).order("created_at", { ascending: true }).limit(1).maybeSingle(),
     supabaseAdmin.from("hollis_calls").select("id, outcome, duration_ms, caller_number, created_at").eq("client_id", id).order("created_at", { ascending: false }).limit(20),
     supabaseAdmin.from("hollis_kb").select("question, answer").eq("client_id", id).order("created_at", { ascending: true }),
+    supabaseAdmin
+      .from("client_data_sources")
+      .select("id, kind, provider, label, config, status, last_sync_at, last_sync_error, chat_tool_allowlist")
+      .eq("client_id", id)
+      .order("created_at", { ascending: true }),
   ]);
 
   if (!client) notFound();
@@ -228,6 +235,13 @@ export default async function ClientDetailPage({ params }: Params) {
             calls={(hollisCalls ?? []) as any}
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             faq={(hollisFaq ?? []) as any}
+          />
+
+          <AnalyticsManager
+            clientId={id}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            initialSources={(dataSources ?? []) as any}
+            digestEnabled={client.analytics_digest_enabled ?? true}
           />
 
           <DevAgentManager

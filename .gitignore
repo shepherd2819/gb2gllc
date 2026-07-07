@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Superpowers SDD scratch (progress ledger, task briefs)
+.superpowers/

@@ -6,8 +6,9 @@ import { hollisCallCompleted } from "@/lib/inngest/functions/hollis-call-complet
 import { onboardingContractSigned } from "@/lib/inngest/functions/onboarding-contract-signed";
 import { onboardingInvoicePaid } from "@/lib/inngest/functions/onboarding-invoice-paid";
 import { analyticsSync } from "@/lib/inngest/functions/analytics-sync";
+import { analyticsDigest } from "@/lib/inngest/functions/analytics-digest";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [stewardScheduled, devagentRun, hollisCallCompleted, onboardingContractSigned, onboardingInvoicePaid, analyticsSync],
+  functions: [stewardScheduled, devagentRun, hollisCallCompleted, onboardingContractSigned, onboardingInvoicePaid, analyticsSync, analyticsDigest],
 });

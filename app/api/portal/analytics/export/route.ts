@@ -20,37 +20,42 @@ export async function GET(req: NextRequest) {
   const format = req.nextUrl.searchParams.get("format");
   const today = new Date().toISOString().slice(0, 10);
 
-  const snapshot = await readSnapshot(clientId);
-  if (!snapshot) return Response.json({ error: "No analytics data yet" }, { status: 404 });
+  try {
+    const snapshot = await readSnapshot(clientId);
+    if (!snapshot) return Response.json({ error: "No analytics data yet" }, { status: 404 });
 
-  if (format === "csv") {
-    const table = req.nextUrl.searchParams.get("table") ?? "";
-    const built = buildExportRows(snapshot.payload, table);
-    if (!built) {
-      return Response.json(
-        { error: "Unknown table; use trend | productMix | statusMix | topCompanies | topAgents" },
-        { status: 400 },
-      );
+    if (format === "csv") {
+      const table = req.nextUrl.searchParams.get("table") ?? "";
+      const built = buildExportRows(snapshot.payload, table);
+      if (!built) {
+        return Response.json(
+          { error: "Unknown table; use trend | productMix | statusMix | topCompanies | topAgents" },
+          { status: 400 },
+        );
+      }
+      await recordEvent(clientId, "export.csv", user.id, { table });
+      return new Response(toCsv(built.headers, built.rows), {
+        headers: {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": `attachment; filename="analytics-${table}-${today}.csv"`,
+        },
+      });
     }
-    await recordEvent(clientId, "export.csv", user.id, { table });
-    return new Response(toCsv(built.headers, built.rows), {
-      headers: {
-        "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="analytics-${table}-${today}.csv"`,
-      },
-    });
-  }
 
-  if (format === "pdf") {
-    const pdf = await renderAnalyticsReportPdf(snapshot);
-    await recordEvent(clientId, "export.pdf", user.id, {});
-    return new Response(new Uint8Array(pdf), {
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="analytics-report-${today}.pdf"`,
-      },
-    });
-  }
+    if (format === "pdf") {
+      const pdf = await renderAnalyticsReportPdf(snapshot);
+      await recordEvent(clientId, "export.pdf", user.id, {});
+      return new Response(new Uint8Array(pdf), {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="analytics-report-${today}.pdf"`,
+        },
+      });
+    }
 
-  return Response.json({ error: "Unknown format; use format=csv&table=… or format=pdf" }, { status: 400 });
+    return Response.json({ error: "Unknown format; use format=csv&table=… or format=pdf" }, { status: 400 });
+  } catch (err) {
+    console.error("[analytics/export]", err);
+    return Response.json({ error: "Export failed" }, { status: 500 });
+  }
 }

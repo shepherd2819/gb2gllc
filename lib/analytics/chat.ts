@@ -258,5 +258,15 @@ export async function runChatTurn(
     messages.push({ role: "user", content: results });
   }
 
+  // Fallback: if the loop ended without the model producing a text answer
+  // (e.g. it exhausted MAX_TOOL_LOOPS still requesting tools), emit a clear
+  // message so the client never sees an empty reply and we persist non-empty content.
+  if (assistantText.trim() === "") {
+    const fallback =
+      "I wasn't able to finish answering that within my tool-call limit. Try asking something more specific, or narrow the time range.";
+    emit(fallback);
+    assistantText = fallback;
+  }
+
   return { content: assistantText, toolCalls, model: CHAT_MODEL, tokensUsed };
 }

@@ -167,9 +167,10 @@ test("runChatTurn stops after MAX_TOOL_LOOPS iterations and sums token usage", a
   const tools: ChatTool[] = [
     { name: "query_metrics", description: "q", input_schema: { type: "object" }, execute: async () => "[]" },
   ];
+  const emitted: string[] = [];
   const result = await runChatTurn(
     { clientId: "client-a", conversationId: "conv-1", userText: "hi", history: [], tools },
-    () => {},
+    (t) => emitted.push(t),
     client,
     ctx,
   );
@@ -177,6 +178,11 @@ test("runChatTurn stops after MAX_TOOL_LOOPS iterations and sums token usage", a
   assert.equal(result.toolCalls.length, MAX_TOOL_LOOPS);
   assert.equal(result.model, CHAT_MODEL);
   assert.equal(result.tokensUsed, 15 * MAX_TOOL_LOOPS);
+  // Exhausting the loop with no text answer must yield a non-empty fallback,
+  // both returned (persisted) and emitted (streamed to the client) — never an empty reply.
+  assert.notEqual(result.content.trim(), "");
+  assert.match(result.content, /tool-call limit/);
+  assert.ok(emitted.join("").includes("tool-call limit"), "fallback should be streamed via emit");
 });
 
 // ── tool errors ──────────────────────────────────────────────────

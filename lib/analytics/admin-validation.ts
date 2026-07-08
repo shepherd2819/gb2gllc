@@ -30,7 +30,7 @@ const KINDS: readonly SourceKind[] = ["mcp", "rest"];
 // (truthy) and REGISTRY["constructor"] resolves to the inherited Object
 // constructor (also truthy) — both would sail through a truthiness check.
 // Array#includes has no prototype-chain lookup, so it's safe by construction.
-export const KNOWN_PROVIDERS = ["spiro", "generic_mcp"] as const;
+export const KNOWN_PROVIDERS = ["spiro", "spiro_mcp", "generic_mcp"] as const;
 
 export function isKnownProvider(provider: string): boolean {
   return (KNOWN_PROVIDERS as readonly string[]).includes(provider);

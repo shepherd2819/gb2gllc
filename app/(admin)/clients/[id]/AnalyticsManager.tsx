@@ -19,6 +19,7 @@ type Props = { clientId: string; initialSources: Source[]; digestEnabled: boolea
 
 const PROVIDERS = [
   { value: "spiro", label: "Spiro (REST)", kind: "rest" as const },
+  { value: "spiro_mcp", label: "Spiro (MCP)", kind: "mcp" as const },
   { value: "generic_mcp", label: "Generic MCP", kind: "mcp" as const },
 ];
 

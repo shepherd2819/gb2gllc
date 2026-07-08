@@ -19,6 +19,7 @@
 import { auth } from "@modelcontextprotocol/sdk/client/auth.js";
 import {
   SourceOAuthProvider,
+  assertSourceOwnership,
   decideAccessToken,
   decryptBundleOrThrow,
   encodeBundle,
@@ -49,12 +50,14 @@ export async function beginConnect(
   sourceId: string,
   tenantClientId: string,
   mcpEndpointUrl: string,
-): Promise<Result<{ authorizationUrl: string }>> {
+): Promise<Result<{ authorizationUrl: string; nonce: string }>> {
   try {
     const source = await getSource(sourceId);
-    if (!source || source.client_id !== tenantClientId) {
+    if (!source) {
       return { ok: false, kind: "config", reason: "Source not found for this client" };
     }
+    const ownership = assertSourceOwnership(source.client_id, tenantClientId);
+    if (!ownership.ok) return { ok: false, kind: "config", reason: "Source not found for this client" };
 
     const config: Record<string, unknown> = { ...source.config, authMode: "oauth", endpointUrl: mcpEndpointUrl };
     await updateSourceConfig(sourceId, config);
@@ -72,7 +75,7 @@ export async function beginConnect(
     if (result !== "REDIRECT" || !authorizationUrl) {
       return { ok: false, kind: "error", reason: `Unexpected OAuth start result: ${result}` };
     }
-    return { ok: true, authorizationUrl: authorizationUrl.toString() };
+    return { ok: true, authorizationUrl: authorizationUrl.toString(), nonce: provider.stateNonce };
   } catch (e) {
     return mapOAuthError(e);
   }
@@ -92,9 +95,11 @@ export async function completeConnect(
 ): Promise<Result<{}>> {
   try {
     const source = await getSource(sourceId);
-    if (!source || source.client_id !== tenantClientId) {
+    if (!source) {
       return { ok: false, kind: "config", reason: "Source not found for this client" };
     }
+    const ownership = assertSourceOwnership(source.client_id, tenantClientId);
+    if (!ownership.ok) return { ok: false, kind: "config", reason: "Source not found for this client" };
     const mcpEndpointUrl = readEndpointUrl(source.config);
     if (!mcpEndpointUrl) {
       return { ok: false, kind: "config", reason: "Source is missing endpointUrl" };

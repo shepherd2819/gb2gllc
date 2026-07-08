@@ -7,14 +7,16 @@
 // store.ts / store-builders.ts split already used in this module.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import { encryptSecret } from "./crypto";
 import {
   OAUTH_REDIRECT_URI,
   SourceOAuthProvider,
+  assertSourceOwnership,
   decideAccessToken,
   decryptBundleOrThrow,
   encodeBundle,
+  generateNonce,
   hasStoredTokens,
   mapOAuthError,
   readEndpointUrl,
@@ -85,13 +87,14 @@ function oauthConfigBlock(): Record<string, unknown> {
 
 // ── state param: sign/validate roundtrip + tamper/expiry rejection ─────────
 
-test("signState/validateState roundtrips clientId+sourceId", () => {
-  const state = signState({ clientId: "c1", sourceId: "s1" });
+test("signState/validateState roundtrips clientId+sourceId+nonce", () => {
+  const state = signState({ clientId: "c1", sourceId: "s1", nonce: "nonce-1" });
   const result = validateState(state);
   assert.equal(result.ok, true);
   if (result.ok) {
     assert.equal(result.clientId, "c1");
     assert.equal(result.sourceId, "s1");
+    assert.equal(result.nonce, "nonce-1");
   }
 });
 
@@ -106,7 +109,7 @@ test("validateState rejects a missing or malformed state", () => {
 });
 
 test("validateState rejects a state with a tampered signature", () => {
-  const state = signState({ clientId: "c1", sourceId: "s1" });
+  const state = signState({ clientId: "c1", sourceId: "s1", nonce: "nonce-1" });
   const [b64] = state.split(".");
   const r = validateState(`${b64}.${"a".repeat(20)}`);
   assert.equal(r.ok, false);
@@ -114,11 +117,22 @@ test("validateState rejects a state with a tampered signature", () => {
 });
 
 test("validateState rejects a state with a tampered payload (signature no longer matches)", () => {
-  const state = signState({ clientId: "c1", sourceId: "s1" });
+  const state = signState({ clientId: "c1", sourceId: "s1", nonce: "nonce-1" });
   const [, sig] = state.split(".");
-  const forgedPayload = Buffer.from(JSON.stringify({ clientId: "attacker", sourceId: "s1", ts: Date.now() })).toString(
-    "base64url",
-  );
+  const forgedPayload = Buffer.from(
+    JSON.stringify({ clientId: "attacker", sourceId: "s1", nonce: "nonce-1", ts: Date.now() }),
+  ).toString("base64url");
+  const r = validateState(`${forgedPayload}.${sig}`);
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.match(r.reason, /signature mismatch/i);
+});
+
+test("validateState rejects a state with a tampered nonce (signature no longer matches)", () => {
+  const state = signState({ clientId: "c1", sourceId: "s1", nonce: "nonce-1" });
+  const [, sig] = state.split(".");
+  const forgedPayload = Buffer.from(
+    JSON.stringify({ clientId: "c1", sourceId: "s1", nonce: "attacker-nonce", ts: Date.now() }),
+  ).toString("base64url");
   const r = validateState(`${forgedPayload}.${sig}`);
   assert.equal(r.ok, false);
   if (!r.ok) assert.match(r.reason, /signature mismatch/i);
@@ -129,13 +143,55 @@ test("validateState rejects a state older than 15 minutes", () => {
   let state = "";
   try {
     Date.now = () => realNow() - 20 * 60 * 1000; // sign as if 20 minutes ago
-    state = signState({ clientId: "c1", sourceId: "s1" });
+    state = signState({ clientId: "c1", sourceId: "s1", nonce: "nonce-1" });
   } finally {
     Date.now = realNow;
   }
   const r = validateState(state);
   assert.equal(r.ok, false);
   if (!r.ok) assert.match(r.reason, /expired/i);
+});
+
+test("generateNonce produces distinct, non-empty values", () => {
+  const a = generateNonce();
+  const b = generateNonce();
+  assert.equal(typeof a, "string");
+  assert.ok(a.length >= 16);
+  assert.notEqual(a, b);
+});
+
+// ── the browser-nonce equality check the callback route performs ───────────
+// (mirrors app/api/admin/analytics/oauth/callback/route.ts's constant-time
+// comparison of the state's nonce against the gb2g_oauth_nonce cookie).
+
+test("a state whose nonce doesn't match the expected (cookie) nonce is rejected by the equality check", () => {
+  const state = signState({ clientId: "c1", sourceId: "s1", nonce: generateNonce() });
+  const r = validateState(state);
+  assert.equal(r.ok, true);
+  if (!r.ok) throw new Error("unreachable");
+
+  const cookieNonce = generateNonce(); // a different browser session's nonce
+  const stateBuf = Buffer.from(r.nonce);
+  const cookieBuf = Buffer.from(cookieNonce);
+  const matches = stateBuf.length === cookieBuf.length && timingSafeEqual(stateBuf, cookieBuf);
+  assert.equal(matches, false);
+});
+
+// ── assertSourceOwnership: the cross-tenant guard used by beginConnect/ ────
+// completeConnect (lib/analytics/oauth.ts) before touching a source.
+
+test("assertSourceOwnership returns ok for a matching client", () => {
+  const r = assertSourceOwnership("client-1", "client-1");
+  assert.equal(r.ok, true);
+});
+
+test("assertSourceOwnership returns an Err for a mismatched client (cross-tenant)", () => {
+  const r = assertSourceOwnership("client-1", "client-2");
+  assert.equal(r.ok, false);
+  if (!r.ok) {
+    assert.equal(r.kind, "error");
+    assert.match(r.reason, /does not belong to this client/i);
+  }
 });
 
 // ── token bundle: encrypt/decrypt roundtrip + has_tokens derivation ────────
@@ -399,7 +455,7 @@ test("SourceOAuthProvider.redirectUrl is the static admin callback URL", () => {
   assert.match(provider.redirectUrl, /\/api\/admin\/analytics\/oauth\/callback$/);
 });
 
-test("SourceOAuthProvider.state() signs a state that validates back to this source's ids", () => {
+test("SourceOAuthProvider.state() signs a state that validates back to this source's ids and its own nonce", () => {
   const provider = new SourceOAuthProvider(makeSource({ client_id: "client-9", id: "src-9" }), fakePersistence());
   const state = provider.state();
   const r = validateState(state);
@@ -407,7 +463,17 @@ test("SourceOAuthProvider.state() signs a state that validates back to this sour
   if (r.ok) {
     assert.equal(r.clientId, "client-9");
     assert.equal(r.sourceId, "src-9");
+    assert.equal(r.nonce, provider.stateNonce);
+    assert.ok(r.nonce.length > 0);
   }
+});
+
+test("SourceOAuthProvider.stateNonce is stable across repeated state() calls (one nonce per provider instance)", () => {
+  const provider = new SourceOAuthProvider(makeSource(), fakePersistence());
+  const nonce1 = provider.stateNonce;
+  provider.state();
+  const nonce2 = provider.stateNonce;
+  assert.equal(nonce1, nonce2);
 });
 
 test("SourceOAuthProvider.clientInformation is undefined until saveClientInformation runs", () => {

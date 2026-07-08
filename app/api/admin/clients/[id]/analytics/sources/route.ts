@@ -21,8 +21,16 @@ type Params = { params: Promise<{ id: string }> };
 // login" without has_secret's last-4 hint being meaningful for OAuth sources.
 function sanitizeSource(row: DataSourceRow) {
   const { secret_enc, ...rest } = row;
+  const isOAuth = row.config?.authMode === "oauth";
   let secretHint: string | null = null;
-  if (secret_enc) {
+  // OAuth sources store a JSON token bundle ({codeVerifier?, clientSecret?,
+  // tokens?}) in secret_enc, not a raw static bearer secret — decrypting it
+  // here and slicing the last 4 chars would leak trailing bytes of the
+  // client_secret / PKCE code_verifier / token JSON to the browser (this
+  // route is reachable via ordinary Pause/Resume/allowlist actions). NEVER
+  // decrypt an OAuth bundle for display; has_tokens (derived server-side,
+  // never the bundle itself) is the only OAuth status signal sent to the UI.
+  if (secret_enc && !isOAuth) {
     try {
       secretHint = `····${secretLast4(decryptSecret(secret_enc))}`;
     } catch {

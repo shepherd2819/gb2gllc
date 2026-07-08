@@ -36,7 +36,7 @@
 // `refreshAuthorization` takes an injectable `fetchFn`, which is exactly the
 // seam the offline tests use.
 
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { refreshAuthorization, selectResourceURL } from "@modelcontextprotocol/sdk/client/auth.js";
 import type { OAuthClientProvider, OAuthDiscoveryState } from "@modelcontextprotocol/sdk/client/auth.js";
 import type {
@@ -116,7 +116,7 @@ export function readEndpointUrl(config: Record<string, unknown>): string | null 
   return typeof url === "string" && url.trim().length > 0 ? url.trim() : null;
 }
 
-// ── state param (CSRF-bound clientId+sourceId) ──────────────────────────────
+// ── state param (CSRF-bound clientId+sourceId+nonce) ────────────────────────
 //
 // Signed (HMAC-SHA256), not encrypted — clientId/sourceId are not secret,
 // but the callback must not accept a state it didn't itself mint (forged or
@@ -125,10 +125,22 @@ export function readEndpointUrl(config: Record<string, unknown>): string | null 
 // module for token-bundle encryption) via a fixed-context HMAC derivation,
 // rather than requiring a second secret (e.g. AUDIT_HMAC_KEY) to be
 // provisioned just for this.
+//
+// `nonce` additionally binds the state to the browser that started the flow:
+// /oauth/start mints it, stashes it in an httpOnly cookie alongside the
+// redirect, and the callback route requires the cookie's value to match the
+// nonce embedded in the (already HMAC-verified) state before it will proceed
+// — closing the narrow replay/session-fixation window where a signed,
+// unexpired state string alone would otherwise be enough to complete the
+// flow from a different browser/session than the one that initiated it.
 
-export type StatePayload = { clientId: string; sourceId: string };
+export type StatePayload = { clientId: string; sourceId: string; nonce: string };
 
 const STATE_MAX_AGE_MS = 15 * 60 * 1000; // 15 min — generous for an interactive login+approve flow
+
+export function generateNonce(): string {
+  return randomBytes(16).toString("base64url");
+}
 
 function stateHmacKey(): Buffer {
   const raw = process.env.ANALYTICS_SECRET_KEY;
@@ -137,7 +149,12 @@ function stateHmacKey(): Buffer {
 }
 
 export function signState(payload: StatePayload): string {
-  const body = JSON.stringify({ clientId: payload.clientId, sourceId: payload.sourceId, ts: Date.now() });
+  const body = JSON.stringify({
+    clientId: payload.clientId,
+    sourceId: payload.sourceId,
+    nonce: payload.nonce,
+    ts: Date.now(),
+  });
   const b64 = Buffer.from(body, "utf8").toString("base64url");
   const sig = createHmac("sha256", stateHmacKey()).update(b64).digest("base64url");
   return `${b64}.${sig}`;
@@ -162,19 +179,38 @@ export function validateState(state: string | null | undefined): Result<StatePay
     return { ok: false, kind: "auth", reason: "OAuth state signature mismatch — possible CSRF" };
   }
 
-  let parsed: { clientId?: unknown; sourceId?: unknown; ts?: unknown };
+  let parsed: { clientId?: unknown; sourceId?: unknown; nonce?: unknown; ts?: unknown };
   try {
     parsed = JSON.parse(Buffer.from(b64, "base64url").toString("utf8"));
   } catch {
     return { ok: false, kind: "auth", reason: "OAuth state payload is not valid JSON" };
   }
-  if (typeof parsed.clientId !== "string" || typeof parsed.sourceId !== "string" || typeof parsed.ts !== "number") {
+  if (
+    typeof parsed.clientId !== "string" ||
+    typeof parsed.sourceId !== "string" ||
+    typeof parsed.nonce !== "string" ||
+    typeof parsed.ts !== "number"
+  ) {
     return { ok: false, kind: "auth", reason: "OAuth state payload missing required fields" };
   }
   if (Date.now() - parsed.ts > STATE_MAX_AGE_MS) {
     return { ok: false, kind: "auth", reason: "OAuth state has expired — please retry connecting" };
   }
-  return { ok: true, clientId: parsed.clientId, sourceId: parsed.sourceId };
+  return { ok: true, clientId: parsed.clientId, sourceId: parsed.sourceId, nonce: parsed.nonce };
+}
+
+// ── Cross-tenant ownership guard ────────────────────────────────────────────
+//
+// PURE and exported so it's directly unit-testable (oauth.test.ts) without
+// spinning up supabase. beginConnect/completeConnect (./oauth.ts) each fetch
+// a source by id alone (store.ts's getSource is unscoped by client) and MUST
+// call this before doing anything else with it, otherwise one tenant could
+// drive another tenant's source through this client's [id] URL.
+export function assertSourceOwnership(sourceClientId: string, tenantClientId: string): Result<{}> {
+  if (sourceClientId !== tenantClientId) {
+    return { ok: false, kind: "error", reason: "source does not belong to this client" };
+  }
+  return { ok: true };
 }
 
 // ── Error mapping ────────────────────────────────────────────────────────────
@@ -222,6 +258,11 @@ export class SourceOAuthProvider implements OAuthClientProvider {
   private config: Record<string, unknown>;
   private bundle: TokenBundle;
   private capturedAuthorizationUrl: URL | null = null;
+  // Minted once per provider instance (i.e. once per /oauth/start call) and
+  // embedded in every state() this provider signs. /oauth/start reads it
+  // back via the stateNonce getter to set the anti-replay cookie that the
+  // callback route later requires to match.
+  private readonly nonce: string = generateNonce();
 
   constructor(
     private readonly source: Pick<DataSourceRow, "id" | "client_id" | "config" | "secret_enc">,
@@ -240,6 +281,12 @@ export class SourceOAuthProvider implements OAuthClientProvider {
     return OAUTH_REDIRECT_URI;
   }
 
+  // Test/introspection + /oauth/start seam: the nonce this provider's
+  // state() calls are signed with, so the route can bind it to a cookie.
+  get stateNonce(): string {
+    return this.nonce;
+  }
+
   get clientMetadata(): OAuthClientMetadata {
     return {
       client_name: "GB2G Analytics",
@@ -253,7 +300,7 @@ export class SourceOAuthProvider implements OAuthClientProvider {
   }
 
   state(): string {
-    return signState({ clientId: this.source.client_id, sourceId: this.source.id });
+    return signState({ clientId: this.source.client_id, sourceId: this.source.id, nonce: this.nonce });
   }
 
   clientInformation(): OAuthClientInformationMixed | undefined {

@@ -51,5 +51,16 @@ export async function GET(_req: NextRequest, { params }: Params) {
     console.error(`[analytics/oauth start] beginConnect failed for source ${sourceId}: ${result.reason}`);
     return landError();
   }
-  return NextResponse.redirect(result.authorizationUrl, { status: 302 });
+  const response = NextResponse.redirect(result.authorizationUrl, { status: 302 });
+  // Anti-replay/session-fixation binding: the callback route requires this
+  // cookie's value to match the nonce embedded in the signed `state` before
+  // it will complete the flow — see oauth-core.ts's state-param comment.
+  response.cookies.set("gb2g_oauth_nonce", result.nonce, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 900, // 15 min — matches oauth-core.ts's STATE_MAX_AGE_MS
+  });
+  return response;
 }

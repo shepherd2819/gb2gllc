@@ -13,8 +13,13 @@ type Params = { params: Promise<{ id: string; sourceId: string }> };
 
 function sanitizeSource(row: DataSourceRow) {
   const { secret_enc, ...rest } = row;
+  const isOAuth = row.config?.authMode === "oauth";
   let secretHint: string | null = null;
-  if (secret_enc) {
+  // See sources/route.ts's sanitizeSource for why OAuth bundles must never
+  // be decrypted for display: secret_enc holds a JSON token bundle
+  // ({codeVerifier?, clientSecret?, tokens?}), not a raw static secret, and
+  // this route is reachable via ordinary Pause/Resume/allowlist PATCHes.
+  if (secret_enc && !isOAuth) {
     try {
       secretHint = `····${secretLast4(decryptSecret(secret_enc))}`;
     } catch {

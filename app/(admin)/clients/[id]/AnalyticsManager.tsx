@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { StatusPill } from "@/components/ui";
+import { useEffect, useState } from "react";
+import { Badge, StatusPill } from "@/components/ui";
 
 type Source = {
   id: string;
@@ -13,6 +13,9 @@ type Source = {
   last_sync_error: string | null;
   chat_tool_allowlist: string[];
   has_secret: boolean;
+  // Derived server-side from secret_enc (never the bundle itself) — true
+  // once an OAuth-mode source has completed the login flow at least once.
+  has_tokens: boolean;
 };
 
 type Props = { clientId: string; initialSources: Source[]; digestEnabled: boolean };
@@ -36,29 +39,55 @@ export function AnalyticsManager({ clientId, initialSources, digestEnabled }: Pr
   const [authScheme, setAuthScheme] = useState("bearer");
   const [endpointUrl, setEndpointUrl] = useState("");
   const [secret, setSecret] = useState("");
+  // MCP-kind providers can connect via an interactive OAuth login (default
+  // for spiro_mcp — Spiro's MCP only offers email/password + approve) or a
+  // static bearer token. REST providers (spiro) only ever use a static key.
+  const [authMode, setAuthMode] = useState<"oauth" | "static">("oauth");
 
   const kind = PROVIDERS.find((p) => p.value === provider)?.kind ?? "rest";
+  const useOAuth = kind === "mcp" && authMode === "oauth";
 
   function flash(text: string, tone: "ok" | "err") {
     setMsg({ text, tone });
     setTimeout(() => setMsg(null), 4000);
   }
 
+  // Picks up the ?analytics=connected|error flash the OAuth callback route
+  // (app/api/admin/analytics/oauth/callback) redirects back with, then
+  // scrubs it from the URL so a page refresh doesn't re-show it.
+  useEffect(() => {
+    const qs = new URLSearchParams(window.location.search);
+    const result = qs.get("analytics");
+    if (!result) return;
+    flash(result === "connected" ? "Connected — syncing will pick up the new source shortly" : "Connection failed — try again", result === "connected" ? "ok" : "err");
+    qs.delete("analytics");
+    const rest = qs.toString();
+    window.history.replaceState({}, "", rest ? `${window.location.pathname}?${rest}` : window.location.pathname);
+    // Runs once on mount only — this reads the URL exactly as it was on load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function addSource() {
     if (!label.trim()) { flash("Label is required", "err"); return; }
     setBusy("add");
-    const config = provider === "spiro" ? { baseUrl, authScheme } : { endpointUrl };
+    const config: Record<string, unknown> = provider === "spiro"
+      ? { baseUrl, authScheme }
+      : useOAuth
+        ? { endpointUrl, authMode: "oauth" }
+        : { endpointUrl };
+    const body: Record<string, unknown> = { kind, provider, label, config };
+    if (!useOAuth) body.secret = secret; // OAuth sources start with no secret — Connect / Log in supplies it
     const res = await fetch(`/api/admin/clients/${clientId}/analytics/sources`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind, provider, label, config, secret }),
+      body: JSON.stringify(body),
     });
     const data = await res.json();
     setBusy(null);
     if (res.ok) {
       setSources((s) => [...s, data.source as Source]);
       setLabel(""); setBaseUrl(""); setEndpointUrl(""); setSecret("");
-      flash("Source added — run Test connection next", "ok");
+      flash(useOAuth ? "Source added — click Connect / Log in below" : "Source added — run Test connection next", "ok");
     } else flash(data.error || "Failed to add source", "err");
   }
 
@@ -143,11 +172,22 @@ export function AnalyticsManager({ clientId, initialSources, digestEnabled }: Pr
                   <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-mute)", marginTop: 2 }}>
                     <span>{s.provider} · {s.kind}</span>
                     <StatusPill status={s.status} />
+                    {s.config?.authMode === "oauth" && (
+                      <Badge tone={s.has_tokens ? "sage" : "gold"}>{s.has_tokens ? "Connected" : "Needs login"}</Badge>
+                    )}
                     <span>{s.last_sync_at ? `synced ${new Date(s.last_sync_at).toLocaleString()}` : "never synced"}</span>
-                    {s.has_secret && <span style={{ color: "var(--text-mute)" }}>· credential on file</span>}
+                    {s.has_secret && s.config?.authMode !== "oauth" && <span style={{ color: "var(--text-mute)" }}>· credential on file</span>}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {s.config?.authMode === "oauth" && (
+                    <a
+                      className="admin-btn admin-btn-sm"
+                      href={`/api/admin/clients/${clientId}/analytics/sources/${s.id}/oauth/start`}
+                    >
+                      {s.has_tokens ? "Reconnect" : "Connect / Log in"}
+                    </a>
+                  )}
                   <button className="admin-btn-ghost admin-btn-sm" disabled={busy === `test:${s.id}`} onClick={() => testSource(s.id)}>{busy === `test:${s.id}` ? "Testing…" : "Test"}</button>
                   {s.status === "active"
                     ? <button className="admin-btn-ghost admin-btn-sm" disabled={!!busy} onClick={() => patchSource(s.id, { action: "pause" })}>Pause</button>
@@ -181,7 +221,16 @@ export function AnalyticsManager({ clientId, initialSources, digestEnabled }: Pr
       <div className="admin-input-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div>
           <label>Provider</label>
-          <select className="admin-select" style={{ marginBottom: 0 }} value={provider} onChange={(e) => setProvider(e.target.value)}>
+          <select
+            className="admin-select"
+            style={{ marginBottom: 0 }}
+            value={provider}
+            onChange={(e) => {
+              const next = e.target.value;
+              setProvider(next);
+              setAuthMode(next === "spiro_mcp" ? "oauth" : "static");
+            }}
+          >
             {PROVIDERS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
         </div>
@@ -205,15 +254,32 @@ export function AnalyticsManager({ clientId, initialSources, digestEnabled }: Pr
           </div>
         </div>
       ) : (
+        <>
+          <div className="admin-input-row" style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12 }}>
+            <div>
+              <label>Auth mode</label>
+              <select className="admin-select" style={{ marginBottom: 0 }} value={authMode} onChange={(e) => setAuthMode(e.target.value as "oauth" | "static")}>
+                <option value="oauth">OAuth login</option>
+                <option value="static">Static token</option>
+              </select>
+            </div>
+            <div>
+              <label>MCP endpoint URL</label>
+              <input className="admin-input" style={{ marginBottom: 0, fontFamily: "var(--mono)", fontSize: 12 }} value={endpointUrl} onChange={(e) => setEndpointUrl(e.target.value)} placeholder="https://mcp.example.com/v1" />
+            </div>
+          </div>
+        </>
+      )}
+      {useOAuth ? (
+        <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-mute)" }}>
+          No secret to enter here — after adding, use “Connect / Log in” below to authorize via the provider’s own login page. GB2G stores only the resulting refresh token, encrypted.
+        </div>
+      ) : (
         <div className="admin-input-row" style={{ marginTop: 12 }}>
-          <label>MCP endpoint URL</label>
-          <input className="admin-input" style={{ marginBottom: 0, fontFamily: "var(--mono)", fontSize: 12 }} value={endpointUrl} onChange={(e) => setEndpointUrl(e.target.value)} placeholder="https://mcp.example.com/v1" />
+          <label>Secret (API key / bearer token) <span style={{ color: "var(--text-mute)", fontWeight: 400 }}>— write-only, stored encrypted</span></label>
+          <input className="admin-input" type="password" autoComplete="new-password" style={{ marginBottom: 0, fontFamily: "var(--mono)", fontSize: 12 }} value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="••••••••" />
         </div>
       )}
-      <div className="admin-input-row" style={{ marginTop: 12 }}>
-        <label>Secret (API key / bearer token) <span style={{ color: "var(--text-mute)", fontWeight: 400 }}>— write-only, stored encrypted</span></label>
-        <input className="admin-input" type="password" autoComplete="new-password" style={{ marginBottom: 0, fontFamily: "var(--mono)", fontSize: 12 }} value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="••••••••" />
-      </div>
       <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
         <button className="admin-btn admin-btn-sm" onClick={addSource} disabled={busy === "add"}>{busy === "add" ? "Adding…" : "Add source"}</button>
         {msg && <span style={{ fontSize: 12, fontFamily: "var(--mono)", color: msg.tone === "ok" ? "var(--sage)" : "var(--red)" }}>{msg.text}</span>}

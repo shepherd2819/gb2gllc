@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/admin-auth";
 import { inngest } from "@/lib/inngest/client";
 import { decryptSecret, encryptSecret, secretLast4 } from "@/lib/analytics/crypto";
+import { hasStoredTokens } from "@/lib/analytics/oauth";
 import { recordEvent } from "@/lib/analytics/store";
 import { isKnownProvider, validateSourceCreate } from "@/lib/analytics/admin-validation";
 import type { DataSourceRow } from "@/lib/analytics/types";
@@ -13,7 +14,11 @@ export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }> };
 
 // Credentials are write-only: the raw value and the encrypted blob never leave
-// the server. Admin UI gets has_secret + a "····last4" hint only.
+// the server. Admin UI gets has_secret + a "····last4" hint only. For
+// authMode:"oauth" sources, secret_enc holds a { codeVerifier?, clientSecret?,
+// tokens? } bundle rather than a raw static secret — has_tokens (derived
+// server-side, never the bundle itself) tells the UI "Connected" vs "Needs
+// login" without has_secret's last-4 hint being meaningful for OAuth sources.
 function sanitizeSource(row: DataSourceRow) {
   const { secret_enc, ...rest } = row;
   let secretHint: string | null = null;
@@ -24,7 +29,7 @@ function sanitizeSource(row: DataSourceRow) {
       secretHint = "····"; // decryption misconfigured — still never expose the blob
     }
   }
-  return { ...rest, has_secret: secret_enc !== null, secretHint };
+  return { ...rest, has_secret: secret_enc !== null, has_tokens: hasStoredTokens(secret_enc), secretHint };
 }
 
 export async function GET(_req: NextRequest, { params }: Params) {

@@ -44,13 +44,33 @@ export type SummarizeCaller = (
   args: Record<string, unknown>,
 ) => Promise<Result<{ content: string }>>;
 
+// authMode "oauth" sources have no static ctx.secret — the bearer comes from
+// the stored refresh-token-backed access token instead (lib/analytics/
+// oauth.ts's getValidAccessToken). That module transitively imports
+// @/lib/supabase (via store.ts), which throws at import time without
+// Supabase env vars set (see store.test.ts's header comment) — so it's
+// loaded with a DYNAMIC import, only when an OAuth-mode source is actually
+// seen, keeping this file's offline tests (which never construct
+// authMode:"oauth" fixtures) free of that dependency.
+async function resolveBearer(ctx: SourceCtx): Promise<Result<{ bearer: string | null }>> {
+  if (ctx.source.config.authMode !== "oauth") {
+    return { ok: true, bearer: ctx.secret };
+  }
+  const { getValidAccessToken } = await import("@/lib/analytics/oauth");
+  const r = await getValidAccessToken(ctx.source);
+  if (!r.ok) return r;
+  return { ok: true, bearer: r.accessToken };
+}
+
 function defaultCaller(ctx: SourceCtx): SummarizeCaller {
   return async (name, args) => {
     const endpoint = endpointFromConfig(ctx.source.config);
     if (!endpoint) {
       return { ok: false, kind: "config", reason: "Spiro MCP source config is missing endpointUrl" };
     }
-    return mcpCallTool(endpoint, ctx.secret, name, args);
+    const bearer = await resolveBearer(ctx);
+    if (!bearer.ok) return bearer;
+    return mcpCallTool(endpoint, bearer.bearer, name, args);
   };
 }
 

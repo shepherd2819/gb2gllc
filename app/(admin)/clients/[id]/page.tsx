@@ -13,6 +13,7 @@ import { SendInviteButton } from "./SendInviteButton";
 import { ContractManager } from "./ContractManager";
 import { HollisManager } from "./HollisManager";
 import { AnalyticsManager } from "./AnalyticsManager";
+import { hasStoredTokens } from "@/lib/analytics/oauth";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -239,11 +240,13 @@ export default async function ClientDetailPage({ params }: Params) {
 
           <AnalyticsManager
             clientId={id}
-            // secret_enc is stripped here and replaced with a derived boolean —
-            // the encrypted credential blob must never reach the browser.
+            // secret_enc is stripped here and replaced with derived booleans —
+            // the encrypted credential blob (static secret OR OAuth token
+            // bundle) must never reach the browser.
             initialSources={(dataSources ?? []).map(({ secret_enc, ...s }) => ({
               ...s,
               has_secret: secret_enc != null,
+              has_tokens: hasStoredTokens(secret_enc),
             }))}
             digestEnabled={client.analytics_digest_enabled ?? true}
           />

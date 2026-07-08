@@ -50,6 +50,36 @@ export async function upsertMetrics(clientId: string, sourceId: string, rows: Me
   return payload.length;
 }
 
+// Non-secret config write (used by the OAuth connect flow — see
+// lib/analytics/oauth.ts — to persist authMode/endpointUrl and the
+// non-secret client_id/discovery bits SourceOAuthProvider accumulates).
+export async function updateSourceConfig(sourceId: string, config: Record<string, unknown>): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("client_data_sources")
+    .update({ config, updated_at: new Date().toISOString() })
+    .eq("id", sourceId);
+  if (error) throw new Error(`updateSourceConfig: ${error.message}`);
+}
+
+// secretEnc = null clears the stored credential blob entirely. Used by the
+// OAuth connect flow to persist the encrypted { codeVerifier?, clientSecret?,
+// tokens? } bundle — see lib/analytics/oauth.ts.
+export async function updateSourceSecret(sourceId: string, secretEnc: string | null): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("client_data_sources")
+    .update({ secret_enc: secretEnc, updated_at: new Date().toISOString() })
+    .eq("id", sourceId);
+  if (error) throw new Error(`updateSourceSecret: ${error.message}`);
+}
+
+export async function setSourceStatus(sourceId: string, status: "active" | "paused" | "error"): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("client_data_sources")
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq("id", sourceId);
+  if (error) throw new Error(`setSourceStatus: ${error.message}`);
+}
+
 // error = null marks success (status back to 'active'); a string marks failure.
 export async function markSyncResult(sourceId: string, error: string | null): Promise<void> {
   const now = new Date().toISOString();

@@ -262,6 +262,40 @@ test("spiroAdapter.sync happy path returns rows without throwing", async () => {
   }
 });
 
+test("spiroAdapter.sync skips a dimension whose groupBy the endpoint rejects (non-fatal) and still returns undimensioned rows", async () => {
+  // Undimensioned month/week queries succeed (200); every grouped (dimension)
+  // query 400s — sync must NOT abort: it returns the core undimensioned rows,
+  // just with no dimensioned top-list rows.
+  const result = await withStubbedFetch(
+    async (url: unknown) =>
+      String(url).includes("groupBy")
+        ? jsonResponse(400, { error: "groupBy not supported" })
+        : jsonResponse(200, AUTHORITATIVE_BODY),
+    () => spiroAdapter.sync(fakeCtx(), { from: "2026-06-01", to: "2026-07-07", backfill: false }),
+  );
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    // Core undimensioned rows still present…
+    assert.ok(result.rows.some((r) => r.metric === "orders.count"), "expected undimensioned count rows");
+    assert.ok(result.rows.some((r) => r.metric === "orders.revenue"), "expected undimensioned revenue rows");
+    // …and zero dimensioned rows (every groupBy failed → skipped, not fatal).
+    assert.ok(
+      result.rows.every((r) => Object.keys(r.dimension).length === 0),
+      "expected no dimensioned rows when every groupBy query fails",
+    );
+  }
+});
+
+test("spiroAdapter.sync still fails hard when the undimensioned (core) query fails", async () => {
+  // If the CORE undimensioned month query fails, the whole sync is a genuine
+  // failure (unlike a best-effort dimension) — must return the Err.
+  const result = await withStubbedFetch(
+    async () => jsonResponse(500, { error: "boom" }),
+    () => spiroAdapter.sync(fakeCtx(), { from: "2026-06-01", to: "2026-07-07", backfill: false }),
+  );
+  assert.equal(result.ok, false);
+});
+
 test("chat tool search_orders execute() happy path returns JSON text without throwing", async () => {
   const result = await withStubbedFetch(
     async () => jsonResponse(200, { data: [{ id: "order-1" }] }),

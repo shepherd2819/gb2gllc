@@ -201,7 +201,7 @@ type SummarizeOpts = {
   span: "month" | "week";
   from: string;
   to: string;
-  groupBy?: "company" | "product" | "status";
+  groupBy?: "company" | "product" | "status" | "agent";
 };
 
 async function summarize(
@@ -228,7 +228,13 @@ async function summarize(
 
 // ── Adapter ─────────────────────────────────────────────────────────────────
 
-const DIMENSIONS = ["company", "product", "status"] as const;
+// Dimensioned breakdowns are BEST-EFFORT enrichment (the snapshot's top-N
+// tables). "agent" powers the "Top Agents" table (snapshot.ts topList("agent")).
+// The reporting `groupBy` param + these values are best-effort vs Spiro's OpenAPI
+// contract (see SPIRO_PATHS) and unverified against a live account; a groupBy the
+// endpoint doesn't support is SKIPPED in sync() (non-fatal) so the core
+// undimensioned KPIs/trend always sync. Verify each against a live Spiro account.
+const DIMENSIONS = ["company", "product", "status", "agent"] as const;
 
 export const spiroAdapter: ProviderAdapter = {
   provider: "spiro",
@@ -261,6 +267,9 @@ export const spiroAdapter: ProviderAdapter = {
     rows.push(...bucketsToMetricRows(week.buckets, "week"));
 
     // Dimensioned month grain: top 10 per period, long tail as __other__.
+    // Best-effort enrichment — a groupBy the endpoint rejects is SKIPPED, not
+    // fatal, so the undimensioned KPIs/trend above always sync even if a
+    // dimension (or groupBy entirely) is unsupported by this Spiro account.
     for (const dim of DIMENSIONS) {
       const grouped = await summarize(ctx, {
         span: "month",
@@ -268,7 +277,7 @@ export const spiroAdapter: ProviderAdapter = {
         to: months.to,
         groupBy: dim,
       });
-      if (!grouped.ok) return grouped;
+      if (!grouped.ok) continue;
       rows.push(...bucketTopN(grouped.buckets, dim, "month", 10));
     }
 

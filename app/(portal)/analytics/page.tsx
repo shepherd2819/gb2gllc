@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { getPortalClientId } from "@/lib/portal-auth";
 import { listActiveSources, readSnapshot, getOrCreateConversation, listMessages } from "@/lib/analytics/store";
 import { AnalyticsDashboard } from "@/components/analytics/AnalyticsDashboard";
-import { CounterAnimation } from "../dashboard/CounterAnimation";
 import { ChatPanel } from "./ChatPanel";
 import { EmptyState } from "@/components/ui";
 
@@ -27,7 +26,6 @@ export default async function AnalyticsPage() {
 
   return (
     <>
-      <CounterAnimation />
       <div className="page-header">
         <h1 className="page-title">Analytics</h1>
         <p className="page-sub">Your business, synced and summarized.</p>

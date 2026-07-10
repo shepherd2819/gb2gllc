@@ -6,8 +6,8 @@
 // across module boundaries; everything returns the repo-standard Result union.
 //
 // Auth: per-client API key (decrypted into SourceCtx.secret), sent as
-// `x-api-key` or `Authorization: Bearer` per config.authScheme.
-// config: { baseUrl?: string; authScheme?: "x-api-key" | "bearer" }.
+// `Authorization: Bearer <key>` — Spiro's public API is Bearer-only (verified
+// live 2026-07-10). config: { baseUrl?: string }.
 
 import type {
   ChatTool,
@@ -23,26 +23,29 @@ import type {
 const DEFAULT_BASE_URL = "https://api.spiro.media";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// IMPORTANT: these PATHS must be verified against the client's OpenAPI
-// contract (served from their Spiro account) at first connect — REST paths
-// were not directly observable on 2026-07-07. The RESPONSE shape
-// (SpiroSummaryResponse below) WAS verified live via Spiro's MCP proxy on
-// 2026-07-07 (summarize_spiro_reporting_orders / search_spiro_reporting_orders)
-// and is authoritative. If a path 404s at first connect, fix it HERE only.
+// PATHS verified live against Spiro's OpenAPI (api.spiro.media/swagger/v1/
+// swagger.json) + an authenticated probe on 2026-07-10: the reporting summary is
+// GET /api/v1/reporting/orders/summary (query: span=month|week|day|year, from/to
+// as yyyy-MM-dd, Bearer auth) → { data: SpiroBucket[], meta }. Orders live at
+// GET /api/v1/orders (JSON:API filter[field][op] params + pageSize/sort).
+// NOTE: the summary endpoint returns only undimensioned time buckets (no group
+// field), so dimensioned top-N (Top Companies/Products/Agents) is NOT available
+// here — that needs the order-level /api/v1/reporting/orders endpoint aggregated
+// client-side, which is deferred (see sync() below).
 // ─────────────────────────────────────────────────────────────────────────────
 export const SPIRO_PATHS = {
-  summarizeReportingOrders: "/reporting/orders/summarize",
-  searchOrders: "/orders/search",
+  summarizeReportingOrders: "/api/v1/reporting/orders/summary",
+  searchOrders: "/api/v1/orders",
 } as const;
 
 // Verified response bucket, e.g. June 2026:
-//   { bucketStart: "2026-06-01", bucketEnd: "2026-06-30", orderCount: 286, orderTotal: 100054.3 }
+//   { bucketStart: "2026-06-01", bucketEnd: "2026-06-30", orderCount: 286, orderTotal: … }
 export type SpiroBucket = {
   bucketStart: string;
   bucketEnd: string;
   orderCount: number;
   orderTotal: number;
-  group?: string; // present when the query grouped by a dimension
+  group?: string; // present only when a future grouped query supplies it
 };
 
 export type SpiroSummaryResponse = {
@@ -96,9 +99,11 @@ export function bucketsToMetricRows(
   return rows;
 }
 
-// Per period: rank groups by revenue, keep the top N, merge the long tail
-// into a single `__other__` bucket (both metrics stay consistent because the
-// same group membership is applied to counts and revenue).
+// Per period: rank groups by revenue, keep the top N, merge the long tail into a
+// single `__other__` bucket. Retained as the building block for the DEFERRED
+// order-level dimensioned breakdown (/api/v1/reporting/orders aggregated
+// client-side); not called by sync() today because the summary endpoint can't
+// group.
 export function bucketTopN(
   buckets: SpiroBucket[],
   dimensionName: string,
@@ -150,12 +155,11 @@ function authHeaders(ctx: SourceCtx): Result<{ headers: Record<string, string> }
   if (!ctx.secret) {
     return { ok: false, kind: "config", reason: "Spiro source has no API key configured" };
   }
-  const bearer = ctx.source.config.authScheme === "bearer";
+  // Spiro's public API authenticates with a Bearer API key (verified live
+  // 2026-07-10 against api.spiro.media). No x-api-key path exists.
   return {
     ok: true,
-    headers: bearer
-      ? { Authorization: `Bearer ${ctx.secret}`, Accept: "application/json" }
-      : { "x-api-key": ctx.secret, Accept: "application/json" },
+    headers: { Authorization: `Bearer ${ctx.secret}`, Accept: "application/json" },
   };
 }
 
@@ -201,7 +205,6 @@ type SummarizeOpts = {
   span: "month" | "week";
   from: string;
   to: string;
-  groupBy?: "company" | "product" | "status" | "agent";
 };
 
 async function summarize(
@@ -212,7 +215,6 @@ async function summarize(
     span: opts.span,
     from: opts.from,
     to: opts.to,
-    ...(opts.groupBy ? { groupBy: opts.groupBy } : {}),
   });
   if (!r.ok) return r;
   const data = (r.json as SpiroSummaryResponse | null)?.data;
@@ -227,14 +229,6 @@ async function summarize(
 }
 
 // ── Adapter ─────────────────────────────────────────────────────────────────
-
-// Dimensioned breakdowns are BEST-EFFORT enrichment (the snapshot's top-N
-// tables). "agent" powers the "Top Agents" table (snapshot.ts topList("agent")).
-// The reporting `groupBy` param + these values are best-effort vs Spiro's OpenAPI
-// contract (see SPIRO_PATHS) and unverified against a live account; a groupBy the
-// endpoint doesn't support is SKIPPED in sync() (non-fatal) so the core
-// undimensioned KPIs/trend always sync. Verify each against a live Spiro account.
-const DIMENSIONS = ["company", "product", "status", "agent"] as const;
 
 export const spiroAdapter: ProviderAdapter = {
   provider: "spiro",
@@ -266,86 +260,48 @@ export const spiroAdapter: ProviderAdapter = {
     if (!week.ok) return week;
     rows.push(...bucketsToMetricRows(week.buckets, "week"));
 
-    // Dimensioned month grain: top 10 per period, long tail as __other__.
-    // Best-effort enrichment — a groupBy the endpoint rejects is SKIPPED, not
-    // fatal, so the undimensioned KPIs/trend above always sync even if a
-    // dimension (or groupBy entirely) is unsupported by this Spiro account.
-    for (const dim of DIMENSIONS) {
-      const grouped = await summarize(ctx, {
-        span: "month",
-        from: months.from,
-        to: months.to,
-        groupBy: dim,
-      });
-      if (!grouped.ok) continue;
-      rows.push(...bucketTopN(grouped.buckets, dim, "month", 10));
-    }
-
+    // Dimensioned top-N (Top Companies/Products/Agents) is DEFERRED: the summary
+    // endpoint returns only undimensioned time buckets (no group field). Real
+    // breakdowns need the order-level /api/v1/reporting/orders endpoint
+    // aggregated client-side; until then the Command Center shows its graceful
+    // "No breakdown data yet" empty state. Core KPIs + trend sync from the two
+    // undimensioned queries above.
     return { ok: true, rows };
   },
 
-  // Curated read-only drill-downs for chat, executed via REST.
+  // Curated read-only drill-down for chat, executed via REST (/api/v1/orders).
   async chatTools(ctx: SourceCtx): Promise<ChatTool[]> {
     return [
       {
         name: "search_orders",
         description:
-          "Search this client's Spiro orders (read-only). Returns raw order records as JSON. Prefer narrow date ranges and filters.",
+          "Search this client's Spiro orders (read-only, newest first). Returns raw order records as JSON. Filter by status and/or a submitted-date range; prefer narrow ranges.",
         input_schema: {
           type: "object",
           properties: {
-            query: { type: "string", description: "Free-text search (address, customer, order number)" },
-            status: { type: "string", description: "Order status filter, e.g. completed, scheduled, cancelled" },
-            from: { type: "string", description: "Start date YYYY-MM-DD" },
-            to: { type: "string", description: "End date YYYY-MM-DD" },
+            status: {
+              type: "string",
+              description:
+                "Order status filter: pending, awaitingConfirmation, confirmed, rescheduled, cancelled, inProgress, appointmentCompleted, editing, or delivered",
+            },
+            from: { type: "string", description: "Submitted on/after this date, YYYY-MM-DD" },
+            to: { type: "string", description: "Submitted on/before this date, YYYY-MM-DD" },
             limit: { type: "number", description: "Max results, default 20, max 50" },
           },
         },
         execute: async (input: Record<string, unknown>) => {
           const limit = Math.min(typeof input.limit === "number" ? input.limit : 20, 50);
-          const params: Record<string, string> = { limit: String(limit) };
-          if (typeof input.query === "string") params.query = input.query;
-          if (typeof input.status === "string") params.status = input.status;
-          if (typeof input.from === "string") params.from = input.from;
-          if (typeof input.to === "string") params.to = input.to;
+          // /api/v1/orders is JSON:API: pageSize + sort + filter[field][op].
+          const params: Record<string, string> = {
+            pageSize: String(limit),
+            sort: "-dateSubmitted",
+          };
+          if (typeof input.status === "string") params["filter[status][eq]"] = input.status;
+          if (typeof input.from === "string") params["filter[dateSubmitted][gte]"] = input.from;
+          if (typeof input.to === "string") params["filter[dateSubmitted][lte]"] = input.to;
           const r = await spiroGet(ctx, SPIRO_PATHS.searchOrders, params);
           if (!r.ok) return `Spiro error (${r.kind}): ${r.reason}`;
           return capJson(r.json);
-        },
-      },
-      {
-        name: "top_companies",
-        description:
-          "Rank this client's Spiro companies (brokerages/agencies) by order revenue over a date range (read-only).",
-        input_schema: {
-          type: "object",
-          properties: {
-            from: { type: "string", description: "Start date YYYY-MM-DD" },
-            to: { type: "string", description: "End date YYYY-MM-DD" },
-            limit: { type: "number", description: "Max companies, default 10, max 25" },
-          },
-          required: ["from", "to"],
-        },
-        execute: async (input: Record<string, unknown>) => {
-          const from = typeof input.from === "string" ? input.from : "";
-          const to = typeof input.to === "string" ? input.to : "";
-          if (!from || !to) return "Spiro error (error): from and to (YYYY-MM-DD) are required";
-          const r = await summarize(ctx, { span: "month", from, to, groupBy: "company" });
-          if (!r.ok) return `Spiro error (${r.kind}): ${r.reason}`;
-          const limit = Math.min(typeof input.limit === "number" ? input.limit : 10, 25);
-          const totals = new Map<string, { revenue: number; orders: number }>();
-          for (const b of r.buckets) {
-            const name = b.group ?? "unknown";
-            const t = totals.get(name) ?? { revenue: 0, orders: 0 };
-            t.revenue += b.orderTotal;
-            t.orders += b.orderCount;
-            totals.set(name, t);
-          }
-          const ranked = [...totals.entries()]
-            .map(([name, t]) => ({ name, revenue: t.revenue, orders: t.orders }))
-            .sort((a, b) => b.revenue - a.revenue)
-            .slice(0, limit);
-          return capJson(ranked);
         },
       },
     ];

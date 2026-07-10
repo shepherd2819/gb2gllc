@@ -262,28 +262,32 @@ test("spiroAdapter.sync happy path returns rows without throwing", async () => {
   }
 });
 
-test("spiroAdapter.sync skips a dimension whose groupBy the endpoint rejects (non-fatal) and still returns undimensioned rows", async () => {
-  // Undimensioned month/week queries succeed (200); every grouped (dimension)
-  // query 400s — sync must NOT abort: it returns the core undimensioned rows,
-  // just with no dimensioned top-list rows.
+test("spiroAdapter.sync emits only undimensioned rows and hits the corrected /api/v1 summary path (no groupBy)", async () => {
+  // The reporting summary endpoint returns only undimensioned time buckets
+  // (verified vs Spiro's OpenAPI 2026-07-10). sync() issues just the month +
+  // week undimensioned queries and never requests a groupBy.
+  const calls: string[] = [];
   const result = await withStubbedFetch(
-    async (url: unknown) =>
-      String(url).includes("groupBy")
-        ? jsonResponse(400, { error: "groupBy not supported" })
-        : jsonResponse(200, AUTHORITATIVE_BODY),
+    async (url: unknown) => {
+      calls.push(String(url));
+      return jsonResponse(200, AUTHORITATIVE_BODY);
+    },
     () => spiroAdapter.sync(fakeCtx(), { from: "2026-06-01", to: "2026-07-07", backfill: false }),
   );
   assert.equal(result.ok, true);
   if (result.ok) {
-    // Core undimensioned rows still present…
     assert.ok(result.rows.some((r) => r.metric === "orders.count"), "expected undimensioned count rows");
     assert.ok(result.rows.some((r) => r.metric === "orders.revenue"), "expected undimensioned revenue rows");
-    // …and zero dimensioned rows (every groupBy failed → skipped, not fatal).
     assert.ok(
       result.rows.every((r) => Object.keys(r.dimension).length === 0),
-      "expected no dimensioned rows when every groupBy query fails",
+      "expected every sync row to be undimensioned",
     );
   }
+  assert.ok(calls.every((u) => !u.includes("groupBy")), "sync must not request groupBy");
+  assert.ok(
+    calls.every((u) => u.includes("/api/v1/reporting/orders/summary")),
+    "sync must hit the corrected /api/v1 summary path",
+  );
 });
 
 test("spiroAdapter.sync still fails hard when the undimensioned (core) query fails", async () => {
@@ -296,16 +300,21 @@ test("spiroAdapter.sync still fails hard when the undimensioned (core) query fai
   assert.equal(result.ok, false);
 });
 
-test("chat tool search_orders execute() happy path returns JSON text without throwing", async () => {
+test("chat tool search_orders execute() hits /api/v1/orders and returns JSON text without throwing", async () => {
+  let calledUrl = "";
   const result = await withStubbedFetch(
-    async () => jsonResponse(200, { data: [{ id: "order-1" }] }),
+    async (url: unknown) => {
+      calledUrl = String(url);
+      return jsonResponse(200, { data: [{ trackingCode: "order-1" }] });
+    },
     async () => {
       const tools = await spiroAdapter.chatTools(fakeCtx());
       const searchOrders = tools.find((t) => t.name === "search_orders");
       assert.ok(searchOrders, "expected a search_orders chat tool");
-      return searchOrders!.execute({ query: "123 Main St" });
+      return searchOrders!.execute({ status: "delivered", limit: 5 });
     },
   );
   assert.equal(typeof result, "string");
   assert.match(result, /order-1/);
+  assert.ok(calledUrl.includes("/api/v1/orders"), "search_orders must use the corrected /api/v1/orders path");
 });

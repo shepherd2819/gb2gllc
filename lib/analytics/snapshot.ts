@@ -78,7 +78,6 @@ export function computeSnapshot(
   now: Date,
   opts?: { goal?: Record<string, number> },
 ): SnapshotPayload {
-  void opts; // consumed by the pace-to-goal computation added in a later task
   // "2025-07" … "2026-07": oldest → newest, TREND_MONTHS entries.
   const months: string[] = [];
   for (let i = TREND_MONTHS - 1; i >= 0; i--) {
@@ -122,6 +121,61 @@ export function computeSnapshot(
     revenue: round2(sumUndim("orders.revenue", month)),
     orders: round2(sumUndim("orders.count", month)),
   }));
+
+  // ── Year-over-year (same calendar month last year = months[0]) ─────────
+  const yoyMonth = months[0];
+  const prevYearRevenue = sumUndim("orders.revenue", yoyMonth);
+  const prevYearOrders = sumUndim("orders.count", yoyMonth);
+  const revenueYoY =
+    prevYearRevenue > 0 ? round4((revenueThisMonth - prevYearRevenue) / prevYearRevenue) : null;
+  const ordersYoY =
+    prevYearOrders > 0 ? round4((ordersThisMonth - prevYearOrders) / prevYearOrders) : null;
+
+  // ── Pace to goal: run-rate projection vs a target (goal→yoy→trailing→none)
+  const daysInMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate();
+  const dayOfMonth = now.getUTCDate();
+  const mtd = revenueThisMonth;
+  const projected = round2(dayOfMonth > 0 ? (mtd * daysInMonth) / dayOfMonth : mtd);
+
+  const goalRevenue = opts?.goal?.revenue;
+  const trailing3 = trend.slice(-4, -1); // the three completed months before current
+  const trailing3Avg =
+    trailing3.length > 0 ? trailing3.reduce((s, t) => s + t.revenue, 0) / trailing3.length : 0;
+
+  let target: number | null;
+  let basis: "goal" | "yoy" | "trailing" | "none";
+  if (typeof goalRevenue === "number" && goalRevenue > 0) {
+    target = round2(goalRevenue);
+    basis = "goal";
+  } else if (prevYearRevenue > 0) {
+    target = round2(prevYearRevenue);
+    basis = "yoy";
+  } else if (trailing3Avg > 0) {
+    target = round2(trailing3Avg);
+    basis = "trailing";
+  } else {
+    target = null;
+    basis = "none";
+  }
+  const fraction = target && target > 0 ? round4(projected / target) : 0;
+  const paceToGoal = { target, mtd: round2(mtd), projected, fraction, basis };
+
+  // ── Per-KPI 13-month sparkline series (oldest first) ───────────────────
+  const tileSparks = {
+    revenue: trend.map((t) => t.revenue),
+    orders: trend.map((t) => t.orders),
+    avgOrderValue: trend.map((t) => (t.orders > 0 ? round2(t.revenue / t.orders) : 0)),
+    activeCustomers: months.map(
+      (month) =>
+        new Set(
+          monthRows
+            .filter(
+              (m) => monthOf(m) === month && m.dimension.company && m.dimension.company !== OTHER,
+            )
+            .map((m) => m.dimension.company),
+        ).size,
+    ),
+  };
 
   // ── Dimensioned aggregates over the trailing MIX_MONTHS months ────────
   const aggregate = (metric: string, dim: string): Map<string, number> => {
@@ -173,14 +227,9 @@ export function computeSnapshot(
     statusMix,
     topCompanies: topList("company"),
     topAgents: topList("agent"),
-    yoy: { revenueYoY: null, ordersYoY: null },
-    paceToGoal: { target: null, mtd: 0, projected: 0, fraction: 0, basis: "none" },
-    tileSparks: {
-      revenue: trend.map((t) => t.revenue),
-      orders: trend.map((t) => t.orders),
-      avgOrderValue: months.map(() => 0),
-      activeCustomers: months.map(() => 0),
-    },
+    yoy: { revenueYoY, ordersYoY },
+    paceToGoal,
+    tileSparks,
     sources: sources.map((s) => ({
       id: s.id,
       label: s.label,

@@ -190,3 +190,103 @@ test("computeSnapshot seeds additive command-center fields (empty warehouse)", (
   assert.ok(p.tileSparks.revenue.every((v) => v === 0));
   assert.ok(p.tileSparks.orders.every((v) => v === 0));
 });
+
+test("yoy compares against the same calendar month last year", () => {
+  const rows = [
+    row("orders.revenue", "2026-07-01", 100000),
+    row("orders.count", "2026-07-01", 250),
+    row("orders.revenue", "2025-07-01", 80000),
+    row("orders.count", "2025-07-01", 200),
+  ];
+  const p = computeSnapshot(rows, [source()], NOW);
+  assert.equal(p.yoy.revenueYoY, 0.25); // (100000-80000)/80000
+  assert.equal(p.yoy.ordersYoY, 0.25); // (250-200)/200
+});
+
+test("yoy is null when the same month last year is missing or zero", () => {
+  const rows = [
+    row("orders.revenue", "2026-07-01", 100000),
+    row("orders.count", "2026-07-01", 250),
+  ];
+  const p = computeSnapshot(rows, [source()], NOW);
+  assert.equal(p.yoy.revenueYoY, null);
+  assert.equal(p.yoy.ordersYoY, null);
+});
+
+test("paceToGoal uses the admin goal and a run-rate projection when a goal is set", () => {
+  const rows = [
+    row("orders.revenue", "2026-07-01", 100000),
+    row("orders.count", "2026-07-01", 250),
+  ];
+  const p = computeSnapshot(rows, [source()], NOW, { goal: { revenue: 150000 } });
+  assert.equal(p.paceToGoal.basis, "goal");
+  assert.equal(p.paceToGoal.target, 150000);
+  assert.equal(p.paceToGoal.mtd, 100000);
+  assert.equal(p.paceToGoal.projected, 206666.67); // 100000 * 31 / 15 (day 15 of July)
+  assert.equal(p.paceToGoal.fraction, 1.3778); // 206666.67 / 150000
+});
+
+test("paceToGoal falls back goal → yoy → trailing → none", () => {
+  const base = [
+    row("orders.revenue", "2026-07-01", 100000),
+    row("orders.count", "2026-07-01", 250),
+  ];
+
+  const withYoY = computeSnapshot(
+    [...base, row("orders.revenue", "2025-07-01", 90000)],
+    [source()],
+    NOW,
+  );
+  assert.equal(withYoY.paceToGoal.basis, "yoy");
+  assert.equal(withYoY.paceToGoal.target, 90000);
+
+  const withTrailing = computeSnapshot(
+    [
+      ...base,
+      row("orders.revenue", "2026-06-01", 60000),
+      row("orders.revenue", "2026-05-01", 30000),
+      row("orders.revenue", "2026-04-01", 30000),
+    ],
+    [source()],
+    NOW,
+  );
+  assert.equal(withTrailing.paceToGoal.basis, "trailing");
+  assert.equal(withTrailing.paceToGoal.target, 40000); // (60000+30000+30000)/3
+
+  const none = computeSnapshot(base, [source()], NOW);
+  assert.equal(none.paceToGoal.basis, "none");
+  assert.equal(none.paceToGoal.target, null);
+  assert.equal(none.paceToGoal.fraction, 0);
+});
+
+test("tileSparks are 13-month per-KPI series, oldest first, derived from the trend", () => {
+  const rows = [
+    row("orders.revenue", "2026-07-01", 100000),
+    row("orders.count", "2026-07-01", 250),
+    row("orders.revenue", "2025-09-01", 152925),
+    row("orders.count", "2025-09-01", 507),
+    row("orders.count", "2026-07-01", 50, { company: "Acme Realty" }),
+    row("orders.count", "2026-07-01", 40, { company: "Bluebird Homes" }),
+    row("orders.count", "2026-07-01", 10, { company: "__other__" }),
+  ];
+  const p = computeSnapshot(rows, [source()], NOW);
+  assert.equal(p.tileSparks.revenue.length, 13);
+  assert.equal(p.tileSparks.orders.length, 13);
+  assert.equal(p.tileSparks.avgOrderValue.length, 13);
+  assert.equal(p.tileSparks.activeCustomers.length, 13);
+  assert.equal(p.tileSparks.revenue[12], 100000); // current month = last entry
+  assert.equal(p.tileSparks.orders[12], 250);
+  assert.equal(p.tileSparks.avgOrderValue[12], 400); // 100000 / 250
+  assert.equal(p.tileSparks.revenue[2], 152925); // 2025-09 = index 2
+  assert.equal(p.tileSparks.avgOrderValue[2], 301.63); // 152925 / 507
+  assert.equal(p.tileSparks.activeCustomers[12], 2); // Acme + Bluebird, __other__ excluded
+  assert.equal(p.tileSparks.activeCustomers[0], 0); // 2025-07 has no company dims
+});
+
+test("empty warehouse yields none-basis pace and zeroed sparklines", () => {
+  const p = computeSnapshot([], [], NOW);
+  assert.deepEqual(p.yoy, { revenueYoY: null, ordersYoY: null });
+  assert.deepEqual(p.paceToGoal, { target: null, mtd: 0, projected: 0, fraction: 0, basis: "none" });
+  assert.ok(p.tileSparks.avgOrderValue.every((v) => v === 0));
+  assert.ok(p.tileSparks.activeCustomers.every((v) => v === 0));
+});

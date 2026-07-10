@@ -42,6 +42,7 @@ export default async function AnalyticsPage() {
           <div className="ds-analytics-actions">
             <a className="ds-btn ds-btn--ghost ds-btn--sm" href="/api/portal/analytics/export?format=csv&table=trend">Export CSV</a>
             <a className="ds-btn ds-btn--ghost ds-btn--sm" href="/api/portal/analytics/export?format=pdf">Export PDF</a>
+            <a className="ds-btn ds-btn--ghost ds-btn--sm" href="/analytics/present">Present ↗</a>
           </div>
           <AnalyticsDashboard snapshot={snapshot} surface="portal" />
           <ChatPanel conversationId={conversation.id} initialMessages={history} />

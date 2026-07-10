@@ -19,6 +19,7 @@ export default async function AdminAnalyticsMirror({ params }: Params) {
           <a href={`/clients/${id}`} className="back-link">← Back to client</a>
           <h1>Analytics</h1>
         </div>
+        <a className="admin-card-action" href={`/clients/${id}/analytics/present`}>Present ↗</a>
       </div>
       {!snapshot ? (
         <EmptyState

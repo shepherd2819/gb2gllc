@@ -26,6 +26,7 @@ export default async function AnalyticsPage() {
 
   return (
     <>
+      <link rel="stylesheet" href="/analytics/command-center.css" />
       <div className="page-header">
         <h1 className="page-title">Analytics</h1>
         <p className="page-sub">Your business, synced and summarized.</p>

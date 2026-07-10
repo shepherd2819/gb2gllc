@@ -13,6 +13,7 @@ export default async function AdminAnalyticsMirror({ params }: Params) {
 
   return (
     <>
+      <link rel="stylesheet" href="/analytics/command-center.css" />
       <div className="admin-page-header">
         <div>
           <a href={`/clients/${id}`} className="back-link">← Back to client</a>

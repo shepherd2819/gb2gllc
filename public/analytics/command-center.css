@@ -1,0 +1,212 @@
+/* ============================================================
+   GB2G ANALYTICS — command-center.css
+   Dark "executive command center" theme, scoped to `.cc-root`.
+   Loaded AFTER tokens.css (+ portal.css/admin.css) on the analytics
+   dashboard, its admin mirror, and the presentation route. Purely
+   additive: remaps the semantic --color-* tokens inside `.cc-root`
+   so every existing ds-chart-*/ds-*/stat-* component re-themes dark
+   without any component code changes, then layers command-center-only
+   layout classes + motion on top.
+
+   This is the ONLY file allowed to contain literal dark hex values,
+   and ONLY inside the `.cc-root { ... }` token-remap block below —
+   everything else in this file (and every component) consumes those
+   remapped var(--color-*) tokens.
+   ============================================================ */
+
+.cc-root {
+  color-scheme: dark;
+
+  /* Backgrounds — near-black base, lighter elevated surfaces */
+  --color-bg: #06080a;
+  --color-bg-raised: #12151b;
+  --color-bg-sunken: #1a1e25;
+
+  /* Borders */
+  --color-border: #232a33;
+
+  /* Text */
+  --color-text: #f2ede0;
+  --color-text-soft: #b7bcb0;
+  --color-text-mute: #82898f;
+
+  /* Accent — Gold (brightened for AA on near-black) */
+  --color-gold: #e8c877;
+  --color-gold-dim: rgba(232, 200, 119, 0.16);
+
+  /* Accent — Sage */
+  --color-sage: #b9d2ab;
+  --color-sage-dim: rgba(185, 210, 171, 0.14);
+
+  /* Accent — Red */
+  --color-red: #ef9273;
+  --color-red-dim: rgba(239, 146, 115, 0.14);
+
+  /* Accent — Blue */
+  --color-blue: #93c1e8;
+  --color-blue-dim: rgba(147, 193, 232, 0.14);
+
+  --color-on-gold: #14110a;
+  --color-gold-text: var(--color-gold);
+  --color-red-text: var(--color-red);
+  --focus-ring-color: var(--color-gold);
+
+  /* Base surface: near-black + faint grid + a top gold vignette */
+  position: relative;
+  background-color: var(--color-bg);
+  background-image:
+    radial-gradient(ellipse 900px 480px at 50% -12%, color-mix(in oklch, var(--color-gold) 12%, transparent), transparent 65%),
+    repeating-linear-gradient(0deg, color-mix(in oklch, var(--color-text) 3%, transparent) 0 1px, transparent 1px 64px),
+    repeating-linear-gradient(90deg, color-mix(in oklch, var(--color-text) 3%, transparent) 0 1px, transparent 1px 64px);
+  color: var(--color-text);
+}
+
+/* ============================================================
+   LAYOUT — hero / KPI grid / briefing / ranked lists / deep-dive / present
+   ============================================================ */
+
+.cc-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: var(--sp-6);
+  padding: var(--sp-8) var(--sp-6);
+  border-radius: var(--r-lg);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--color-gold) 10%, transparent) inset,
+    0 24px 60px -32px color-mix(in oklch, var(--color-gold) 35%, transparent);
+  overflow: hidden;
+}
+.cc-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 600px 300px at 15% 0%, color-mix(in oklch, var(--color-gold) 16%, transparent), transparent 70%);
+  pointer-events: none;
+}
+
+.cc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--sp-4);
+}
+
+.cc-tile {
+  position: relative;
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-md);
+  padding: var(--sp-5);
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+.cc-tile:hover,
+.cc-tile:focus-within {
+  transform: translateY(-3px);
+  border-color: color-mix(in oklch, var(--color-gold) 45%, var(--color-border));
+  box-shadow: 0 16px 32px -20px color-mix(in oklch, var(--color-gold) 45%, transparent);
+}
+
+.cc-briefing {
+  position: relative;
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-left: 2px solid var(--color-gold);
+  border-radius: var(--r-lg);
+  padding: var(--sp-6);
+  box-shadow: 0 0 24px -12px color-mix(in oklch, var(--color-gold) 30%, transparent);
+}
+
+.cc-ranked {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.cc-ranked-row {
+  display: grid;
+  grid-template-columns: 28px 1.6fr 1fr 80px;
+  gap: var(--sp-3);
+  align-items: center;
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.cc-ranked-row:first-child { border-top: none; }
+.cc-ranked-row:hover,
+.cc-ranked-row:focus-visible {
+  background: color-mix(in oklch, var(--color-gold) 8%, transparent);
+}
+
+.cc-deepdive {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+.cc-present {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-8);
+  padding: var(--sp-12);
+  text-align: center;
+}
+.cc-present-slide {
+  transition: opacity var(--dur-slow) var(--ease);
+}
+
+/* Small "· live" pulse dot next to "Data as of <sync>" */
+.cc-live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-sage);
+  animation: cc-pulse 2.2s ease-in-out infinite;
+}
+
+/* ============================================================
+   MOTION
+   ============================================================ */
+
+/* Chart draw-in: paths render with pathLength={1} so a normalized
+   0..1 dasharray/dashoffset animates the stroke regardless of the
+   path's real geometric length. */
+.cc-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: cc-draw 1.1s var(--ease-out) forwards;
+}
+
+@keyframes cc-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes cc-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--color-sage) 55%, transparent); }
+  50% { box-shadow: 0 0 0 6px color-mix(in oklch, var(--color-sage) 0%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-tile { transition: none; }
+  .cc-tile:hover,
+  .cc-tile:focus-within { transform: none; }
+  .cc-ranked-row { transition: none; }
+  .cc-present-slide { transition: none; }
+  .cc-draw { animation: none; transition: none; stroke-dashoffset: 0; }
+  .cc-live-dot { animation: none; box-shadow: none; }
+}
+
+@media (max-width: 700px) {
+  .cc-hero { grid-template-columns: 1fr; }
+}

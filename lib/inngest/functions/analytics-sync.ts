@@ -98,37 +98,47 @@ export const analyticsSync = inngest.createFunction(
 
         // One snapshot writer per client per run — after all its source steps.
         await step.run(`snapshot-${clientId}`, async () => {
-          const { listActiveSources, listMetricsForClient, writeSnapshot, recordEvent } =
+          const { listActiveSources, listMetricsForClient, readSnapshot, writeSnapshot, recordEvent } =
             await import("@/lib/analytics/store");
           const { computeSnapshot } = await import("@/lib/analytics/snapshot");
           const { generateInsights } = await import("@/lib/analytics/insights");
+          const { generateBriefing } = await import("@/lib/analytics/briefing");
           const { logEvent } = await import("@/lib/logger");
 
           const now = new Date();
           const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 12, 1))
             .toISOString()
             .slice(0, 10);
-          const [freshSources, metrics] = await Promise.all([
+          const [freshSources, metrics, existing] = await Promise.all([
             listActiveSources(clientId), // re-fetch: last_sync_at just changed
             listMetricsForClient(clientId, { grains: ["month"], from }),
+            readSnapshot(clientId), // read the admin-set monthly goal
           ]);
-          const payload = computeSnapshot(metrics, freshSources, now);
+          const payload = computeSnapshot(metrics, freshSources, now, { goal: existing?.goal ?? {} });
           const insights = await generateInsights(payload);
-          // insights null = preserve existing cards (writeSnapshot contract);
-          // [] here means "generation skipped or failed", not "delete cards".
-          await writeSnapshot(clientId, payload, insights.length > 0 ? insights : null);
+          const briefing = await generateBriefing(payload);
+          // insights null = preserve existing cards (writeSnapshot contract).
+          // briefing "" = generation skipped/failed → pass undefined so the last
+          // good briefing is preserved rather than blanked.
+          await writeSnapshot(
+            clientId,
+            payload,
+            insights.length > 0 ? insights : null,
+            briefing.length > 0 ? briefing : undefined,
+          );
           await recordEvent(clientId, "sync.completed", "system", {
             sources: freshSources.length,
             metric_rows: metrics.length,
             insight_cards: insights.length,
+            briefing: briefing.length > 0,
           });
           await logEvent({
             clientId,
             category: "analytics",
             message: `analytics sync completed — ${freshSources.length} source(s), ${metrics.length} month-grain rows`,
-            metadata: { insight_cards: insights.length },
+            metadata: { insight_cards: insights.length, briefing: briefing.length > 0 },
           });
-          return { insights: insights.length };
+          return { insights: insights.length, briefing: briefing.length > 0 };
         });
       } catch (err) {
         // Isolate this client's failure (e.g. snapshot step exhausted its

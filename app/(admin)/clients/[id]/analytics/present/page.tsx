@@ -1,5 +1,6 @@
 // app/(admin)/clients/[id]/analytics/present/page.tsx
 import { readSnapshot } from "@/lib/analytics/store";
+import { hasComputedSnapshot } from "@/lib/analytics/snapshot";
 import { CcPresent } from "@/components/analytics/command-center/CcPresent";
 import { EmptyState } from "@/components/ui";
 
@@ -11,7 +12,7 @@ export default async function AdminAnalyticsPresent({ params }: Params) {
   const { id } = await params;
   const snapshot = await readSnapshot(id);
 
-  if (!snapshot) {
+  if (!hasComputedSnapshot(snapshot)) {
     return (
       <EmptyState
         title="No snapshot yet"

@@ -1,7 +1,7 @@
 // lib/analytics/snapshot.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeSnapshot } from "./snapshot";
+import { computeSnapshot, hasComputedSnapshot } from "./snapshot";
 import type { DataSourceRow, StoredMetric } from "./types";
 
 const NOW = new Date("2026-07-15T12:00:00.000Z");
@@ -289,4 +289,21 @@ test("empty warehouse yields none-basis pace and zeroed sparklines", () => {
   assert.deepEqual(p.paceToGoal, { target: null, mtd: 0, projected: 0, fraction: 0, basis: "none" });
   assert.ok(p.tileSparks.avgOrderValue.every((v) => v === 0));
   assert.ok(p.tileSparks.activeCustomers.every((v) => v === 0));
+});
+
+test("hasComputedSnapshot rejects null and goal-only stub rows, accepts a computed payload", () => {
+  assert.equal(hasComputedSnapshot(null), false);
+
+  const stub = {
+    client_id: "c",
+    payload: {},
+    insights: [],
+    briefing: "",
+    goal: { revenue: 1000 },
+    computed_at: "2026-07-08",
+  } as any;
+  assert.equal(hasComputedSnapshot(stub), false);
+
+  const computed = { payload: { kpis: {} } } as any;
+  assert.equal(hasComputedSnapshot(computed), true);
 });

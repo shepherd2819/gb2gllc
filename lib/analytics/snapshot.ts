@@ -55,6 +55,13 @@ export type SnapshotRow = {
   computed_at: string;
 };
 
+/** True only when the row carries a fully-computed payload (not a goal-only
+ *  stub row created by setClientGoal before the first sync). Guards the render
+ *  surfaces, which access payload.kpis/topCompanies/etc. */
+export function hasComputedSnapshot(row: SnapshotRow | null | undefined): row is SnapshotRow {
+  return !!row && !!(row.payload as Partial<SnapshotPayload> | undefined)?.kpis;
+}
+
 const TREND_MONTHS = 13; // current month + 12 back
 const MIX_MONTHS = 3; // trailing window for mixes and top lists
 const TOP_N = 5; // topCompanies / topAgents cap

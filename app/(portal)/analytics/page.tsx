@@ -3,6 +3,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { redirect } from "next/navigation";
 import { getPortalClientId } from "@/lib/portal-auth";
 import { listActiveSources, readSnapshot, getOrCreateConversation, listMessages } from "@/lib/analytics/store";
+import { hasComputedSnapshot } from "@/lib/analytics/snapshot";
 import { AnalyticsDashboard } from "@/components/analytics/AnalyticsDashboard";
 import { ChatPanel } from "./ChatPanel";
 import { EmptyState } from "@/components/ui";
@@ -32,7 +33,7 @@ export default async function AnalyticsPage() {
         <p className="page-sub">Your business, synced and summarized.</p>
       </div>
 
-      {!snapshot ? (
+      {!hasComputedSnapshot(snapshot) ? (
         <EmptyState
           title="First sync pending"
           body="We're pulling your data now. Your dashboard appears here as soon as the first sync finishes — usually within a few minutes."

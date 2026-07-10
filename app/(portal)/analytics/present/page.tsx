@@ -3,6 +3,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { redirect } from "next/navigation";
 import { getPortalClientId } from "@/lib/portal-auth";
 import { listActiveSources, readSnapshot } from "@/lib/analytics/store";
+import { hasComputedSnapshot } from "@/lib/analytics/snapshot";
 import { CcPresent } from "@/components/analytics/command-center/CcPresent";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export default async function AnalyticsPresentPage() {
   if (sources.length === 0) redirect("/dashboard");
 
   const snapshot = await readSnapshot(clientId);
-  if (!snapshot) redirect("/analytics");
+  if (!hasComputedSnapshot(snapshot)) redirect("/analytics");
 
   return (
     <div className="cc-root">

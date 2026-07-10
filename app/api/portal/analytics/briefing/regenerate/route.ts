@@ -20,8 +20,11 @@ export async function POST() {
     if (!snapshot) return Response.json({ error: "No snapshot yet" }, { status: 404 });
 
     const briefing = await generateBriefing(snapshot.payload);
-    // Preserve insights (null); persist the freshly generated briefing (even "").
-    await writeSnapshot(clientId, snapshot.payload, null, briefing);
+    // Preserve insights (null); on transient AI failure (briefing === "") pass
+    // undefined so writeSnapshot preserves the last-good briefing instead of
+    // blanking it. The HTTP response below still returns the real (possibly
+    // empty) string so the client can show its own empty-state on failure.
+    await writeSnapshot(clientId, snapshot.payload, null, briefing.length > 0 ? briefing : undefined);
     await recordEvent(clientId, "briefing.regenerated", user.id, { ok: briefing.length > 0 });
     return Response.json({ briefing });
   } catch {

@@ -87,12 +87,6 @@
   pointer-events: none;
 }
 
-.cc-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--sp-4);
-}
-
 .cc-tile {
   position: relative;
   background: var(--color-bg-raised);
@@ -130,19 +124,28 @@
   overflow: hidden;
 }
 .cc-ranked-row {
-  display: grid;
-  grid-template-columns: 28px 1.6fr 1fr 80px;
-  gap: var(--sp-3);
+  display: flex;
   align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
   padding: var(--sp-3) var(--sp-4);
-  border-top: 1px solid var(--color-border);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  -webkit-appearance: none;
+  appearance: none;
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease-out);
 }
-.cc-ranked-row:first-child { border-top: none; }
 .cc-ranked-row:hover,
 .cc-ranked-row:focus-visible {
   background: color-mix(in oklch, var(--color-gold) 8%, transparent);
+}
+.cc-ranked-row:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: -2px;
 }
 
 .cc-deepdive {
@@ -176,6 +179,473 @@
 }
 
 /* ============================================================
+   ZONE WRAPPERS — Overview / Explore (vertical rhythm within each zone)
+   ============================================================ */
+
+.cc-overview,
+.cc-explore-zone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+/* ============================================================
+   HERO INTERNALS
+   ============================================================ */
+
+.cc-hero-main {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  justify-content: center;
+}
+.cc-hero-label {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-mute);
+}
+.cc-hero-value {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.cc-hero-affix {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-text-soft);
+}
+.cc-hero-num {
+  font-size: clamp(2.6rem, 7vw, 4.4rem);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-gold);
+}
+.cc-hero-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.cc-hero-spark {
+  display: block;
+  width: 100%;
+  margin-top: var(--sp-2);
+  opacity: 0.9;
+}
+.cc-hero-spark svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.cc-hero-ring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+/* ============================================================
+   DELTA CHIPS (compose with .ds-kpi-delta tone colors)
+   ============================================================ */
+
+.cc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: var(--r-pill);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  white-space: nowrap;
+  background: color-mix(in oklch, currentColor 12%, transparent);
+}
+.cc-chip-lbl {
+  color: var(--color-text-mute);
+  font-weight: 500;
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+
+.cc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-sm);
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+.cc-btn:hover:not(:disabled),
+.cc-btn:focus-visible {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklch, var(--color-gold) 45%, var(--color-border));
+  background: color-mix(in oklch, var(--color-gold) 8%, var(--color-bg-raised));
+}
+.cc-btn:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+.cc-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.cc-btn--ghost {
+  background: transparent;
+}
+
+/* ============================================================
+   BRIEFING INTERNALS
+   ============================================================ */
+
+.cc-briefing-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+.cc-briefing-title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-gold);
+}
+.cc-briefing-body {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--color-text-soft);
+}
+.cc-briefing-empty {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  font-style: italic;
+  color: var(--color-text-mute);
+}
+.cc-briefing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-4);
+}
+
+/* ============================================================
+   KPI TILE ROW + TILE INTERNALS (.cc-tile card styled above)
+   ============================================================ */
+
+.cc-tile-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-4);
+}
+.cc-tile-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+.cc-tile-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--color-text-mute);
+}
+.cc-tile-value {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: var(--sp-3);
+}
+.cc-tile-affix {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-soft);
+}
+.cc-tile-num {
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  line-height: 1;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+.cc-tile-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.cc-tile-delta-label {
+  font-size: 0.74rem;
+  text-align: right;
+  color: var(--color-text-mute);
+}
+
+/* ============================================================
+   TREND (area + brush) — card + brush controls
+   ============================================================ */
+
+.cc-trend {
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-md);
+  padding: var(--sp-5);
+}
+.cc-trend-brush {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  margin-top: var(--sp-3);
+}
+.cc-trend-brush-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-mute);
+}
+.cc-trend-brush-label input[type="range"] {
+  width: clamp(120px, 22vw, 200px);
+  accent-color: var(--color-gold);
+  cursor: pointer;
+}
+.cc-trend-brush-range {
+  margin-left: auto;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--color-text-soft);
+}
+.cc-trend-empty {
+  margin: 0;
+  padding: var(--sp-6);
+  text-align: center;
+  font-style: italic;
+  color: var(--color-text-mute);
+}
+
+/* ============================================================
+   MIX ROW (product BarChart + status Donut two-up)
+   ============================================================ */
+
+.cc-mix-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-5);
+  align-items: stretch;
+}
+.cc-panel {
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-md);
+  padding: var(--sp-5);
+}
+.cc-panel .section-title {
+  margin: 0 0 var(--sp-4);
+}
+
+/* ============================================================
+   EXPLORE — ranked lists grid + rows
+   ============================================================ */
+
+.cc-explore {
+  display: block;
+}
+.cc-ranked-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-4);
+}
+.cc-ranked-title {
+  margin: 0;
+  padding: var(--sp-4) var(--sp-4) var(--sp-3);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-gold);
+}
+.cc-ranked-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.cc-ranked-item {
+  border-top: 1px solid var(--color-border);
+}
+.cc-ranked-item:first-child {
+  border-top: none;
+}
+.cc-ranked-empty {
+  padding: var(--sp-4);
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--color-text-mute);
+}
+.cc-ranked-rank {
+  flex: 0 0 auto;
+  width: 20px;
+  text-align: right;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-mute);
+}
+.cc-ranked-name {
+  flex: 1.6 1 0;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+.cc-ranked-bar {
+  flex: 1 1 0;
+  min-width: 40px;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--color-bg-sunken);
+  overflow: hidden;
+}
+.cc-ranked-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-gold);
+}
+.cc-ranked-spark {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+}
+.cc-ranked-value {
+  flex: 0 0 auto;
+  min-width: 60px;
+  text-align: right;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-gold);
+}
+
+/* ============================================================
+   RING (radial gauge with centered %)
+   ============================================================ */
+
+.cc-ring {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.cc-ring-svg {
+  display: block;
+  width: 160px;
+  height: 160px;
+  max-width: 100%;
+}
+.cc-ring-caption {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
+}
+.cc-ring-value {
+  font-size: 1.9rem;
+  line-height: 1;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-gold);
+}
+.cc-ring-label {
+  margin-top: 4px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-mute);
+}
+
+/* ============================================================
+   DEEP-DIVE DRAWER BODY
+   ============================================================ */
+
+.cc-deepdive-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+.cc-deepdive-totals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4);
+}
+.cc-deepdive-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--sp-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-md);
+  background: var(--color-bg-raised);
+}
+.cc-deepdive-num {
+  font-size: 1.5rem;
+  line-height: 1.1;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-gold);
+}
+.cc-deepdive-lbl {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-mute);
+}
+.cc-deepdive-empty {
+  margin: 0;
+  padding: var(--sp-8) var(--sp-4);
+  text-align: center;
+  font-style: italic;
+  color: var(--color-text-mute);
+}
+
+/* ============================================================
    MOTION
    ============================================================ */
 
@@ -205,8 +675,14 @@
   .cc-present-slide { transition: none; }
   .cc-draw { animation: none; transition: none; stroke-dashoffset: 0; }
   .cc-live-dot { animation: none; box-shadow: none; }
+  .cc-btn { transition: none; }
+  .cc-btn:hover:not(:disabled),
+  .cc-btn:focus-visible { transform: none; }
 }
 
 @media (max-width: 700px) {
   .cc-hero { grid-template-columns: 1fr; }
+  .cc-tile-row,
+  .cc-ranked-grid,
+  .cc-mix-row { grid-template-columns: 1fr; }
 }

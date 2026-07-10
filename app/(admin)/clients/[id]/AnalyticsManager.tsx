@@ -18,7 +18,7 @@ type Source = {
   has_tokens: boolean;
 };
 
-type Props = { clientId: string; initialSources: Source[]; digestEnabled: boolean };
+type Props = { clientId: string; initialSources: Source[]; digestEnabled: boolean; initialGoalRevenue: number | null };
 
 const PROVIDERS = [
   { value: "spiro", label: "Spiro (REST)", kind: "rest" as const },
@@ -26,9 +26,10 @@ const PROVIDERS = [
   { value: "generic_mcp", label: "Generic MCP", kind: "mcp" as const },
 ];
 
-export function AnalyticsManager({ clientId, initialSources, digestEnabled }: Props) {
+export function AnalyticsManager({ clientId, initialSources, digestEnabled, initialGoalRevenue }: Props) {
   const [sources, setSources] = useState<Source[]>(initialSources);
   const [digest, setDigest] = useState(digestEnabled);
+  const [goalRevenue, setGoalRevenue] = useState(initialGoalRevenue != null ? String(initialGoalRevenue) : "");
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ text: string; tone: "ok" | "err" } | null>(null);
   const [tools, setTools] = useState<Record<string, string[]>>({});
@@ -145,6 +146,19 @@ export function AnalyticsManager({ clientId, initialSources, digestEnabled }: Pr
       body: JSON.stringify({ enabled: next }),
     });
     if (!res.ok) { setDigest(!next); flash("Failed to update digest", "err"); }
+  }
+
+  async function saveGoal() {
+    const n = Number(goalRevenue);
+    if (!Number.isFinite(n) || n < 0) { flash("Goal must be a number ≥ 0", "err"); return; }
+    setBusy("goal");
+    const res = await fetch(`/api/admin/clients/${clientId}/analytics/goal`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ revenue: n }),
+    });
+    setBusy(null);
+    flash(res.ok ? "Monthly goal saved" : "Failed to save goal", res.ok ? "ok" : "err");
   }
 
   function toggleAllowlist(src: Source, tool: string) {
@@ -283,6 +297,24 @@ export function AnalyticsManager({ clientId, initialSources, digestEnabled }: Pr
       <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
         <button className="admin-btn admin-btn-sm" onClick={addSource} disabled={busy === "add"}>{busy === "add" ? "Adding…" : "Add source"}</button>
         {msg && <span style={{ fontSize: 12, fontFamily: "var(--mono)", color: msg.tone === "ok" ? "var(--sage)" : "var(--red)" }}>{msg.text}</span>}
+      </div>
+
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 12, marginTop: 20, borderTop: "1px solid var(--border)", paddingTop: 16 }}>
+        <div style={{ flex: "0 0 200px" }}>
+          <label>Monthly revenue goal ($)</label>
+          <input
+            className="admin-input"
+            style={{ marginBottom: 0, fontFamily: "var(--mono)", fontSize: 12 }}
+            type="number"
+            min={0}
+            step={1000}
+            value={goalRevenue}
+            onChange={(e) => setGoalRevenue(e.target.value)}
+            placeholder="150000"
+          />
+        </div>
+        <button className="admin-btn admin-btn-sm" disabled={busy === "goal"} onClick={saveGoal}>{busy === "goal" ? "Saving…" : "Save goal"}</button>
+        <span style={{ fontSize: 11, color: "var(--text-mute)" }}>Powers the hero pace-to-goal ring. Blank / 0 → falls back to last-year pace.</span>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 20, borderTop: "1px solid var(--border)", paddingTop: 16 }}>

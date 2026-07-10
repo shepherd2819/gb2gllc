@@ -14,6 +14,7 @@ import { ContractManager } from "./ContractManager";
 import { HollisManager } from "./HollisManager";
 import { AnalyticsManager } from "./AnalyticsManager";
 import { hasStoredTokens } from "@/lib/analytics/oauth";
+import { readSnapshot } from "@/lib/analytics/store";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -87,6 +88,9 @@ export default async function ClientDetailPage({ params }: Params) {
   ]);
 
   if (!client) notFound();
+
+  // Current monthly goal (drives the AnalyticsManager goal field + hero ring).
+  const goalSnap = await readSnapshot(id).catch(() => null);
 
   const heraldRollup = (heraldTotals ?? []).reduce(
     (acc, r) => ({ messages: acc.messages + (r.messages_answered ?? 0), hours: acc.hours + Number(r.hours_saved ?? 0), tasks: acc.tasks + (r.tasks_completed ?? 0) }),
@@ -249,6 +253,7 @@ export default async function ClientDetailPage({ params }: Params) {
               has_tokens: hasStoredTokens(secret_enc),
             }))}
             digestEnabled={client.analytics_digest_enabled ?? true}
+            initialGoalRevenue={typeof goalSnap?.goal?.revenue === "number" ? goalSnap.goal.revenue : null}
           />
 
           <DevAgentManager

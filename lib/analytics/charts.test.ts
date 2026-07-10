@@ -1,7 +1,7 @@
 // lib/analytics/charts.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { linePath, scaleLinear, donutSegments, niceTicks } from "./charts";
+import { linePath, scaleLinear, donutSegments, niceTicks, ringArc, areaPath, brushWindow } from "./charts";
 
 test("linePath: empty points → empty string", () => {
   assert.equal(linePath([]), "");
@@ -60,4 +60,55 @@ test("niceTicks: top tick always covers max, first tick is 0", () => {
   const t = niceTicks(950, 5);
   assert.equal(t[0], 0);
   assert.ok(t[t.length - 1] >= 950);
+});
+
+test("ringArc: partial arc below 50% sets large-arc flag 0, starts at 12 o'clock", () => {
+  assert.equal(ringArc(0.25, 50, 10), "M 0 -50 A 50 50 0 0 1 50 0 L 40 0 A 40 40 0 0 0 0 -40 Z");
+});
+
+test("ringArc: arc crossing 50% sets large-arc flag 1", () => {
+  assert.equal(ringArc(0.75, 50, 10), "M 0 -50 A 50 50 0 1 1 -50 0 L -40 0 A 40 40 0 1 0 0 -40 Z");
+});
+
+test("ringArc: fraction >= 1 renders a full annulus (two subpaths, inner radius = R - thickness)", () => {
+  const full = ringArc(1, 50, 10);
+  assert.match(full, /Z M 40 0/);
+  assert.equal(ringArc(1.5, 50, 10), full); // clamped to 1
+});
+
+test("ringArc: fraction <= 0 is empty", () => {
+  assert.equal(ringArc(0, 50, 10), "");
+  assert.equal(ringArc(-0.3, 50, 10), "");
+});
+
+test("areaPath: empty points → empty string", () => {
+  assert.equal(areaPath([], 100), "");
+});
+
+test("areaPath: closes down to the baseline and back to the first x", () => {
+  assert.equal(
+    areaPath([{ x: 0, y: 10 }, { x: 5, y: 20 }, { x: 10, y: 0 }], 100),
+    "M 0 10 L 5 20 L 10 0 L 10 100 L 0 100 Z",
+  );
+});
+
+test("brushWindow: full 0..1 selection spans every index", () => {
+  assert.deepEqual(brushWindow(13, 0, 1), { startIndex: 0, endIndex: 12 });
+});
+
+test("brushWindow: fractional selection rounds to inclusive indices", () => {
+  assert.deepEqual(brushWindow(13, 0, 0.5), { startIndex: 0, endIndex: 6 });
+});
+
+test("brushWindow: reversed inputs are normalized so start <= end", () => {
+  assert.deepEqual(brushWindow(13, 0.8, 0.2), { startIndex: 2, endIndex: 10 });
+});
+
+test("brushWindow: out-of-range fractions clamp to [0,1]", () => {
+  assert.deepEqual(brushWindow(13, -0.5, 2), { startIndex: 0, endIndex: 12 });
+});
+
+test("brushWindow: empty or single-item series never produce a bad range", () => {
+  assert.deepEqual(brushWindow(0, 0, 1), { startIndex: 0, endIndex: 0 });
+  assert.deepEqual(brushWindow(1, 0.3, 0.9), { startIndex: 0, endIndex: 0 });
 });

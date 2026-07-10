@@ -111,3 +111,71 @@ export function niceTicks(max: number, count: number): number[] {
   }
   return ticks;
 }
+
+/**
+ * Gauge arc as a filled annulus wedge (like one donutSegments slice) sweeping
+ * clockwise from 12 o'clock by `fraction` of a full turn. fraction clamps to
+ * [0,1]; <=0 → "" (nothing to draw); >=1 → full ring (two-subpath annulus).
+ * Outer radius = radius, inner radius = radius - thickness.
+ */
+export function ringArc(fraction: number, radius: number, thickness: number): string {
+  const frac = Math.min(1, Math.max(0, Number.isFinite(fraction) ? fraction : 0));
+  const R = radius;
+  const r = Math.max(0, radius - thickness);
+  if (frac <= 0) return "";
+  if (frac >= 1) {
+    return (
+      `M ${f(R)} 0 A ${f(R)} ${f(R)} 0 1 1 ${f(-R)} 0 A ${f(R)} ${f(R)} 0 1 1 ${f(R)} 0 Z ` +
+      `M ${f(r)} 0 A ${f(r)} ${f(r)} 0 1 0 ${f(-r)} 0 A ${f(r)} ${f(r)} 0 1 0 ${f(r)} 0 Z`
+    );
+  }
+  const a0 = -Math.PI / 2; // 12 o'clock
+  const sweep = frac * TAU;
+  const a1 = a0 + sweep;
+  const large = sweep > Math.PI ? 1 : 0;
+  const o0 = pointOnCircle(a0, R);
+  const o1 = pointOnCircle(a1, R);
+  const i1 = pointOnCircle(a1, r);
+  const i0 = pointOnCircle(a0, r);
+  return (
+    `M ${f(o0.x)} ${f(o0.y)} ` +
+    `A ${f(R)} ${f(R)} 0 ${large} 1 ${f(o1.x)} ${f(o1.y)} ` +
+    `L ${f(i1.x)} ${f(i1.y)} ` +
+    `A ${f(r)} ${f(r)} 0 ${large} 0 ${f(i0.x)} ${f(i0.y)} Z`
+  );
+}
+
+/**
+ * Closed area under a polyline: the line across `points`, then down to
+ * `baselineY` under the last point, back to `baselineY` under the first point,
+ * and Z. "" for empty input.
+ */
+export function areaPath(points: Array<{ x: number; y: number }>, baselineY: number): string {
+  if (points.length === 0) return "";
+  const top = points.map((p, i) => `${i === 0 ? "M" : "L"} ${f(p.x)} ${f(p.y)}`).join(" ");
+  const first = points[0];
+  const last = points[points.length - 1];
+  return `${top} L ${f(last.x)} ${f(baselineY)} L ${f(first.x)} ${f(baselineY)} Z`;
+}
+
+/**
+ * Map a normalized [0,1] brush selection to inclusive array indices over
+ * `totalCount` items. Fractions clamp to [0,1], min/max are normalized so
+ * startIndex <= endIndex, and indices clamp to [0, totalCount-1]. Empty series
+ * → { 0, 0 }. Pure — the trend brush reslices client-side without refetching.
+ */
+export function brushWindow(
+  totalCount: number,
+  fromFrac: number,
+  toFrac: number,
+): { startIndex: number; endIndex: number } {
+  if (totalCount <= 0) return { startIndex: 0, endIndex: 0 };
+  const lastIndex = totalCount - 1;
+  const clampFrac = (v: number) => Math.min(1, Math.max(0, Number.isFinite(v) ? v : 0));
+  const lo = clampFrac(Math.min(fromFrac, toFrac));
+  const hi = clampFrac(Math.max(fromFrac, toFrac));
+  let startIndex = Math.min(lastIndex, Math.max(0, Math.round(lo * lastIndex)));
+  const endIndex = Math.min(lastIndex, Math.max(0, Math.round(hi * lastIndex)));
+  if (startIndex > endIndex) startIndex = endIndex;
+  return { startIndex, endIndex };
+}

@@ -148,38 +148,54 @@ export async function readSnapshot(clientId: string): Promise<SnapshotRow | null
     .maybeSingle();
   if (error) throw new Error(`readSnapshot: ${error.message}`);
   if (!data) return null;
+  const goalRaw = data.goal_json;
   return {
     client_id: String(data.client_id),
     payload: data.payload as SnapshotPayload,
     insights: (Array.isArray(data.insights) ? data.insights : []) as InsightCard[],
+    briefing: typeof data.briefing === "string" ? data.briefing : "",
+    goal:
+      goalRaw && typeof goalRaw === "object" && !Array.isArray(goalRaw)
+        ? (goalRaw as Record<string, number>)
+        : {},
     computed_at: String(data.computed_at),
   };
 }
 
-// insights = null preserves whatever insights are already stored (sync can
-// refresh the payload without clobbering the last successful AI generation).
+// insights null|undefined = preserve existing cards (recompute refreshes the
+// payload without clobbering the last good AI generation). briefing undefined =
+// preserve the stored briefing; a string (incl. "") overwrites it. goal_json is
+// NEVER written here, so an admin-set goal always survives a recompute (partial
+// upsert leaves unlisted columns untouched on conflict; column default on first
+// insert).
 export async function writeSnapshot(
   clientId: string,
   payload: SnapshotPayload,
-  insights: InsightCard[] | null,
+  insights: InsightCard[] | null | undefined,
+  briefing?: string,
 ): Promise<void> {
-  let effectiveInsights: InsightCard[] = insights ?? [];
-  if (insights === null) {
-    const existing = await readSnapshot(clientId);
-    effectiveInsights = existing?.insights ?? [];
-  }
+  const row: Record<string, unknown> = {
+    client_id: clientId,
+    payload,
+    computed_at: new Date().toISOString(),
+  };
+  if (insights != null) row.insights = insights;
+  if (briefing !== undefined) row.briefing = briefing;
   const { error } = await supabaseAdmin
     .from("analytics_snapshots")
-    .upsert(
-      {
-        client_id: clientId,
-        payload,
-        insights: effectiveInsights,
-        computed_at: new Date().toISOString(),
-      },
-      { onConflict: "client_id" },
-    );
+    .upsert(row, { onConflict: "client_id" });
   if (error) throw new Error(`writeSnapshot: ${error.message}`);
+}
+
+// Upsert ONLY goal_json for a client (partial upsert). On conflict the existing
+// payload/insights/briefing are left untouched; on first insert a stub row is
+// created (payload/insights/briefing take their column defaults). clientId must
+// come from the admin [id] route param under requireAdmin() — never a body.
+export async function setClientGoal(clientId: string, goal: Record<string, number>): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("analytics_snapshots")
+    .upsert({ client_id: clientId, goal_json: goal }, { onConflict: "client_id" });
+  if (error) throw new Error(`setClientGoal: ${error.message}`);
 }
 
 // Audit is fail-soft: a failed audit insert must never break the user-facing

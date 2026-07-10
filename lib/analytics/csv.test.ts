@@ -56,6 +56,9 @@ const payload: SnapshotPayload = {
   statusMix: [{ name: "completed", count: 250 }],
   topCompanies: [{ name: "Acme, Realty", revenue: 12000, orders: 30 }],
   topAgents: [{ name: 'Jo "Speedy" Ray', revenue: 9000, orders: 22 }],
+  yoy: { revenueYoY: null, ordersYoY: null },
+  paceToGoal: { target: null, mtd: 0, projected: 0, fraction: 0, basis: "none" },
+  tileSparks: { revenue: [], orders: [], avgOrderValue: [], activeCustomers: [] },
   sources: [
     {
       id: "src-1",

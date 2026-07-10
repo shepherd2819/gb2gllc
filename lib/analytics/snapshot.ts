@@ -22,6 +22,20 @@ export type SnapshotPayload = {
   statusMix: Array<{ name: string; count: number }>;
   topCompanies: Array<{ name: string; revenue: number; orders: number }>;
   topAgents: Array<{ name: string; revenue: number; orders: number }>;
+  yoy: { revenueYoY: number | null; ordersYoY: number | null };
+  paceToGoal: {
+    target: number | null;
+    mtd: number;
+    projected: number;
+    fraction: number;
+    basis: "goal" | "yoy" | "trailing" | "none";
+  };
+  tileSparks: {
+    revenue: number[];
+    orders: number[];
+    avgOrderValue: number[];
+    activeCustomers: number[];
+  };
   sources: Array<{
     id: string;
     label: string;
@@ -36,6 +50,8 @@ export type SnapshotRow = {
   client_id: string;
   payload: SnapshotPayload;
   insights: InsightCard[];
+  briefing: string;
+  goal: Record<string, number>;
   computed_at: string;
 };
 
@@ -60,7 +76,9 @@ export function computeSnapshot(
   metrics: StoredMetric[],
   sources: DataSourceRow[],
   now: Date,
+  opts?: { goal?: Record<string, number> },
 ): SnapshotPayload {
+  void opts; // consumed by the pace-to-goal computation added in a later task
   // "2025-07" … "2026-07": oldest → newest, TREND_MONTHS entries.
   const months: string[] = [];
   for (let i = TREND_MONTHS - 1; i >= 0; i--) {
@@ -155,6 +173,14 @@ export function computeSnapshot(
     statusMix,
     topCompanies: topList("company"),
     topAgents: topList("agent"),
+    yoy: { revenueYoY: null, ordersYoY: null },
+    paceToGoal: { target: null, mtd: 0, projected: 0, fraction: 0, basis: "none" },
+    tileSparks: {
+      revenue: trend.map((t) => t.revenue),
+      orders: trend.map((t) => t.orders),
+      avgOrderValue: months.map(() => 0),
+      activeCustomers: months.map(() => 0),
+    },
     sources: sources.map((s) => ({
       id: s.id,
       label: s.label,

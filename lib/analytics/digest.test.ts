@@ -23,6 +23,9 @@ function makePayload(): SnapshotPayload {
     statusMix: [{ name: "completed", count: 400 }],
     topCompanies: [{ name: "Acme Realty", revenue: 30000, orders: 50 }],
     topAgents: [{ name: "Jane Park", revenue: 25000, orders: 60 }],
+    yoy: { revenueYoY: null, ordersYoY: null },
+    paceToGoal: { target: null, mtd: 0, projected: 0, fraction: 0, basis: "none" },
+    tileSparks: { revenue: [], orders: [], avgOrderValue: [], activeCustomers: [] },
     sources: [],
   };
 }

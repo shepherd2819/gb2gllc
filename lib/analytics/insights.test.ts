@@ -24,6 +24,9 @@ function makePayload(overrides: Partial<SnapshotPayload> = {}): SnapshotPayload 
     statusMix: [],
     topCompanies: [],
     topAgents: [],
+    yoy: { revenueYoY: null, ordersYoY: null },
+    paceToGoal: { target: null, mtd: 0, projected: 0, fraction: 0, basis: "none" },
+    tileSparks: { revenue: [], orders: [], avgOrderValue: [], activeCustomers: [] },
     sources: [],
     ...overrides,
   };

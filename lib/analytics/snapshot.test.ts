@@ -178,3 +178,15 @@ test("empty warehouse produces a zeroed payload, never throws", () => {
   assert.deepEqual(p.topAgents, []);
   assert.deepEqual(p.sources, []);
 });
+
+test("computeSnapshot seeds additive command-center fields (empty warehouse)", () => {
+  const p = computeSnapshot([], [], NOW);
+  assert.deepEqual(p.yoy, { revenueYoY: null, ordersYoY: null });
+  assert.deepEqual(p.paceToGoal, { target: null, mtd: 0, projected: 0, fraction: 0, basis: "none" });
+  assert.equal(p.tileSparks.revenue.length, 13);
+  assert.equal(p.tileSparks.orders.length, 13);
+  assert.equal(p.tileSparks.avgOrderValue.length, 13);
+  assert.equal(p.tileSparks.activeCustomers.length, 13);
+  assert.ok(p.tileSparks.revenue.every((v) => v === 0));
+  assert.ok(p.tileSparks.orders.every((v) => v === 0));
+});

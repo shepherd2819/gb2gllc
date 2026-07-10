@@ -197,11 +197,15 @@ Indexes: `(client_id, created_at DESC)`, `(call_id)`.
 
 ---
 
-## Open config-level items to confirm at review (not architectural)
+## Config-level items (not architectural)
 
-1. Coverage/hours — 24/7 vs after-hours/overflow — and phone-number provisioning for the line.
-2. Voice profile + agent name for Elevated's line.
-3. Elevated's Slack channel id + who installs the app.
-4. Elevated's staff transfer number (`escalation_number`).
-5. Confirm the "Hollis never quotes fees" policy.
-6. Confirm reusing `client_data_sources` for the Spiro key (vs. a dedicated slot) and whether a **read-scoped** Spiro key is available.
+**Resolved (owner, 2026-07-10):**
+- **Coverage = 24/7**; provision a **new dedicated phone number** for this line (Retell-managed, via the existing `provision` route).
+- **Agent name = `Elizabeth`** (`hollis_lines.agent_name`).
+
+**Still open (answer at plan/build time — none block the plan):**
+1. Voice profile (female/male + specific Cartesia voice) for Elizabeth.
+2. Elevated's Slack channel id + who installs the app.
+3. Elevated's staff transfer number (`escalation_number`).
+4. Confirm the "Hollis never quotes fees" policy.
+5. Confirm reusing `client_data_sources` for the Spiro key (vs. a dedicated slot) and whether a **read-scoped** Spiro key is available.

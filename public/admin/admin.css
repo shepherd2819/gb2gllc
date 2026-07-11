@@ -8,7 +8,7 @@
 :root {
   /* Backgrounds */
   --bg:       #F7F5F0;
-  --bg-2:     #FFFFFF;
+  --bg-2:     #FCFAF5;   /* was pure #FFFFFF — softened for all-day viewing */
   --bg-3:     #F0EDE5;
 
   /* Borders */
@@ -1034,4 +1034,184 @@ a.admin-card:hover {
   .agents-rail-item:focus-within .agents-rail-tooltip {
     transform: translateX(-50%) translateY(0);
   }
+}
+
+/* ============================================================
+   SHELL — global sidebar layout (redesign phase 1)
+   ============================================================ */
+.shell { display: flex; min-height: 100vh; }
+
+.shell-rail {
+  width: 248px; flex-shrink: 0;
+  position: sticky; top: 0; height: 100vh;
+  display: flex; flex-direction: column;
+  background: var(--bg-2); border-right: 1px solid var(--border);
+  overflow-y: auto; z-index: var(--z-nav);
+  transition: width var(--dur) var(--ease);
+  view-transition-name: shell-rail;
+}
+
+.shell-rail-top { display: flex; flex-direction: column; gap: 14px; padding: 18px 16px 12px; }
+.shell-rail-top .admin-mark { font-size: 17px; }
+
+.shell-rail-search {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px; color: var(--text-mute);
+  background: var(--bg-3); border: 1px solid var(--border); border-radius: var(--r-sm);
+  padding: 6px 10px; cursor: pointer;
+  transition: border-color var(--dur-fast), color var(--dur-fast);
+}
+.shell-rail-search:hover { border-color: var(--text-soft); color: var(--text); }
+.shell-rail-search .shell-rail-search-text { flex: 1; text-align: left; }
+.shell-rail-search kbd { font-family: var(--mono); font-size: 10px; color: var(--text-mute); }
+
+.shell-rail-nav { flex: 1; padding: 4px 10px 16px; display: flex; flex-direction: column; gap: 18px; }
+.shell-rail-heading {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-mute); padding: 0 8px; margin-bottom: 6px;
+}
+.shell-rail-sublabel {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-mute); opacity: 0.75; padding: 8px 8px 2px;
+}
+
+.shell-rail-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 8px; border-radius: var(--r-sm);
+  font-size: 13px; color: var(--text-soft); position: relative;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.shell-rail-item:hover { background: var(--bg-3); color: var(--text); }
+.shell-rail-item.is-active { background: var(--sage-dim); color: var(--text); }
+.shell-rail-item.is-active::before {
+  content: ""; position: absolute; left: -10px; top: 6px; bottom: 6px;
+  width: 2px; border-radius: 2px; background: var(--sage);
+}
+.shell-rail-glyph { font-family: var(--mono); font-size: 13px; width: 18px; text-align: center; flex-shrink: 0; }
+.shell-rail-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.shell-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.shell-dot.is-live { background: var(--sage); }
+.shell-dot.is-idle { background: var(--text-mute); }
+.shell-dot.is-paused { background: var(--gold); }
+.shell-dot.is-unconfigured { background: transparent; border: 1px solid var(--border); }
+.shell-badge {
+  font-family: var(--mono); font-size: 10px; color: var(--gold);
+  background: var(--gold-dim); border-radius: var(--r-pill); padding: 1px 7px; flex-shrink: 0;
+}
+
+.shell-rail-foot {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px; border-top: 1px solid var(--border);
+}
+.shell-rail-collapse {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; flex-shrink: 0;
+  background: none; border: 1px solid var(--border); border-radius: var(--r-sm);
+  cursor: pointer; color: var(--text-mute); font-family: var(--mono); font-size: 12px;
+  transition: border-color var(--dur-fast), color var(--dur-fast);
+}
+.shell-rail-collapse:hover { border-color: var(--text-soft); color: var(--text); }
+.shell-rail-foot .admin-signout { margin-left: auto; }
+
+.shell-content { flex: 1; min-width: 0; padding: 36px 32px 80px; }
+.shell-content-inner { max-width: 1100px; margin: 0 auto; }
+
+/* Collapsed rail (html[data-rail="collapsed"], persisted in localStorage) */
+[data-rail="collapsed"] .shell-rail { width: 64px; }
+[data-rail="collapsed"] .shell-rail-label,
+[data-rail="collapsed"] .shell-rail-heading,
+[data-rail="collapsed"] .shell-rail-sublabel,
+[data-rail="collapsed"] .shell-rail-search-text,
+[data-rail="collapsed"] .shell-rail-search kbd,
+[data-rail="collapsed"] .shell-dot,
+[data-rail="collapsed"] .shell-badge,
+[data-rail="collapsed"] .shell-rail-top .admin-badge,
+[data-rail="collapsed"] .shell-rail-foot .admin-signout,
+[data-rail="collapsed"] .shell-rail-foot .theme-toggle-btn { display: none; }
+[data-rail="collapsed"] .shell-rail-item { justify-content: center; padding: 8px 0; }
+[data-rail="collapsed"] .shell-rail-search { justify-content: center; }
+[data-rail="collapsed"] .shell-rail-foot { justify-content: center; }
+
+/* Mobile: rail becomes an overlay drawer (declared after the collapsed rules
+   so drawer width wins over icon-rail width below 900px) */
+.shell-menu-btn { display: none; }
+@media (max-width: 900px) {
+  .shell-rail,
+  [data-rail="collapsed"] .shell-rail {
+    position: fixed; left: 0; top: 0; width: 248px;
+    transform: translateX(-100%);
+    transition: transform var(--dur) var(--ease);
+  }
+  .shell-rail.is-open, [data-rail="collapsed"] .shell-rail.is-open { transform: translateX(0); box-shadow: var(--el-3); }
+  .shell-menu-btn {
+    display: flex; align-items: center; justify-content: center;
+    position: fixed; top: 14px; left: 14px; z-index: calc(var(--z-nav) + 1);
+    width: 34px; height: 34px;
+    background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--r-sm);
+    color: var(--text-soft); cursor: pointer; font-size: 15px;
+  }
+  .shell-backdrop { position: fixed; inset: 0; background: rgba(20, 20, 16, 0.35); z-index: calc(var(--z-nav) - 1); }
+  .shell-content { padding-top: 64px; }
+}
+
+/* ============================================================
+   COMMAND PALETTE (⌘K)
+   ============================================================ */
+.palette-overlay {
+  position: fixed; inset: 0; z-index: var(--z-modal);
+  background: rgba(20, 20, 16, 0.45);
+  display: flex; justify-content: center; align-items: flex-start;
+  padding-top: 14vh;
+  animation: ds-overlay-in var(--dur-fast) var(--ease-out);
+}
+.palette {
+  width: min(560px, calc(100vw - 32px));
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: var(--r-lg); box-shadow: var(--el-3); overflow: hidden;
+  animation: ds-modal-in var(--dur) var(--ease);
+}
+.palette-input {
+  width: 100%; border: none; outline: none; background: transparent;
+  padding: 16px 18px; font-family: var(--sans); font-size: 15px; color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+.palette-input::placeholder { color: var(--text-mute); }
+.palette-list { max-height: 320px; overflow-y: auto; padding: 6px; }
+.palette-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: var(--r-sm); cursor: pointer;
+  font-size: 13px; color: var(--text-soft);
+}
+.palette-item.is-active { background: var(--sage-dim); color: var(--text); }
+.palette-item-glyph { font-family: var(--mono); width: 18px; text-align: center; color: var(--text-mute); }
+.palette-item-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.palette-item-sub { font-family: var(--mono); font-size: 10px; color: var(--text-mute); }
+.palette-empty { padding: 18px; font-family: var(--mono); font-size: 11px; color: var(--text-mute); text-align: center; }
+
+/* ============================================================
+   VIEW TRANSITIONS — section navigation (sidebar link clicks)
+   Old content fades fast; new content fades in + rises gently.
+   The rail is anchored (never animates) so the eye keeps a fixed frame.
+   ============================================================ */
+@keyframes shell-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes shell-rise { from { transform: translateY(8px); } to { transform: none; } }
+
+::view-transition-old(.shell-section) {
+  animation: 120ms var(--ease-out) both shell-fade reverse;
+}
+::view-transition-new(.shell-section) {
+  animation: 210ms var(--ease) 90ms both shell-fade, 300ms var(--ease) both shell-rise;
+}
+
+::view-transition-group(shell-rail) { animation: none; }
+::view-transition-old(shell-rail) { display: none; }
+::view-transition-new(shell-rail) { animation: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*), ::view-transition-new(*), ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+  .shell-rail { transition: none; }
 }

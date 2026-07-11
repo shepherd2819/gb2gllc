@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { assembleDynamicVariables } from "./config";
+import { assembleDynamicVariables, hollisLineColumns } from "./config";
 import type { HollisLine } from "./types";
 
 const line = {
@@ -31,4 +31,11 @@ test("empty FAQ + services produce empty strings, not crashes", () => {
   const dv = assembleDynamicVariables(bare, "X", []);
   assert.equal(dv.faq, "");
   assert.equal(dv.services, "");
+});
+
+test("line column list includes the order-desk columns", () => {
+  const cols = hollisLineColumns();
+  for (const c of ["order_ops_enabled", "spiro_source_id", "slack_channel_id", "agent_name"]) {
+    assert.ok(cols.includes(c), `missing ${c}`);
+  }
 });

@@ -47,6 +47,13 @@ export function assembleDynamicVariables(line: ConfigLine, businessName: string,
   };
 }
 
+// Column list for the tool route's explicit line fetch (Task 14). loadLineConfig
+// below delegates to loadLineByNumber, which already `.select("*")`s, so these
+// order-desk columns load automatically there — this helper is not used by it.
+export function hollisLineColumns(): string {
+  return "id, client_id, phone_number, retell_agent_id, voice_profile, agent_name, voice_id, greeting_override, persona, hours, services, escalation_number, booking_mode, booking_email, recording_enabled, status, order_ops_enabled, spiro_source_id, slack_channel_id";
+}
+
 export async function loadLineByNumber(toNumber: string): Promise<HollisLine | null> {
   const { supabaseAdmin } = await import("@/lib/supabase");
   const { data } = await supabaseAdmin

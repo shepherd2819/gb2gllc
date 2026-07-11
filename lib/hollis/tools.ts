@@ -11,7 +11,7 @@ import {
   resolveOrder as realResolveOrder,
 } from "./spiro";
 import { postEscalation as realPostEscalation } from "./escalation";
-import type { OrderCard, SpiroAgent, SpiroCtx } from "./types";
+import type { EscalationInput, OrderCard, SpiroAgent, SpiroCtx } from "./types";
 
 export type ToolSchema = {
   name: string;
@@ -249,4 +249,84 @@ export async function handleLookupOrder(
   }
   await ctx.record({ tool: "lookup_order", fields: { trackingCode: order.trackingCode, status: order.status } });
   return speakOrder(order);
+}
+
+// --- Order desk: reschedule / cancel / new order -----------------------------
+// These escalate to staff (Slack, falling back to email) rather than acting
+// directly against Spiro. The escalation row is always persisted first
+// (Task 9), so `deliver` softens its promise — never over-promises — when the
+// live delivery channel falls back.
+
+const SENT_MSG = "Perfect — I've sent that to our team and they'll confirm by email shortly. Anything else?";
+const SENT_LOGGED = "I've logged that for our team and they'll follow up with you. Anything else?";
+const NEED_VERIFY = "Before I can put that request in, I need to confirm the property address or the order tracking code — which do you have?";
+
+function agentContact(agent?: SpiroAgent | null): Record<string, unknown> {
+  if (!agent) return {};
+  const name = `${agent.firstName ?? ""} ${agent.lastName ?? ""}`.trim();
+  return { caller_name: name, caller_email: agent.email ?? "" };
+}
+
+function baseEscalation(ctx: ToolCtx, agentId: string | null, order: OrderCard | null, type: EscalationInput["type"], fields: Record<string, unknown>, staffContext?: Record<string, unknown>): EscalationInput {
+  return {
+    type, clientId: ctx.line.client_id, lineId: ctx.line.id,
+    slackChannel: ctx.line.slack_channel_id ?? null, staffEmail: ctx.line.booking_email ?? null,
+    callId: null, retellCallId: ctx.callId || null, callerNumber: ctx.callerNumber ?? null,
+    agentId, order, verified: !!order, fields, staffContext,
+  };
+}
+
+async function deliver(d: OrderToolDeps, input: EscalationInput): Promise<string> {
+  const res = await d.postEscalation(input);
+  return res.ok ? SENT_MSG : SENT_LOGGED;
+}
+
+export async function handleRescheduleRequest(
+  args: { tracking_code?: string; property_address?: string; agent_email?: string; desired_window: string; reason?: string },
+  ctx: ToolCtx, overrides: Partial<OrderToolDeps> = {},
+): Promise<string> {
+  const d = { ...REAL_DEPS, ...overrides };
+  const { error, agent, order, spiro } = await resolveAgentAndOrder(args, ctx, d);
+  if (error) return error;
+  if (!order) return NEED_VERIFY;
+  let staffContext: Record<string, unknown> | undefined;
+  if (spiro) { const det = await d.getOrderDetail(spiro, order.orderId); if (det.ok) staffContext = { rescheduleAmount: det.value.rescheduleAmount }; }
+  await ctx.record({ tool: "request_reschedule", fields: { trackingCode: order.trackingCode, desired_window: args.desired_window } });
+  return deliver(d, baseEscalation(ctx, agent?.agentId ?? null, order, "reschedule",
+    { desired_window: args.desired_window, reason: args.reason ?? "", ...agentContact(agent) }, staffContext));
+}
+
+export async function handleCancellationRequest(
+  args: { tracking_code?: string; property_address?: string; agent_email?: string; reason?: string },
+  ctx: ToolCtx, overrides: Partial<OrderToolDeps> = {},
+): Promise<string> {
+  const d = { ...REAL_DEPS, ...overrides };
+  const { error, agent, order, spiro } = await resolveAgentAndOrder(args, ctx, d);
+  if (error) return error;
+  if (!order) return NEED_VERIFY;
+  let staffContext: Record<string, unknown> | undefined;
+  if (spiro) { const det = await d.getOrderDetail(spiro, order.orderId); if (det.ok) staffContext = { cancellationAmount: det.value.cancellationAmount }; }
+  await ctx.record({ tool: "request_cancellation", fields: { trackingCode: order.trackingCode } });
+  return deliver(d, baseEscalation(ctx, agent?.agentId ?? null, order, "cancel",
+    { reason: args.reason ?? "", ...agentContact(agent) }, staffContext));
+}
+
+export async function handleNewOrderRequest(
+  args: { property_address: string; package_or_services: string; preferred_datetime: string; access_notes?: string; agent_email?: string },
+  ctx: ToolCtx, overrides: Partial<OrderToolDeps> = {},
+): Promise<string> {
+  const d = { ...REAL_DEPS, ...overrides };
+  const spiro = await d.loadSpiroCtx(ctx.line.client_id, ctx.line.spiro_source_id ?? null);
+  let agent: SpiroAgent | null = null;
+  if (spiro) {
+    const e164 = normalizeCallerNumber(ctx.callerNumber);
+    if (e164) { const r = await d.findAgentByPhone(spiro, e164); if (r.ok) agent = r.value; }
+    if (!agent && args.agent_email) { const r = await d.findAgentByEmail(spiro, args.agent_email); if (r.ok) agent = r.value; }
+  }
+  await ctx.record({ tool: "request_new_order", fields: { property_address: args.property_address } });
+  return deliver(d, baseEscalation(ctx, agent?.agentId ?? null, null, "new_order", {
+    property_address: args.property_address, package_or_services: args.package_or_services,
+    preferred_datetime: args.preferred_datetime, access_notes: args.access_notes ?? "",
+    contact_number: ctx.callerNumber ?? "", contact_email: args.agent_email ?? "", ...agentContact(agent),
+  }));
 }

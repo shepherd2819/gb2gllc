@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { TOOL_SCHEMAS, dispatch, handleLookupOrder, type ToolCtx } from "./tools";
+import { handleRescheduleRequest, handleCancellationRequest, handleNewOrderRequest } from "./tools";
 
 function fakeCtx(overrides: Partial<ToolCtx> = {}): ToolCtx {
   return {
@@ -81,4 +82,29 @@ test("lookup_order handles Spiro auth failure gracefully", async () => {
   const ctx = fakeCtx({ callerNumber: "+18435551234", line: { id: "l1", client_id: "c1", order_ops_enabled: true, spiro_source_id: "s1" } as any });
   const out = await handleLookupOrder({ tracking_code: "x" }, ctx, orderDeps({ findOrderByTracking: async () => ({ ok: false as const, kind: "auth", message: "401" }) }));
   assert.match(out, /trouble|team|later/i);
+});
+
+const SENT = /sent (this|that|it).*(team|over)|our team.*email|confirm by email/i;
+
+test("reschedule escalates a verified order and promises email", async () => {
+  const ctx = fakeCtx({ callerNumber: "+18435551234", line: { id: "l1", client_id: "c1", order_ops_enabled: true, spiro_source_id: "s1", slack_channel_id: "C1", booking_email: "ops@ep.com" } as any });
+  let posted: any = null;
+  const out = await handleRescheduleRequest({ tracking_code: "r2m360pl1", desired_window: "Wed AM" }, ctx, orderDeps({ postEscalation: async (i: any) => { posted = i; return { ok: true }; } }));
+  assert.equal(posted.type, "reschedule");
+  assert.equal(posted.verified, true);
+  assert.match(out, SENT);
+});
+
+test("reschedule refuses when the order can't be verified", async () => {
+  const ctx = fakeCtx({ callerNumber: "+18435551234", line: { id: "l1", client_id: "c1", order_ops_enabled: true, spiro_source_id: "s1" } as any });
+  const out = await handleRescheduleRequest({ desired_window: "Wed AM" }, ctx, orderDeps({ resolveOrder: async () => ({ ok: true as const, value: { match: null, candidates: [] } }) }));
+  assert.match(out, /confirm|address or.*tracking/i);
+});
+
+test("new order escalates without needing an existing order", async () => {
+  const ctx = fakeCtx({ callerNumber: "+18435551234", line: { id: "l1", client_id: "c1", order_ops_enabled: true, spiro_source_id: "s1", slack_channel_id: "C1", booking_email: "ops@ep.com" } as any });
+  let posted: any = null;
+  const out = await handleNewOrderRequest({ property_address: "9 Palm Ct", package_or_services: "Deluxe + Drone", preferred_datetime: "next Tuesday AM" }, ctx, orderDeps({ postEscalation: async (i: any) => { posted = i; return { ok: true }; } }));
+  assert.equal(posted.type, "new_order");
+  assert.match(out, SENT);
 });

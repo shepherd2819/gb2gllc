@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildEscalationBlocks, escalationText } from "./escalation";
+import { buildEscalationBlocks, escalationText, postEscalation } from "./escalation";
 import type { EscalationInput } from "./types";
 
 const base: EscalationInput = {
@@ -23,4 +23,35 @@ test("blocks include type header, order ref, and captured fields", () => {
 
 test("escalationText is a concise one-liner", () => {
   assert.match(escalationText(base), /Reschedule/i);
+});
+
+function deps(over = {}) {
+  const calls: any = { inserted: null, updated: null, slack: null, email: null };
+  return { calls, deps: {
+    insertRow: async (row: any) => { calls.inserted = row; return "esc1"; },
+    updateRow: async (id: string, patch: any) => { calls.updated = { id, patch }; },
+    getSlackToken: async () => "xoxb-test",
+    postSlack: async (o: any) => { calls.slack = o; return { ok: true, ts: "1700.1" }; },
+    sendStaffEmail: async (o: any) => { calls.email = o; },
+    ...over,
+  } };
+}
+
+test("posts to Slack and marks the row open with ts", async () => {
+  const { calls, deps: d } = deps();
+  const r = await postEscalation(base, d);
+  assert.equal(r.ok, true);
+  assert.equal(r.slackTs, "1700.1");
+  assert.equal(calls.inserted.type, "reschedule");
+  assert.equal(calls.slack.channel, "C1");
+  assert.equal(calls.email, null);
+});
+
+test("falls back to staff email when Slack fails", async () => {
+  const { calls, deps: d } = deps({ postSlack: async () => { throw new Error("slack down"); } });
+  const r = await postEscalation(base, d);
+  assert.equal(r.ok, false);
+  assert.equal(r.fallback, "email");
+  assert.equal(calls.email.to, "ops@ep.com");
+  assert.equal(calls.updated.patch.status, "failed");
 });

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toOrderCard, toAgent, spiroGet, findAgentByPhone, listAgentOrders, findOrderByTracking, getOrderDetail, resolveOrder } from "./spiro";
+import { toOrderCard, toAgent, spiroGet, findAgentByPhone, listAgentOrders, findOrderByTracking, getOrderDetail, resolveOrder, buildSpiroCtx } from "./spiro";
 
 const rawOrder = {
   orderId: "o1", trackingCode: "r2m360pl1", status: "confirmed",
@@ -90,4 +90,9 @@ test("resolveOrder ignores empty candidate addresses (no false match)", async ()
   ]};
   const r = await resolveOrder(ctx, { agentId: "a1", addressText: "15 Oak Drive" }, fakeFetch(200, withEmpty) as unknown as typeof fetch);
   if (r.ok) assert.equal(r.value.match?.orderId, "o1");
+});
+
+test("buildSpiroCtx defaults base url + bearer, honors x-api-key", () => {
+  assert.deepEqual(buildSpiroCtx({}, "secret"), { baseUrl: "https://api.spiro.media", apiKey: "secret", authScheme: "bearer" });
+  assert.equal(buildSpiroCtx({ authScheme: "x-api-key", baseUrl: "https://api.spiro.media/" }, "s").authScheme, "x-api-key");
 });

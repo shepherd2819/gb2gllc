@@ -138,3 +138,26 @@ export async function resolveOrder(
   }
   return { ok: true, value: { match: null, candidates: orders } };
 }
+
+export function buildSpiroCtx(config: any, secretPlaintext: string): SpiroCtx {
+  const cfg = config ?? {};
+  return {
+    baseUrl: (cfg.baseUrl ?? "https://api.spiro.media").replace(/\/$/, ""),
+    apiKey: secretPlaintext,
+    authScheme: cfg.authScheme === "x-api-key" ? "x-api-key" : "bearer",
+  };
+}
+
+export async function loadSpiroCtx(clientId: string, spiroSourceId: string | null): Promise<SpiroCtx | null> {
+  if (!spiroSourceId) return null;
+  const { supabaseAdmin } = await import("@/lib/supabase");
+  const { data } = await supabaseAdmin
+    .from("client_data_sources")
+    .select("config, secret_enc")
+    .eq("id", spiroSourceId)
+    .eq("client_id", clientId)
+    .maybeSingle();
+  if (!data?.secret_enc) return null;
+  const { decryptSecret } = await import("@/lib/analytics/crypto");
+  return buildSpiroCtx(data.config, decryptSecret(data.secret_enc));
+}

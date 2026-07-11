@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toOrderCard, toAgent, spiroGet, findAgentByPhone, listAgentOrders, findOrderByTracking, getOrderDetail } from "./spiro";
+import { toOrderCard, toAgent, spiroGet, findAgentByPhone, listAgentOrders, findOrderByTracking, getOrderDetail, resolveOrder } from "./spiro";
 
 const rawOrder = {
   orderId: "o1", trackingCode: "r2m360pl1", status: "confirmed",
@@ -60,4 +60,34 @@ test("findOrderByTracking resolves an order + agentId globally (no prior agent m
 test("getOrderDetail extracts staff-only fee fields", async () => {
   const r = await getOrderDetail(ctx, "o1", fakeFetch(200, { data: { pricing: { cancellationAmount: 50, rescheduleAmount: 0 } } }) as unknown as typeof fetch);
   if (r.ok) { assert.equal(r.value.cancellationAmount, 50); assert.equal(r.value.rescheduleAmount, 0); }
+});
+
+const twoOrders = { data: [
+  { orderId: "o1", trackingCode: "aaa111", status: "confirmed", address: { streetAddress: "15 Oak Drive", city: "Mount Pleasant", stateOrProvince: "SC" }, client: { agentId: "a1" }, primaryAppointment: {} },
+  { orderId: "o2", trackingCode: "bbb222", status: "editing", address: { streetAddress: "9 Palm Ct", city: "Charleston", stateOrProvince: "SC" }, client: { agentId: "a1" }, primaryAppointment: {} },
+]};
+
+test("resolveOrder matches by tracking code", async () => {
+  const r = await resolveOrder(ctx, { agentId: "a1", trackingCode: "BBB222" }, fakeFetch(200, twoOrders) as unknown as typeof fetch);
+  assert.equal(r.ok, true);
+  if (r.ok) assert.equal(r.value.match?.orderId, "o2");
+});
+
+test("resolveOrder matches by address text", async () => {
+  const r = await resolveOrder(ctx, { agentId: "a1", addressText: "15 oak drive" }, fakeFetch(200, twoOrders) as unknown as typeof fetch);
+  if (r.ok) assert.equal(r.value.match?.orderId, "o1");
+});
+
+test("resolveOrder returns no match when detail is absent", async () => {
+  const r = await resolveOrder(ctx, { agentId: "a1" }, fakeFetch(200, twoOrders) as unknown as typeof fetch);
+  if (r.ok) { assert.equal(r.value.match, null); assert.equal(r.value.candidates.length, 2); }
+});
+
+test("resolveOrder ignores empty candidate addresses (no false match)", async () => {
+  const withEmpty = { data: [
+    { orderId: "o3", trackingCode: "ccc333", status: "confirmed", address: {}, client: { agentId: "a1" }, primaryAppointment: {} },
+    { orderId: "o1", trackingCode: "aaa111", status: "confirmed", address: { streetAddress: "15 Oak Drive", city: "Mount Pleasant", stateOrProvince: "SC" }, client: { agentId: "a1" }, primaryAppointment: {} },
+  ]};
+  const r = await resolveOrder(ctx, { agentId: "a1", addressText: "15 Oak Drive" }, fakeFetch(200, withEmpty) as unknown as typeof fetch);
+  if (r.ok) assert.equal(r.value.match?.orderId, "o1");
 });

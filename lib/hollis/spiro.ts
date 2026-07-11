@@ -101,3 +101,40 @@ export async function getOrderDetail(ctx: SpiroCtx, orderId: string, fetchImpl: 
   const p = (r.value?.data ?? r.value)?.pricing ?? {};
   return { ok: true, value: { cancellationAmount: p.cancellationAmount ?? null, rescheduleAmount: p.rescheduleAmount ?? null } };
 }
+
+function normAddr(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+function houseNumber(s: string): string | null {
+  const m = s.trim().match(/^\s*(\d+)/);
+  return m ? m[1] : null;
+}
+
+export async function resolveOrder(
+  ctx: SpiroCtx,
+  params: { agentId: string; trackingCode?: string; addressText?: string },
+  fetchImpl: FetchImpl = fetch,
+): Promise<SpiroResult<{ match: OrderCard | null; candidates: OrderCard[] }>> {
+  const listed = await listAgentOrders(ctx, params.agentId, { limit: 25 }, fetchImpl);
+  if (!listed.ok) return listed;
+  const orders = listed.value;
+  if (params.trackingCode) {
+    const t = params.trackingCode.trim().toLowerCase();
+    const m = orders.find((o) => o.trackingCode.toLowerCase() === t);
+    return { ok: true, value: { match: m ?? null, candidates: orders } };
+  }
+  if (params.addressText) {
+    const q = normAddr(params.addressText);
+    const qNum = houseNumber(params.addressText);
+    const matches = q ? orders.filter((o) => {
+      const a = normAddr(o.addressText);
+      if (!a) return false;                                 // never let an empty candidate address match
+      const aNum = houseNumber(o.addressText);
+      if (qNum && aNum && qNum !== aNum) return false;      // house number must agree when both are present
+      return a.includes(q) || q.includes(a);
+    }) : [];
+    if (matches.length === 1) return { ok: true, value: { match: matches[0], candidates: orders } };
+    return { ok: true, value: { match: null, candidates: matches.length ? matches : orders } };
+  }
+  return { ok: true, value: { match: null, candidates: orders } };
+}

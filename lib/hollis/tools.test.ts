@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { TOOL_SCHEMAS, dispatch, handleLookupOrder, type ToolCtx } from "./tools";
 import { handleRescheduleRequest, handleCancellationRequest, handleNewOrderRequest } from "./tools";
+import { ORDER_TOOL_SCHEMAS, toolsForLine } from "./tools";
 
 function fakeCtx(overrides: Partial<ToolCtx> = {}): ToolCtx {
   return {
@@ -107,4 +108,29 @@ test("new order escalates without needing an existing order", async () => {
   const out = await handleNewOrderRequest({ property_address: "9 Palm Ct", package_or_services: "Deluxe + Drone", preferred_datetime: "next Tuesday AM" }, ctx, orderDeps({ postEscalation: async (i: any) => { posted = i; return { ok: true }; } }));
   assert.equal(posted.type, "new_order");
   assert.match(out, SENT);
+});
+
+test("base TOOL_SCHEMAS is still exactly five (non-breaking)", () => {
+  assert.equal(TOOL_SCHEMAS.length, 5);
+});
+
+test("ORDER_TOOL_SCHEMAS has the four order tools, object-schema", () => {
+  const names = ORDER_TOOL_SCHEMAS.map((t) => t.name).sort();
+  assert.deepEqual(names, ["lookup_order", "request_cancellation", "request_new_order", "request_reschedule"]);
+  for (const t of ORDER_TOOL_SCHEMAS) { assert.equal(t.input_schema.type, "object"); assert.equal(t.input_schema.additionalProperties, false); }
+});
+
+test("toolsForLine: disabled = base 5; enabled drops booking/lead + adds order tools (7)", () => {
+  assert.equal(toolsForLine({ order_ops_enabled: false }).length, 5);
+  const enabled = toolsForLine({ order_ops_enabled: true });
+  const names = enabled.map((t) => t.name).sort();
+  assert.equal(enabled.length, 7);
+  assert.ok(!names.includes("book_appointment") && !names.includes("qualify_lead"), "booking/lead dropped on order line");
+  assert.ok(["lookup_order", "take_message", "lookup_faq", "transfer_to_human"].every((n) => names.includes(n)));
+});
+
+test("dispatch refuses order tools when order_ops disabled", async () => {
+  const ctx = fakeCtx({ line: { id: "l1", client_id: "c1", order_ops_enabled: false } as any });
+  const out = await dispatch("lookup_order", { tracking_code: "x" }, ctx);
+  assert.match(out, /take a message|not able|team/i);
 });

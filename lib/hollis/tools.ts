@@ -99,6 +99,50 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
   },
 ];
 
+export const ORDER_TOOL_SCHEMAS = [
+  {
+    name: "lookup_order",
+    description: "Look up the caller's photography order in Spiro to answer status/schedule/photographer questions. Requires the caller to confirm a property address or order tracking code.",
+    input_schema: { type: "object", additionalProperties: false, properties: {
+      tracking_code: { type: "string", description: "Order tracking code if the caller has it." },
+      property_address: { type: "string", description: "Property address on the order, to verify + locate it." },
+      agent_email: { type: "string", description: "Email on the account, used only if the caller's phone doesn't match." },
+    }, required: [] },
+  },
+  {
+    name: "request_reschedule",
+    description: "Submit a request to reschedule an existing, verified order to a new time. Does not change Spiro directly.",
+    input_schema: { type: "object", additionalProperties: false, properties: {
+      tracking_code: { type: "string" }, property_address: { type: "string" }, agent_email: { type: "string" },
+      desired_window: { type: "string", description: "Caller's requested new date/time or window." },
+      reason: { type: "string" },
+    }, required: ["desired_window"] },
+  },
+  {
+    name: "request_cancellation",
+    description: "Submit a request to cancel an existing, verified order. Does not cancel in Spiro directly.",
+    input_schema: { type: "object", additionalProperties: false, properties: {
+      tracking_code: { type: "string" }, property_address: { type: "string" }, agent_email: { type: "string" }, reason: { type: "string" },
+    }, required: [] },
+  },
+  {
+    name: "request_new_order",
+    description: "Capture a full request for a NEW shoot order for staff to create. Does not create in Spiro directly.",
+    input_schema: { type: "object", additionalProperties: false, properties: {
+      property_address: { type: "string" }, package_or_services: { type: "string" },
+      preferred_datetime: { type: "string" }, access_notes: { type: "string" }, agent_email: { type: "string" },
+    }, required: ["property_address", "package_or_services", "preferred_datetime"] },
+  },
+] as const;
+
+// On an order-desk line the generic booking/lead tools are REPLACED by the order tools (spec §4).
+const ORDER_LINE_DROP = new Set(["book_appointment", "qualify_lead"]);
+export function toolsForLine(line: { order_ops_enabled?: boolean }) {
+  if (!line.order_ops_enabled) return [...TOOL_SCHEMAS];
+  const base = TOOL_SCHEMAS.filter((t) => !ORDER_LINE_DROP.has(t.name));
+  return [...base, ...ORDER_TOOL_SCHEMAS]; // do NOT annotate the return type — let TS infer the union (ORDER_TOOL_SCHEMAS is `as const`)
+}
+
 export type ToolCtx = {
   line: {
     id: string;
@@ -154,6 +198,17 @@ export async function dispatch(name: string, args: Record<string, unknown>, ctx:
     case "transfer_to_human":
       await ctx.record({ tool: "transfer_to_human", fields: args });
       return "Sure — let me connect you with someone who can help. One moment.";
+
+    case "lookup_order":
+    case "request_reschedule":
+    case "request_cancellation":
+    case "request_new_order": {
+      if (!ctx.line.order_ops_enabled) return "Let me take a message and have the team follow up with you.";
+      if (name === "lookup_order") return handleLookupOrder(args as any, ctx);
+      if (name === "request_reschedule") return handleRescheduleRequest(args as any, ctx);
+      if (name === "request_cancellation") return handleCancellationRequest(args as any, ctx);
+      return handleNewOrderRequest(args as any, ctx);
+    }
 
     default:
       return "I'm sorry, I didn't quite catch that — let me take a message so the team can help.";

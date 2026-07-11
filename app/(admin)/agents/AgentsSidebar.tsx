@@ -3,10 +3,8 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { GROUPED_AGENTS, type AgentManifestEntry } from "./agents-manifest";
 
-export type AgentStatus = {
-  state: "live" | "idle" | "paused" | "unconfigured";  // live = connected + recent activity; idle = connected but quiet; paused = explicitly paused; unconfigured = nothing connected
-  badge?: string | null;                                // e.g. "3" for pending count
-};
+import type { AgentStatus } from "@/lib/agent-status";
+export type { AgentStatus };
 
 export function AgentsSidebar({ statuses }: { statuses: Record<string, AgentStatus> }) {
   const pathname = usePathname();

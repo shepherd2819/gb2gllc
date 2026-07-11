@@ -1,20 +1,38 @@
 /* ============================================================
    GB2G ANALYTICS — command-center.css
-   Dark "executive command center" theme, scoped to `.cc-root`.
+   Theme-aware "command center" layout, scoped to `.cc-root`.
    Loaded AFTER tokens.css (+ portal.css/admin.css) on the analytics
-   dashboard, its admin mirror, and the presentation route. Purely
-   additive: remaps the semantic --color-* tokens inside `.cc-root`
-   so every existing ds-chart-*/ds-*/stat-* component re-themes dark
-   without any component code changes, then layers command-center-only
-   layout classes + motion on top.
+   dashboard, its admin mirror, and the presentation route. `.cc-root`
+   itself is structural only (position/background/color, all via
+   tokens) so it renders correctly in whichever theme is active —
+   the admin dashboard follows the admin light/dark toggle.
+
+   The dark "executive command center" look (near-black base, gold/
+   sage/red/blue accents brightened for AA) is a token remap scoped
+   to `[data-theme="dark"] .cc-root, .cc-root--dark` below. Forced-dark
+   surfaces (presentation mode, the portal dashboard) add the
+   `cc-root--dark` class explicitly.
 
    This is the ONLY file allowed to contain literal dark hex values,
-   and ONLY inside the `.cc-root { ... }` token-remap block below —
-   everything else in this file (and every component) consumes those
-   remapped var(--color-*) tokens.
+   and ONLY inside the `[data-theme="dark"] .cc-root, .cc-root--dark`
+   token-remap block below — everything else in this file (and every
+   component) consumes the remapped var(--color-*) tokens.
    ============================================================ */
 
+/* Structural — applies in BOTH themes (all values via tokens) */
 .cc-root {
+  position: relative;
+  background-color: var(--color-bg);
+  background-image:
+    radial-gradient(ellipse 900px 480px at 50% -12%, color-mix(in oklch, var(--color-gold) 12%, transparent), transparent 65%),
+    repeating-linear-gradient(0deg, color-mix(in oklch, var(--color-text) 3%, transparent) 0 1px, transparent 1px 64px),
+    repeating-linear-gradient(90deg, color-mix(in oklch, var(--color-text) 3%, transparent) 0 1px, transparent 1px 64px);
+  color: var(--color-text);
+}
+
+/* Dark remap — admin dark mode, or forced (present mode + portal) */
+[data-theme="dark"] .cc-root,
+.cc-root--dark {
   color-scheme: dark;
 
   /* Backgrounds — near-black base, lighter elevated surfaces */
@@ -50,15 +68,6 @@
   --color-gold-text: var(--color-gold);
   --color-red-text: var(--color-red);
   --focus-ring-color: var(--color-gold);
-
-  /* Base surface: near-black + faint grid + a top gold vignette */
-  position: relative;
-  background-color: var(--color-bg);
-  background-image:
-    radial-gradient(ellipse 900px 480px at 50% -12%, color-mix(in oklch, var(--color-gold) 12%, transparent), transparent 65%),
-    repeating-linear-gradient(0deg, color-mix(in oklch, var(--color-text) 3%, transparent) 0 1px, transparent 1px 64px),
-    repeating-linear-gradient(90deg, color-mix(in oklch, var(--color-text) 3%, transparent) 0 1px, transparent 1px 64px);
-  color: var(--color-text);
 }
 
 /* ============================================================

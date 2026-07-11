@@ -45,7 +45,7 @@ export default async function AnalyticsPage() {
             <a className="ds-btn ds-btn--ghost ds-btn--sm" href="/api/portal/analytics/export?format=pdf">Export PDF</a>
             <a className="ds-btn ds-btn--ghost ds-btn--sm" href="/analytics/present">Present ↗</a>
           </div>
-          <AnalyticsDashboard snapshot={snapshot} surface="portal" />
+          <AnalyticsDashboard snapshot={snapshot} surface="portal" forceDark />
           <ChatPanel conversationId={conversation.id} initialMessages={history} />
         </>
       )}

@@ -4,6 +4,14 @@
 // recorded on the call context and delivered post-call (never block the turn).
 
 import { toSpokenForm } from "./normalize";
+import { normalizeCallerNumber } from "./phone";
+import {
+  loadSpiroCtx as realLoadSpiroCtx, findAgentByPhone as realFindByPhone, findAgentByEmail as realFindByEmail,
+  findAgentById as realFindById, findOrderByTracking as realFindByTracking, getOrderDetail as realGetOrderDetail,
+  resolveOrder as realResolveOrder,
+} from "./spiro";
+import { postEscalation as realPostEscalation } from "./escalation";
+import type { OrderCard, SpiroAgent, SpiroCtx } from "./types";
 
 export type ToolSchema = {
   name: string;
@@ -92,8 +100,19 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
 ];
 
 export type ToolCtx = {
-  line: { id: string; client_id: string; booking_mode?: string; escalation_number?: string | null };
+  line: {
+    id: string;
+    client_id: string;
+    booking_mode?: string;
+    escalation_number?: string | null;
+    agent_name?: string | null;
+    booking_email?: string | null;
+    order_ops_enabled?: boolean;
+    spiro_source_id?: string | null;
+    slack_channel_id?: string | null;
+  };
   callId: string;
+  callerNumber?: string | null;
   record: (entry: { tool: string; fields: Record<string, unknown> }) => Promise<void>;
 };
 
@@ -139,4 +158,95 @@ export async function dispatch(name: string, args: Record<string, unknown>, ctx:
     default:
       return "I'm sorry, I didn't quite catch that — let me take a message so the team can help.";
   }
+}
+
+// --- Order desk: lookup_order ------------------------------------------------
+// Reads live order data from Spiro. Tracking-code lookups resolve globally
+// (no phone match required); everything else resolves the caller's agent
+// record first (phone, then email fallback) and matches their order by address.
+
+export type OrderToolDeps = {
+  loadSpiroCtx: typeof realLoadSpiroCtx;
+  findAgentByPhone: typeof realFindByPhone;
+  findAgentByEmail: typeof realFindByEmail;
+  findAgentById: typeof realFindById;
+  findOrderByTracking: typeof realFindByTracking;
+  getOrderDetail: typeof realGetOrderDetail;
+  resolveOrder: typeof realResolveOrder;
+  postEscalation: typeof realPostEscalation;
+};
+const REAL_DEPS: OrderToolDeps = {
+  loadSpiroCtx: realLoadSpiroCtx, findAgentByPhone: realFindByPhone, findAgentByEmail: realFindByEmail,
+  findAgentById: realFindById, findOrderByTracking: realFindByTracking, getOrderDetail: realGetOrderDetail,
+  resolveOrder: realResolveOrder, postEscalation: realPostEscalation,
+};
+
+const CANT_HELP = "I'm having trouble reaching our order system right now — let me take a message and have the team follow up with you.";
+const ASK_VERIFY = "To pull up your order I just need to confirm the property address or the order tracking code — which do you have handy?";
+
+async function logSpiro(ctx: ToolCtx, res: { kind: string; message: string }): Promise<void> {
+  try {
+    // Deferred import (like the supabase-backed helpers above) so a missing/unset
+    // Supabase env in non-Next.js contexts can't crash module load or the caller flow.
+    const { logEvent } = await import("@/lib/logger");
+    await logEvent({ clientId: ctx.line.client_id, category: "hollis", level: "error", message: `spiro ${res.kind}: ${res.message}` });
+  } catch {
+    // Never let logging failures break the caller-facing flow.
+  }
+}
+
+type ResolveResult = { error?: string; agent?: SpiroAgent | null; order?: OrderCard | null; candidates?: OrderCard[]; spiro?: SpiroCtx };
+
+async function resolveAgentAndOrder(
+  args: { tracking_code?: string; property_address?: string; agent_email?: string },
+  ctx: ToolCtx, d: OrderToolDeps,
+): Promise<ResolveResult> {
+  const spiro = await d.loadSpiroCtx(ctx.line.client_id, ctx.line.spiro_source_id ?? null);
+  if (!spiro) return { error: CANT_HELP };
+
+  // Tracking-code first — resolves globally, even when the caller's phone doesn't match an agent (spec §3.2).
+  if (args.tracking_code) {
+    const byTrack = await d.findOrderByTracking(spiro, args.tracking_code);
+    if (!byTrack.ok) { await logSpiro(ctx, byTrack); return { error: CANT_HELP, spiro }; }
+    if (byTrack.value.order) {
+      let agent: SpiroAgent | null = null;
+      if (byTrack.value.agentId) { const ar = await d.findAgentById(spiro, byTrack.value.agentId); if (ar.ok) agent = ar.value; }
+      return { agent, order: byTrack.value.order, spiro };
+    }
+  }
+
+  // Otherwise resolve the agent (phone → email), then match their order by address.
+  const e164 = normalizeCallerNumber(ctx.callerNumber);
+  let agent: SpiroAgent | null = null;
+  if (e164) { const r = await d.findAgentByPhone(spiro, e164); if (!r.ok) { await logSpiro(ctx, r); return { error: CANT_HELP, spiro }; } agent = r.value; }
+  if (!agent && args.agent_email) { const r = await d.findAgentByEmail(spiro, args.agent_email); if (!r.ok) { await logSpiro(ctx, r); return { error: CANT_HELP, spiro }; } agent = r.value; }
+  if (!agent) return { error: "I couldn't find your account from this number — can you give me the email on the order, or the tracking code?", spiro };
+
+  const resolved = await d.resolveOrder(spiro, { agentId: agent.agentId, addressText: args.property_address });
+  if (!resolved.ok) { await logSpiro(ctx, resolved); return { error: CANT_HELP, spiro }; }
+  return { agent, order: resolved.value.match, candidates: resolved.value.candidates, spiro };
+}
+
+function speakOrder(o: OrderCard): string {
+  const when = o.arrivalWindowStart ? ` scheduled for ${o.arrivalWindowStart}` : "";
+  const who = o.photographerName ? ` with ${o.photographerName}` : "";
+  return `Your order for ${o.addressText} is ${o.status}${when}${who}.`;
+}
+
+export async function handleLookupOrder(
+  args: { tracking_code?: string; property_address?: string; agent_email?: string },
+  ctx: ToolCtx, overrides: Partial<OrderToolDeps> = {},
+): Promise<string> {
+  const d = { ...REAL_DEPS, ...overrides };
+  const { error, order, candidates } = await resolveAgentAndOrder(args, ctx, d);
+  if (error) return error;
+  if (!order) {
+    if (candidates && candidates.length > 1) {
+      const list = candidates.slice(0, 3).map((c) => c.addressText).filter(Boolean).join("; ");
+      return `I see a few orders on your account${list ? ` — ${list}` : ""}. Which property is it, or what's the tracking code?`;
+    }
+    return ASK_VERIFY;
+  }
+  await ctx.record({ tool: "lookup_order", fields: { trackingCode: order.trackingCode, status: order.status } });
+  return speakOrder(order);
 }

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { TOOL_SCHEMAS, dispatch, type ToolCtx } from "./tools";
+import { TOOL_SCHEMAS, dispatch, handleLookupOrder, type ToolCtx } from "./tools";
 
 function fakeCtx(overrides: Partial<ToolCtx> = {}): ToolCtx {
   return {
@@ -46,4 +46,39 @@ test("book_appointment confirms a follow-up", async () => {
 test("unknown tool returns a safe fallback string", async () => {
   const out = await dispatch("nope", {}, fakeCtx());
   assert.match(out, /take a message|didn.t catch/i);
+});
+
+const orderCard = { orderId: "o1", trackingCode: "r2m360pl1", status: "confirmed", addressText: "15 Oak Dr, Mount Pleasant, SC", arrivalWindowStart: "2026-07-14T14:30:00-04:00", arrivalWindowEnd: null, photographerName: "Taylor Thurber", agentId: "a1" };
+const fakeAgent = { agentId: "a1", firstName: "V", lastName: "B", email: "v@x.com", phone: "+18435551234", companyName: null };
+function orderDeps(over = {}) {
+  return {
+    loadSpiroCtx: async () => ({ baseUrl: "https://api.spiro.media", apiKey: "k", authScheme: "bearer" as const }),
+    findAgentByPhone: async () => ({ ok: true as const, value: fakeAgent }),
+    findAgentByEmail: async () => ({ ok: true as const, value: null }),
+    findAgentById: async () => ({ ok: true as const, value: fakeAgent }),
+    findOrderByTracking: async () => ({ ok: true as const, value: { order: orderCard, agentId: "a1" } }),
+    getOrderDetail: async () => ({ ok: true as const, value: { cancellationAmount: 0, rescheduleAmount: 0 } }),
+    resolveOrder: async () => ({ ok: true as const, value: { match: orderCard, candidates: [orderCard] } }),
+    postEscalation: async () => ({ ok: true }),
+    ...over,
+  };
+}
+
+test("lookup_order returns a spoken card when verified by tracking code", async () => {
+  const ctx = fakeCtx({ callerNumber: "+18435551234", line: { id: "l1", client_id: "c1", order_ops_enabled: true, spiro_source_id: "s1" } as any });
+  const out = await handleLookupOrder({ tracking_code: "r2m360pl1" }, ctx, orderDeps());
+  assert.match(out, /confirmed/i);
+  assert.match(out, /Taylor Thurber/);
+});
+
+test("lookup_order asks to verify when no matching detail", async () => {
+  const ctx = fakeCtx({ callerNumber: "+18435551234", line: { id: "l1", client_id: "c1", order_ops_enabled: true, spiro_source_id: "s1" } as any });
+  const out = await handleLookupOrder({}, ctx, orderDeps({ resolveOrder: async () => ({ ok: true as const, value: { match: null, candidates: [orderCard] } }) }));
+  assert.match(out, /address or.*tracking|confirm/i);
+});
+
+test("lookup_order handles Spiro auth failure gracefully", async () => {
+  const ctx = fakeCtx({ callerNumber: "+18435551234", line: { id: "l1", client_id: "c1", order_ops_enabled: true, spiro_source_id: "s1" } as any });
+  const out = await handleLookupOrder({ tracking_code: "x" }, ctx, orderDeps({ findOrderByTracking: async () => ({ ok: false as const, kind: "auth", message: "401" }) }));
+  assert.match(out, /trouble|team|later/i);
 });

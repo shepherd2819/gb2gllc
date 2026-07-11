@@ -100,3 +100,22 @@ export async function postEscalation(
   }
   return { ok: false, fallback: "email" };
 }
+
+export function buildSummaryText(summary: { caller?: string; outcome: string; asks: string[] }): string {
+  const who = summary.caller ? `📞 ${summary.caller}` : "📞 caller";
+  const asks = summary.asks.length ? summary.asks.join("; ") : "no action";
+  return `${who} — ${summary.outcome} — ${asks}`;
+}
+
+export async function postCallSummary(
+  args: { clientId: string; channel: string | null; summary: { caller?: string; outcome: string; asks: string[] } },
+  overrides: Partial<Pick<EscalationDeps, "getSlackToken" | "postSlack">> = {},
+): Promise<void> {
+  if (!args.channel) return;
+  const getSlackToken = overrides.getSlackToken ?? defaultGetSlackToken;
+  const postSlack = overrides.postSlack ?? defaultPostSlack;
+  const token = await getSlackToken(args.clientId);
+  if (!token) return;
+  const text = buildSummaryText(args.summary);
+  await postSlack({ botToken: token, channel: args.channel, text, blocks: [{ type: "section", text: { type: "mrkdwn", text } as any }] });
+}

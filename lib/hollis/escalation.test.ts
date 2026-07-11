@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildEscalationBlocks, escalationText, postEscalation } from "./escalation";
+import { buildEscalationBlocks, buildSummaryText, escalationText, postEscalation } from "./escalation";
 import type { EscalationInput } from "./types";
 
 const base: EscalationInput = {
@@ -54,4 +54,10 @@ test("falls back to staff email when Slack fails", async () => {
   assert.equal(r.fallback, "email");
   assert.equal(calls.email.to, "ops@ep.com");
   assert.equal(calls.updated.patch.status, "failed");
+});
+
+test("summary text is one concise line", () => {
+  const t = buildSummaryText({ caller: "+18435551234", outcome: "booking_request", asks: ["reschedule o1"] });
+  assert.match(t, /\+18435551234/);
+  assert.match(t, /reschedule o1/);
 });

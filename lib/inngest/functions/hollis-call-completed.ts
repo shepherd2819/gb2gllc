@@ -10,6 +10,7 @@ import { logEvent } from "@/lib/logger";
 import { loadLineByNumber } from "@/lib/hollis/config";
 import { finalizeCall, buildDeliveryRecord } from "@/lib/hollis/calls";
 import { deliverToBusiness } from "@/lib/hollis/delivery";
+import { postCallSummary } from "@/lib/hollis/escalation";
 import type { ParsedLifecycle } from "@/lib/hollis/webhook";
 
 export const hollisCallCompleted = inngest.createFunction(
@@ -41,6 +42,21 @@ export const hollisCallCompleted = inngest.createFunction(
     if (!ctx) return { skipped: "no line for number" };
 
     const { outcome, captured } = await step.run("finalize", () => finalizeCall(parsed, ctx.line));
+
+    if (ctx.line.order_ops_enabled && ctx.line.slack_channel_id) {
+      const asks: string[] = [];
+      const cap = (captured ?? {}) as Record<string, unknown>;
+      for (const key of ["request_reschedule", "request_cancellation", "request_new_order", "lookup_order"]) {
+        if (cap[key]) asks.push(key.replace("request_", "").replace(/_/g, " "));
+      }
+      await step.run("post-call-summary", () =>
+        postCallSummary({
+          clientId: ctx.line.client_id,
+          channel: ctx.line.slack_channel_id ?? null,
+          summary: { caller: parsed.fromNumber ?? undefined, outcome: outcome ?? "no_action", asks },
+        }),
+      );
+    }
 
     if (outcome === "booking_request" || outcome === "message" || outcome === "transfer") {
       await step.run("open-ticket", async () => {

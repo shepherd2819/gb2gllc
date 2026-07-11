@@ -1,14 +1,50 @@
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { redirect } from "next/navigation";
-import { AdminThemeToggle } from "./AdminThemeToggle";
 import { ToastProvider } from "@/components/ui/toast";
+import { supabaseAdmin } from "@/lib/supabase";
+import { fetchAgentStatuses } from "@/lib/agent-status";
+import type { PaletteClient } from "@/lib/palette-search";
+import { AdminSidebar } from "./AdminSidebar";
+import { CommandPalette } from "./CommandPalette";
+import { ShellTransition } from "./ShellTransition";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "john@gb2gllc.com";
+
+async function fetchOpenTicketCount(): Promise<number> {
+  try {
+    const { count } = await supabaseAdmin
+      .from("tickets")
+      .select("id", { count: "exact", head: true })
+      .in("status", ["open", "in_progress", "awaiting_review"]);
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function fetchPaletteClients(): Promise<PaletteClient[]> {
+  try {
+    const { data } = await supabaseAdmin
+      .from("clients")
+      .select("id, name, company, email")
+      .order("company")
+      .limit(500);
+    return data ?? [];
+  } catch {
+    return [];
+  }
+}
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user } = await withAuth();
   if (!user) redirect("/auth/signin?next=/admin");
   if (user.email !== ADMIN_EMAIL) redirect("/auth/no-account");
+
+  const [statuses, ticketCount, clients] = await Promise.all([
+    fetchAgentStatuses(),
+    fetchOpenTicketCount(),
+    fetchPaletteClients(),
+  ]);
 
   return (
     <html lang="en">
@@ -27,27 +63,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <script src="/admin/theme-init.js" />
       </head>
       <body>
-        <nav className="admin-nav">
-          <a href="/admin" className="admin-mark">
-            gb<span className="a2">2</span>g
-            <span className="admin-badge">admin</span>
-          </a>
-          <div className="admin-nav-links">
-            <a href="/admin">Overview</a>
-            <a href="/clients">Clients</a>
-            <a href="/submissions">Submissions</a>
-            <a href="/support">Support</a>
-            <a href="/billing">Billing</a>
-            <a href="/agents">Agents</a>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <AdminThemeToggle />
-            <a href="/auth/signout" className="admin-signout">Sign out</a>
-          </div>
-        </nav>
-        <main className="admin-main">
-          <ToastProvider>{children}</ToastProvider>
-        </main>
+        <div className="shell">
+          <AdminSidebar statuses={statuses} ticketCount={ticketCount} />
+          <main className="shell-content">
+            <div className="shell-content-inner">
+              <ToastProvider>
+                <ShellTransition>{children}</ShellTransition>
+              </ToastProvider>
+            </div>
+          </main>
+        </div>
+        <CommandPalette clients={clients} />
       </body>
     </html>
   );

@@ -48,6 +48,9 @@ export async function PUT(req: NextRequest, { params }: Params) {
   if (isObject(body.hours)) row.hours = body.hours;
   if (isObject(body.crm_config)) row.crm_config = body.crm_config;
   if ("services" in body) row.services = sanitizeArray(body.services);
+  if (typeof body.order_ops_enabled === "boolean") row.order_ops_enabled = body.order_ops_enabled;
+  if ("spiro_source_id" in body) row.spiro_source_id = sanitizeText(body.spiro_source_id);
+  if ("slack_channel_id" in body) row.slack_channel_id = sanitizeText(body.slack_channel_id);
 
   const { error } = await supabaseAdmin.from("hollis_lines").update(row).eq("id", line.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

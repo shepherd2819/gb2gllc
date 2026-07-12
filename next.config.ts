@@ -29,6 +29,9 @@ const nextConfig: NextConfig = {
       { source: "/hollis", destination: "/hollis.html" },
     ];
   },
+  experimental: {
+    viewTransition: true,
+  },
 };
 
 export default nextConfig;

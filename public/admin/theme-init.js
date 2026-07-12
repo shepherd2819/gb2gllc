@@ -1,1 +1,1 @@
-(function(){var t=localStorage.getItem('gb2g_admin_theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');})();
+(function(){var t=localStorage.getItem('gb2g_admin_theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');var r=localStorage.getItem('gb2g_admin_rail');if(r==='collapsed')document.documentElement.setAttribute('data-rail','collapsed');})();

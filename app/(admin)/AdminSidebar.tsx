@@ -38,7 +38,7 @@ export function AdminSidebar({
 
       <aside className={`shell-rail${mobileOpen ? " is-open" : ""}`}>
         <div className="shell-rail-top">
-          <Link href="/admin" className="admin-mark" onClick={() => setMobileOpen(false)}>
+          <Link href="/admin" className="admin-mark" transitionTypes={["nav-section"]} onClick={() => setMobileOpen(false)}>
             gb<span className="a2">2</span>g<span className="admin-badge">admin</span>
           </Link>
           <button

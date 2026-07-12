@@ -6,6 +6,7 @@ import { fetchAgentStatuses } from "@/lib/agent-status";
 import type { PaletteClient } from "@/lib/palette-search";
 import { AdminSidebar } from "./AdminSidebar";
 import { CommandPalette } from "./CommandPalette";
+import { ShellRefresh } from "./ShellRefresh";
 import { ShellTransition } from "./ShellTransition";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "john@gb2gllc.com";
@@ -74,6 +75,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </main>
         </div>
         <CommandPalette clients={clients} />
+        <ShellRefresh />
       </body>
     </html>
   );

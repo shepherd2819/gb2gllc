@@ -19,6 +19,9 @@ type Line = {
   services: string[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   crm_config: any;
+  order_ops_enabled?: boolean;
+  spiro_source_id?: string | null;
+  slack_channel_id?: string | null;
 };
 
 type Call = {
@@ -36,6 +39,7 @@ type Props = {
   initialLine: Line | null;
   calls: Call[];
   faq: Faq[];
+  spiroSources?: { id: string; label: string }[];
 };
 
 const VOICES: { value: "female" | "male"; label: string }[] = [
@@ -43,7 +47,7 @@ const VOICES: { value: "female" | "male"; label: string }[] = [
   { value: "male", label: "Male voice" },
 ];
 
-export function HollisManager({ clientId, initialLine, calls, faq }: Props) {
+export function HollisManager({ clientId, initialLine, calls, faq, spiroSources }: Props) {
   const [line, setLine] = useState<Line | null>(initialLine);
   const [provisioning, setProvisioning] = useState(false);
   const [savingCfg, setSavingCfg] = useState(false);
@@ -61,6 +65,9 @@ export function HollisManager({ clientId, initialLine, calls, faq }: Props) {
   const [bookingMode, setBookingMode] = useState<"email" | "crm" | "both">(initialLine?.booking_mode ?? "email");
   const [crmUrl, setCrmUrl] = useState((initialLine?.crm_config?.webhook_url as string) ?? "");
   const [recording, setRecording] = useState(initialLine?.recording_enabled ?? true);
+  const [orderOpsEnabled, setOrderOpsEnabled] = useState<boolean>(initialLine?.order_ops_enabled ?? false);
+  const [spiroSourceId, setSpiroSourceId] = useState<string>(initialLine?.spiro_source_id ?? "");
+  const [slackChannelId, setSlackChannelId] = useState<string>(initialLine?.slack_channel_id ?? "");
   const [faqRows, setFaqRows] = useState<Faq[]>(faq.length ? faq : [{ question: "", answer: "" }]);
 
   function flash(text: string, tone: "ok" | "err") {
@@ -102,6 +109,9 @@ export function HollisManager({ clientId, initialLine, calls, faq }: Props) {
         booking_mode: bookingMode,
         crm_config: { webhook_url: crmUrl },
         recording_enabled: recording,
+        order_ops_enabled: orderOpsEnabled,
+        spiro_source_id: spiroSourceId || null,
+        slack_channel_id: slackChannelId || null,
         faq: faqRows.filter((f) => f.question.trim() && f.answer.trim()),
       }),
     });
@@ -227,6 +237,33 @@ export function HollisManager({ clientId, initialLine, calls, faq }: Props) {
             <input type="checkbox" checked={recording} onChange={(e) => setRecording(e.target.checked)} />
             <span>Record calls (announces &quot;this call may be recorded&quot;)</span>
           </label>
+
+          {/* ── Order desk ────────────────────────────────────────────── */}
+          <div className="admin-card-head" style={{ marginTop: 24, marginBottom: 8, borderTop: "1px solid var(--rule, rgba(28,30,27,0.1))", paddingTop: 16 }}>
+            <h2 style={{ fontSize: 14 }}>Order desk (Spiro + Slack)</h2>
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+            <input type="checkbox" checked={orderOpsEnabled} onChange={(e) => setOrderOpsEnabled(e.target.checked)} />
+            <span>Enable order lookup + change requests</span>
+          </label>
+
+          <div className="admin-input-row" style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <label>Spiro source</label>
+              <select className="admin-select" style={{ marginBottom: 0 }} value={spiroSourceId} onChange={(e) => setSpiroSourceId(e.target.value)}>
+                <option value="">— none —</option>
+                {(spiroSources ?? []).map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label>Slack channel ID</label>
+              <input className="admin-input" style={{ marginBottom: 0, fontFamily: "var(--mono)" }} value={slackChannelId} onChange={(e) => setSlackChannelId(e.target.value)} placeholder="C0123456789" />
+            </div>
+          </div>
+
+          <p style={{ marginTop: 8, fontSize: 12, color: "var(--text-mute)" }}>
+            Live-transfer number: {escalation ? `set (${escalation})` : "⚠ not set — set the transfer-to-human number above"}
+          </p>
 
           {/* ── FAQ ───────────────────────────────────────────────────── */}
           <div className="admin-card-head" style={{ marginTop: 24, marginBottom: 8, borderTop: "1px solid var(--rule, rgba(28,30,27,0.1))", paddingTop: 16 }}>

@@ -121,6 +121,9 @@ export default async function ClientDetailPage({ params }: Params) {
 
   const products = (client.client_products as {id:string;product:string;active:boolean;started_at:string}[]) ?? [];
   const invoices = (client.invoices as {id:string;amount_cents:number;description:string;status:string;sent_at:string;created_at:string}[]) ?? [];
+  const spiroSources = (dataSources ?? [])
+    .filter((s) => s.provider === "spiro")
+    .map((s) => ({ id: s.id as string, label: s.label as string }));
 
   return (
     <>
@@ -240,6 +243,7 @@ export default async function ClientDetailPage({ params }: Params) {
             calls={(hollisCalls ?? []) as any}
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             faq={(hollisFaq ?? []) as any}
+            spiroSources={spiroSources}
           />
 
           <AnalyticsManager

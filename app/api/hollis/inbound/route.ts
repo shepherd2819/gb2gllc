@@ -9,8 +9,11 @@ export const dynamic = "force-dynamic";
 // REJECT a call, return 200 WITHOUT call_inbound.override_agent_id. Must answer
 // within 10s. Confirmed shape: docs.retellai.com/features/inbound-call-webhook.
 export async function POST(req: Request) {
-  const body = (await req.json().catch(() => ({}))) as { call_inbound?: { to_number?: string } };
+  const body = (await req.json().catch(() => ({}))) as {
+    call_inbound?: { to_number?: string; from_number?: string };
+  };
   const toNumber = body.call_inbound?.to_number;
+  const fromNumber = body.call_inbound?.from_number;
   if (!toNumber) return NextResponse.json({});
 
   const cfg = await loadLineConfig(toNumber);
@@ -29,7 +32,7 @@ export async function POST(req: Request) {
         retell_llm: { begin_message: cfg.dynamicVariables.greeting },
       },
       dynamic_variables: cfg.dynamicVariables,
-      metadata: { line_id: cfg.line.id, client_id: cfg.line.client_id },
+      metadata: { line_id: cfg.line.id, client_id: cfg.line.client_id, caller_number: fromNumber ?? "" },
     },
   });
 }

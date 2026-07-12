@@ -1,7 +1,7 @@
 // app/(admin)/CommandPalette.tsx
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { buildPaletteEntries, rankPalette, type PaletteClient } from "@/lib/palette-search";
 import { AGENTS } from "./agents/agents-manifest";
 
@@ -10,6 +10,11 @@ const optionId = (entryId: string) => `palette-option-${entryId}`;
 
 export function CommandPalette({ clients }: { clients: PaletteClient[] }) {
   const router = useRouter();
+  const pathname = usePathname();
+  // Presentation routes render a full-screen client-facing deck at a higher
+  // z-index than the palette overlay: opening ⌘K there would mount it
+  // invisibly underneath the deck while still stealing keyboard focus.
+  const suppressed = pathname.endsWith("/present");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -25,6 +30,13 @@ export function CommandPalette({ clients }: { clients: PaletteClient[] }) {
   const active = results.length === 0 ? -1 : Math.min(Math.max(activeIndex, 0), results.length - 1);
 
   useEffect(() => {
+    // Re-evaluated on every pathname change so navigating onto (or off of) a
+    // present route immediately suppresses (or restores) ⌘K, and force-closes
+    // an already-open palette when a soft navigation lands on /present.
+    if (suppressed) {
+      setOpen(false);
+      return;
+    }
     function onKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
@@ -42,7 +54,7 @@ export function CommandPalette({ clients }: { clients: PaletteClient[] }) {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("gb2g:open-palette", onOpenEvent);
     };
-  }, []);
+  }, [pathname, suppressed]);
 
   useEffect(() => {
     if (open) {
@@ -73,7 +85,7 @@ export function CommandPalette({ clients }: { clients: PaletteClient[] }) {
     if (e.key === "Enter" && results[active]) { e.preventDefault(); go(results[active].href); }
   }
 
-  if (!open) return null;
+  if (suppressed || !open) return null;
 
   return (
     <div className="palette-overlay" onClick={() => setOpen(false)}>

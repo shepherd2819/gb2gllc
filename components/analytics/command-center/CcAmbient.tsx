@@ -3,13 +3,17 @@
 //
 // Always-on "signal constellation" ambient background for the Live Wire
 // command center. Drifting particles in the neon palette, connected by
-// faint lines when close together. Sits behind all panel content
-// (`.cc-ambient` is positioned/z-indexed by command-center.css).
+// faint lines when close together. Sits behind all panel content.
 //
-// Ported from the approved reference mockup's `initCanvasField` /
-// `window.__concepts["5"]` canvas field (.superpowers/sdd/live-wire-reference-mockup.html).
+// The canvas is VIEWPORT-FIXED and sized from window dimensions (never from
+// its own rect) so its backing store is always bounded by the screen and can
+// never enter a resize feedback loop. Critical positioning is set via inline
+// style so it holds even if the .cc-ambient CSS rule is unavailable.
+//
+// Ported from the approved reference mockup's canvas field
+// (.superpowers/sdd/live-wire-reference-mockup.html).
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 
 type Particle = {
   x: number; // fraction of width, 0..1
@@ -21,26 +25,36 @@ type Particle = {
 };
 
 // JS fallbacks for when the CSS custom properties can't be read (e.g. before
-// styles are attached, or in an environment without the `.cc-root` remap).
-// Everywhere else in this file, colors come from `getComputedStyle`.
+// styles are attached). Everywhere else colors come from getComputedStyle.
 const FALLBACK_CYAN = "#22e0ff";
 const FALLBACK_MAGENTA = "#ff3d81";
 
 const MIN_PARTICLES = 60;
 const MAX_PARTICLES = 90;
-// One particle per ~9000 CSS px^2 of canvas, clamped to [MIN, MAX].
-const PARTICLE_DENSITY = 1 / 9000;
+const PARTICLE_DENSITY = 1 / 9000; // ~1 particle per 9000 CSS px^2, clamped
+// Hard caps on the CSS size used for the backing store — bounds the canvas to
+// a sane maximum regardless of window size (belt-and-suspenders vs. huge
+// displays). The DPR is separately capped at 2.
+const MAX_CSS_DIM = 2400;
+
+// Guaranteed positioning: inline so a dropped/absent .cc-ambient CSS rule can
+// never leave the canvas in normal flow (which is what allowed the old
+// self-observing resize loop to blow the backing store up).
+const CANVAS_STYLE: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  width: "100%",
+  height: "100%",
+  display: "block",
+  pointerEvents: "none",
+  zIndex: 0,
+};
 
 function toRgbTriplet(color: string, fallback: string): string {
-  // Accepts "#rrggbb" (and shorthand "#rgb") or an already-numeric
-  // "r,g,b"/"rgb(...)" string; always returns "r,g,b" for use inside
-  // `rgba(...)` template strings.
   const src = color && color.trim() ? color.trim() : fallback;
   if (src.startsWith("#")) {
     let hex = src.slice(1);
-    if (hex.length === 3) {
-      hex = hex.split("").map((c) => c + c).join("");
-    }
+    if (hex.length === 3) hex = hex.split("").map((c) => c + c).join("");
     if (hex.length >= 6) {
       const r = parseInt(hex.slice(0, 2), 16);
       const g = parseInt(hex.slice(2, 4), 16);
@@ -50,7 +64,6 @@ function toRgbTriplet(color: string, fallback: string): string {
   }
   const rgbMatch = src.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i);
   if (rgbMatch) return `${rgbMatch[1]},${rgbMatch[2]},${rgbMatch[3]}`;
-  // Unparseable — fall back to the known-good literal.
   return toRgbTriplet(fallback, fallback);
 }
 
@@ -63,8 +76,7 @@ function readPalette(canvas: HTMLCanvasElement): { cyan: string; magenta: string
     cyanRaw = styles.getPropertyValue("--color-gold").trim();
     magentaRaw = styles.getPropertyValue("--color-blue").trim();
   } catch {
-    // getComputedStyle can throw in exotic environments (e.g. detached
-    // nodes in some test harnesses) — fall through to fallbacks below.
+    // getComputedStyle can throw on detached nodes — fall through to fallbacks.
   }
   return {
     cyan: toRgbTriplet(cyanRaw, FALLBACK_CYAN),
@@ -101,35 +113,39 @@ export function CcAmbient() {
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     let rafId: number | null = null;
+    let resizeRaf: number | null = null;
     let width = 0; // backing-store px (post-DPR)
     let height = 0;
     let dpr = 1;
     let particles: Particle[] = [];
     const palette = readPalette(canvas);
 
+    // Size from the WINDOW (bounded, independent of the canvas) so the backing
+    // store can never feed back into its own size.
     function fit() {
       if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const cw = Math.max(1, rect.width || canvas.clientWidth || 1);
-      const ch = Math.max(1, rect.height || canvas.clientHeight || 1);
+      const cw = Math.max(1, Math.min(window.innerWidth || 1, MAX_CSS_DIM));
+      const ch = Math.max(1, Math.min(window.innerHeight || 1, MAX_CSS_DIM));
       dpr = Math.min(window.devicePixelRatio || 1, 2);
-      width = Math.max(1, Math.floor(cw * dpr));
-      height = Math.max(1, Math.floor(ch * dpr));
-      canvas.width = width;
-      canvas.height = height;
-
+      const nextW = Math.max(1, Math.floor(cw * dpr));
+      const nextH = Math.max(1, Math.floor(ch * dpr));
+      if (nextW !== width) {
+        width = nextW;
+        canvas.width = width;
+      }
+      if (nextH !== height) {
+        height = nextH;
+        canvas.height = height;
+      }
       const targetCount = Math.round(cw * ch * PARTICLE_DENSITY);
       const count = Math.min(MAX_PARTICLES, Math.max(MIN_PARTICLES, targetCount));
-      if (particles.length !== count) {
-        particles = makeParticles(count);
-      }
+      if (particles.length !== count) particles = makeParticles(count);
     }
 
     function drawFrame() {
       if (!ctx) return;
       ctx.clearRect(0, 0, width, height);
       const maxDist = 0.16 * Math.min(width, height);
-
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         for (let j = i + 1; j < particles.length; j++) {
@@ -149,7 +165,6 @@ export function CcAmbient() {
           }
         }
       }
-
       for (const p of particles) {
         const rgb = p.hue === "magenta" ? palette.magenta : palette.cyan;
         ctx.beginPath();
@@ -163,10 +178,10 @@ export function CcAmbient() {
     }
 
     function step() {
-      if (!canvas || canvas.offsetParent === null) {
-        // Hidden (e.g. an inactive present slide, or display:none panel) —
-        // skip drawing but keep the loop alive cheaply so it resumes the
-        // instant the canvas is shown again.
+      // Pause cheaply while the tab is backgrounded; keep the loop alive so it
+      // resumes instantly. (offsetParent is unusable here: fixed elements
+      // report null, and this canvas is always on-screen when the tab is.)
+      if (document.hidden) {
         rafId = requestAnimationFrame(step);
         return;
       }
@@ -183,35 +198,29 @@ export function CcAmbient() {
     fit();
 
     if (reducedMotion) {
-      // Single static frame — no rAF loop at all.
-      drawFrame();
+      drawFrame(); // single static frame, no loop
     } else {
-      if (rafId !== null) cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(step);
     }
 
-    let resizeObserver: ResizeObserver | null = null;
-    function handleResize() {
-      fit();
-      if (reducedMotion) drawFrame();
+    // Debounce resizes into a single rAF so a burst can't thrash the canvas.
+    function onResize() {
+      if (resizeRaf !== null) return;
+      resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = null;
+        fit();
+        if (reducedMotion) drawFrame();
+      });
     }
-    if (typeof ResizeObserver !== "undefined") {
-      resizeObserver = new ResizeObserver(handleResize);
-      resizeObserver.observe(canvas);
-    } else {
-      window.addEventListener("resize", handleResize);
-    }
+    window.addEventListener("resize", onResize);
 
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
+      if (resizeRaf !== null) cancelAnimationFrame(resizeRaf);
       rafId = null;
-      if (resizeObserver) {
-        resizeObserver.disconnect();
-      } else {
-        window.removeEventListener("resize", handleResize);
-      }
+      window.removeEventListener("resize", onResize);
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="cc-ambient" aria-hidden="true" style={{ pointerEvents: "none" }} />;
+  return <canvas ref={canvasRef} className="cc-ambient" aria-hidden="true" style={CANVAS_STYLE} />;
 }

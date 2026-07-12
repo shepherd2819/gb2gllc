@@ -4,7 +4,7 @@
    Loaded AFTER tokens.css (+ portal.css/admin.css) on the analytics
    dashboard, its admin mirror, and the presentation route. Purely
    additive: remaps the semantic --color-* tokens inside `.cc-root`
-   so every existing ds-chart-*/ds-*/stat-* component re-themes to the
+   so every existing ds-chart, ds, and stat component re-themes to the
    neon palette without any component code changes, then layers the
    command-center-only layout, glow, and motion on top.
 
@@ -693,6 +693,9 @@
 .cc-ring-caption {
   position: absolute;
   inset: 0;
+  /* keep the caption inside the ring's inner hole so it never overlaps the
+     (bright, glowing) arc */
+  padding: 0 34px;
   margin: 0;
   display: flex;
   flex-direction: column;
@@ -713,9 +716,10 @@
 }
 .cc-ring-label {
   margin-top: 4px;
-  font-size: 0.7rem;
+  font-size: 0.58rem;
+  line-height: 1.2;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: var(--color-text-mute);
 }
 

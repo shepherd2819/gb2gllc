@@ -2,6 +2,7 @@
 // components/analytics/command-center/CcTrend.tsx
 import { useId, useState } from "react";
 import { areaPath, linePath, scaleLinear, niceTicks, brushWindow, CHART_COLORS } from "@/lib/analytics/charts";
+import { fmtCurrency } from "@/lib/analytics/format";
 
 export type CcTrendProps = {
   trend: Array<{ month: string; revenue: number; orders: number }>;
@@ -52,8 +53,22 @@ export function CcTrend({ trend, ariaLabel }: CcTrendProps) {
   const ordersLine = linePath(ordersPix);
 
   const gradientId = `${uid}-revenue-fill`;
+  const strokeId = `${uid}-revenue-stroke`;
+  const scanId = `${uid}-scan`;
   const fromId = `${uid}-from`;
   const toId = `${uid}-to`;
+
+  // Radar-ping markers: the peak-revenue month within the visible (brushed)
+  // window, and the last (current/most-recent) visible month. Both reuse the
+  // revenue line's own scale math so they sit exactly on the drawn path.
+  let peakIndex = 0;
+  for (let i = 1; i < n; i++) {
+    if (visible[i].revenue > visible[peakIndex].revenue) peakIndex = i;
+  }
+  const nowIndex = n - 1;
+  const peakPoint = revenuePix[peakIndex];
+  const nowPoint = revenuePix[nowIndex];
+  const isSamePoint = nowIndex === peakIndex;
 
   return (
     <figure className="ds-chart-fig cc-trend">
@@ -62,6 +77,17 @@ export function CcTrend({ trend, ariaLabel }: CcTrendProps) {
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="var(--color-gold)" stopOpacity="0.35" />
             <stop offset="100%" stopColor="var(--color-gold)" stopOpacity="0" />
+          </linearGradient>
+          {/* Cyan → magenta electrified stroke, left to right along the line. */}
+          <linearGradient id={strokeId} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="var(--color-gold)" />
+            <stop offset="100%" stopColor="var(--color-blue)" />
+          </linearGradient>
+          {/* One-shot scan-sweep beam, painted across the plot on draw-in. */}
+          <linearGradient id={scanId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--color-gold)" stopOpacity="0" />
+            <stop offset="50%" stopColor="var(--color-gold)" stopOpacity="0.85" />
+            <stop offset="100%" stopColor="var(--color-blue)" stopOpacity="0" />
           </linearGradient>
         </defs>
         {revenueTicks.map((t, i) => {
@@ -78,8 +104,51 @@ export function CcTrend({ trend, ariaLabel }: CcTrendProps) {
           return <text key={`og${i}`} className="ds-chart-label" x={L + PW + 6} y={y + 3} textAnchor="start">{formatCompact(t)}</text>;
         })}
         {revenueArea && <path d={revenueArea} fill={`url(#${gradientId})`} stroke="none" />}
-        {revenueLine && <path className="ds-chart-line cc-draw" d={revenueLine} stroke={CHART_COLORS[0]} pathLength={1} />}
+        {revenueLine && (
+          <path
+            className="ds-chart-line cc-draw cc-trend-glow"
+            d={revenueLine}
+            stroke={`url(#${strokeId})`}
+            pathLength={1}
+          />
+        )}
         {ordersLine && <path className="ds-chart-line cc-draw" d={ordersLine} stroke={CHART_COLORS[2]} strokeDasharray="4 3" pathLength={1} />}
+        <rect
+          className="cc-scan"
+          x={L}
+          y={T}
+          width={Math.max(2, PW * 0.025)}
+          height={PH}
+          fill={`url(#${scanId})`}
+          pointerEvents="none"
+          aria-hidden="true"
+        />
+        <g className="cc-ping-group cc-ping-group--peak">
+          <circle className="cc-ping cc-ping--peak" cx={peakPoint.x} cy={peakPoint.y} r={6} />
+          <circle cx={peakPoint.x} cy={peakPoint.y} r={5.5} style={{ fill: "var(--color-amber)" }} />
+          <text
+            className="ds-chart-label"
+            x={peakPoint.x}
+            y={peakPoint.y - 14}
+            textAnchor="middle"
+            style={{ fill: "var(--color-amber)" }}
+          >
+            {`PEAK · ${fmtCurrency(visible[peakIndex].revenue)}`}
+          </text>
+        </g>
+        <g className="cc-ping-group cc-ping-group--now">
+          <circle className="cc-ping cc-ping--now" cx={nowPoint.x} cy={nowPoint.y} r={6} />
+          <circle cx={nowPoint.x} cy={nowPoint.y} r={6} style={{ fill: "var(--color-gold)" }} />
+          <text
+            className="ds-chart-label"
+            x={nowPoint.x}
+            y={nowPoint.y - 14 - (isSamePoint ? 12 : 0)}
+            textAnchor="middle"
+            style={{ fill: "var(--color-gold)" }}
+          >
+            {`MTD · ${fmtCurrency(visible[nowIndex].revenue)}`}
+          </text>
+        </g>
         {visible.map((t, i) => (
           <text key={`x${i}`} className="ds-chart-label" x={xAt(i, n)} y={H - 8} textAnchor="middle">{t.month}</text>
         ))}

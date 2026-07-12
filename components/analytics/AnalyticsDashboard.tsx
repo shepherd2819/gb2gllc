@@ -1,6 +1,7 @@
 // components/analytics/AnalyticsDashboard.tsx
 import type { SnapshotRow } from "@/lib/analytics/snapshot";
 import { CounterAnimation } from "@/app/(portal)/dashboard/CounterAnimation";
+import { CcAmbient } from "./command-center/CcAmbient";
 import { CcHero } from "./command-center/CcHero";
 import { CcBriefing } from "./command-center/CcBriefing";
 import { CcKpiTile } from "./command-center/CcKpiTile";
@@ -19,7 +20,8 @@ export function AnalyticsDashboard({ snapshot, surface, forceDark }: { snapshot:
   const agents = p.topAgents.map((a) => ({ name: a.name, value: a.revenue }));
 
   return (
-    <div className={`cc-root${forceDark ? " cc-root--dark" : ""} ds-analytics ds-analytics--${surface}`}>
+    <div className={`cc-root cc-live${forceDark ? " cc-root--dark" : ""} ds-analytics ds-analytics--${surface}`}>
+      <CcAmbient />
       <CounterAnimation />
 
       {/* Zone 1 — Overview: what an exec sees in 3 seconds */}

@@ -5,10 +5,13 @@
 // command center. Drifting particles in the neon palette, connected by
 // faint lines when close together. Sits behind all panel content.
 //
-// The canvas is VIEWPORT-FIXED and sized from window dimensions (never from
-// its own rect) so its backing store is always bounded by the screen and can
-// never enter a resize feedback loop. Critical positioning is set via inline
-// style so it holds even if the .cc-ambient CSS rule is unavailable.
+// Positioned `absolute; inset:0` (inline, so it holds even if the .cc-ambient
+// CSS rule is unavailable) — this CLIPS the field to the `.cc-root` box so it
+// can never paint over the surrounding (light) portal chrome. The backing
+// store is sized from the `.cc-root` element with hard caps on both dimensions
+// AND total area; because the canvas is out of flow, sizing off .cc-root can
+// never feed back into .cc-root's height. Draws one static frame under
+// reduced-motion; pauses while the tab is hidden.
 //
 // Ported from the approved reference mockup's canvas field
 // (.superpowers/sdd/live-wire-reference-mockup.html).
@@ -32,16 +35,19 @@ const FALLBACK_MAGENTA = "#ff3d81";
 const MIN_PARTICLES = 60;
 const MAX_PARTICLES = 90;
 const PARTICLE_DENSITY = 1 / 9000; // ~1 particle per 9000 CSS px^2, clamped
-// Hard caps on the CSS size used for the backing store — bounds the canvas to
-// a sane maximum regardless of window size (belt-and-suspenders vs. huge
-// displays). The DPR is separately capped at 2.
-const MAX_CSS_DIM = 2400;
+// Hard bounds on the backing store (belt-and-suspenders vs. huge/tall layouts).
+const MAX_CSS_W = 2000;
+const MAX_CSS_H = 2800;
+const DPR_CAP = 1.75;
+// Absolute ceiling on backing-store pixels; if width*height would exceed this,
+// both are scaled down proportionally. Caps memory + per-frame clear cost.
+const MAX_BACKING_PX = 14_000_000;
 
 // Guaranteed positioning: inline so a dropped/absent .cc-ambient CSS rule can
-// never leave the canvas in normal flow (which is what allowed the old
-// self-observing resize loop to blow the backing store up).
+// never leave the canvas in normal flow, and so it is always clipped to the
+// .cc-root box (absolute) rather than covering the viewport (fixed).
 const CANVAS_STYLE: CSSProperties = {
-  position: "fixed",
+  position: "absolute",
   inset: 0,
   width: "100%",
   height: "100%",
@@ -67,8 +73,7 @@ function toRgbTriplet(color: string, fallback: string): string {
   return toRgbTriplet(fallback, fallback);
 }
 
-function readPalette(canvas: HTMLCanvasElement): { cyan: string; magenta: string } {
-  const scope = canvas.closest(".cc-root") ?? document.documentElement;
+function readPalette(scope: Element): { cyan: string; magenta: string } {
   let cyanRaw = "";
   let magentaRaw = "";
   try {
@@ -108,6 +113,10 @@ export function CcAmbient() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Size + palette come from the .cc-root box (fallback: documentElement).
+    const scope: HTMLElement =
+      (canvas.closest(".cc-root") as HTMLElement | null) ?? document.documentElement;
+
     const reducedMotion =
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -118,17 +127,27 @@ export function CcAmbient() {
     let height = 0;
     let dpr = 1;
     let particles: Particle[] = [];
-    const palette = readPalette(canvas);
+    const palette = readPalette(scope);
 
-    // Size from the WINDOW (bounded, independent of the canvas) so the backing
-    // store can never feed back into its own size.
+    // Size from the .cc-root box (bounded + capped). The canvas is absolute /
+    // out of flow, so writing its backing store can't change .cc-root's size —
+    // no resize feedback is possible.
     function fit() {
       if (!canvas) return;
-      const cw = Math.max(1, Math.min(window.innerWidth || 1, MAX_CSS_DIM));
-      const ch = Math.max(1, Math.min(window.innerHeight || 1, MAX_CSS_DIM));
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const nextW = Math.max(1, Math.floor(cw * dpr));
-      const nextH = Math.max(1, Math.floor(ch * dpr));
+      const boxW = scope.clientWidth || window.innerWidth || 1;
+      const boxH = scope.clientHeight || window.innerHeight || 1;
+      let cw = Math.max(1, Math.min(boxW, MAX_CSS_W));
+      let ch = Math.max(1, Math.min(boxH, MAX_CSS_H));
+      dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
+      let nextW = Math.max(1, Math.floor(cw * dpr));
+      let nextH = Math.max(1, Math.floor(ch * dpr));
+      // Proportionally scale down if the backing store would exceed the ceiling.
+      const area = nextW * nextH;
+      if (area > MAX_BACKING_PX) {
+        const s = Math.sqrt(MAX_BACKING_PX / area);
+        nextW = Math.max(1, Math.floor(nextW * s));
+        nextH = Math.max(1, Math.floor(nextH * s));
+      }
       if (nextW !== width) {
         width = nextW;
         canvas.width = width;
@@ -179,8 +198,7 @@ export function CcAmbient() {
 
     function step() {
       // Pause cheaply while the tab is backgrounded; keep the loop alive so it
-      // resumes instantly. (offsetParent is unusable here: fixed elements
-      // report null, and this canvas is always on-screen when the tab is.)
+      // resumes instantly.
       if (document.hidden) {
         rafId = requestAnimationFrame(step);
         return;
@@ -203,7 +221,9 @@ export function CcAmbient() {
       rafId = requestAnimationFrame(step);
     }
 
-    // Debounce resizes into a single rAF so a burst can't thrash the canvas.
+    // Re-fit on layout changes, debounced into one rAF. Observing .cc-root is
+    // safe (the out-of-flow canvas can't change .cc-root's size); a window
+    // listener covers viewport/DPR changes when there is no observer.
     function onResize() {
       if (resizeRaf !== null) return;
       resizeRaf = requestAnimationFrame(() => {
@@ -212,12 +232,18 @@ export function CcAmbient() {
         if (reducedMotion) drawFrame();
       });
     }
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(onResize);
+      resizeObserver.observe(scope);
+    }
     window.addEventListener("resize", onResize);
 
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
       if (resizeRaf !== null) cancelAnimationFrame(resizeRaf);
       rafId = null;
+      if (resizeObserver) resizeObserver.disconnect();
       window.removeEventListener("resize", onResize);
     };
   }, []);

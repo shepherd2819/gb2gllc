@@ -54,7 +54,6 @@ export function CcTrend({ trend, ariaLabel }: CcTrendProps) {
 
   const gradientId = `${uid}-revenue-fill`;
   const strokeId = `${uid}-revenue-stroke`;
-  const scanId = `${uid}-scan`;
   const fromId = `${uid}-from`;
   const toId = `${uid}-to`;
 
@@ -83,12 +82,6 @@ export function CcTrend({ trend, ariaLabel }: CcTrendProps) {
             <stop offset="0%" stopColor="var(--color-gold)" />
             <stop offset="100%" stopColor="var(--color-blue)" />
           </linearGradient>
-          {/* One-shot scan-sweep beam, painted across the plot on draw-in. */}
-          <linearGradient id={scanId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--color-gold)" stopOpacity="0" />
-            <stop offset="50%" stopColor="var(--color-gold)" stopOpacity="0.85" />
-            <stop offset="100%" stopColor="var(--color-blue)" stopOpacity="0" />
-          </linearGradient>
         </defs>
         {revenueTicks.map((t, i) => {
           const y = T + PH - revenueScale(t);
@@ -113,16 +106,6 @@ export function CcTrend({ trend, ariaLabel }: CcTrendProps) {
           />
         )}
         {ordersLine && <path className="ds-chart-line cc-draw" d={ordersLine} stroke={CHART_COLORS[2]} strokeDasharray="4 3" pathLength={1} />}
-        <rect
-          className="cc-scan"
-          x={L}
-          y={T}
-          width={Math.max(2, PW * 0.025)}
-          height={PH}
-          fill={`url(#${scanId})`}
-          pointerEvents="none"
-          aria-hidden="true"
-        />
         <g className="cc-ping-group cc-ping-group--peak">
           <circle className="cc-ping cc-ping--peak" cx={peakPoint.x} cy={peakPoint.y} r={6} />
           <circle cx={peakPoint.x} cy={peakPoint.y} r={5.5} style={{ fill: "var(--color-amber)" }} />

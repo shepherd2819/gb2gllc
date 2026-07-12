@@ -79,6 +79,36 @@ test("lookup_order asks to verify when no matching detail", async () => {
   assert.match(out, /address or.*tracking|confirm/i);
 });
 
+test("lookup_order (email-resolved, no phone match) asks to verify instead of leaking candidate addresses", async () => {
+  const ctx = fakeCtx({ callerNumber: "+19995550000", line: { id: "l1", client_id: "c1", order_ops_enabled: true, spiro_source_id: "s1" } as any });
+  const otherOrder = { ...orderCard, orderId: "o2", trackingCode: "abc123", addressText: "42 Elm St, Charleston, SC" };
+  const out = await handleLookupOrder(
+    { agent_email: "v@x.com" },
+    ctx,
+    orderDeps({
+      findAgentByPhone: async () => ({ ok: true as const, value: null }),
+      findAgentByEmail: async () => ({ ok: true as const, value: fakeAgent }),
+      resolveOrder: async () => ({ ok: true as const, value: { match: null, candidates: [orderCard, otherOrder] } }),
+    }),
+  );
+  assert.match(out, /address or.*tracking|confirm/i);
+  assert.ok(!out.includes(orderCard.addressText), "must not leak first candidate's address");
+  assert.ok(!out.includes(otherOrder.addressText), "must not leak second candidate's address");
+});
+
+test("lookup_order (phone-matched) still lists candidate addresses for disambiguation", async () => {
+  const ctx = fakeCtx({ callerNumber: "+18435551234", line: { id: "l1", client_id: "c1", order_ops_enabled: true, spiro_source_id: "s1" } as any });
+  const otherOrder = { ...orderCard, orderId: "o2", trackingCode: "abc123", addressText: "42 Elm St, Charleston, SC" };
+  const out = await handleLookupOrder(
+    {},
+    ctx,
+    orderDeps({ resolveOrder: async () => ({ ok: true as const, value: { match: null, candidates: [orderCard, otherOrder] } }) }),
+  );
+  assert.match(out, /few orders/i);
+  assert.ok(out.includes(orderCard.addressText), "phone-verified caller should still see their own order's address");
+  assert.ok(out.includes(otherOrder.addressText), "phone-verified caller should still see their own order's address");
+});
+
 test("lookup_order handles Spiro auth failure gracefully", async () => {
   const ctx = fakeCtx({ callerNumber: "+18435551234", line: { id: "l1", client_id: "c1", order_ops_enabled: true, spiro_source_id: "s1" } as any });
   const out = await handleLookupOrder({ tracking_code: "x" }, ctx, orderDeps({ findOrderByTracking: async () => ({ ok: false as const, kind: "auth", message: "401" }) }));

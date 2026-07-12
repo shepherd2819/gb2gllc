@@ -49,13 +49,24 @@ export const hollisCallCompleted = inngest.createFunction(
       for (const key of ["request_reschedule", "request_cancellation", "request_new_order", "lookup_order"]) {
         if (cap[key]) asks.push(key.replace("request_", "").replace(/_/g, " "));
       }
-      await step.run("post-call-summary", () =>
-        postCallSummary({
-          clientId: ctx.line.client_id,
-          channel: ctx.line.slack_channel_id ?? null,
-          summary: { caller: parsed.fromNumber ?? undefined, outcome: outcome ?? "no_action", asks },
-        }),
-      );
+      // Best-effort: a Slack outage here must never fail the whole run (which
+      // would exhaust step retries and skip the durable open-ticket step below).
+      await step.run("post-call-summary", async () => {
+        try {
+          await postCallSummary({
+            clientId: ctx.line.client_id,
+            channel: ctx.line.slack_channel_id ?? null,
+            summary: { caller: parsed.fromNumber ?? undefined, outcome: outcome ?? "no_action", asks },
+          });
+        } catch (err) {
+          await logEvent({
+            clientId: ctx.line.client_id,
+            category: "hollis",
+            level: "error",
+            message: `post-call summary failed: ${err instanceof Error ? err.message : String(err)}`,
+          });
+        }
+      });
     }
 
     if (outcome === "booking_request" || outcome === "message" || outcome === "transfer") {

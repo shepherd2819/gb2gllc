@@ -88,6 +88,21 @@ export async function POST(req: Request) {
     },
   };
 
-  const result = await dispatch(name, args, ctx);
-  return NextResponse.json({ result });
+  try {
+    const result = await dispatch(name, args, ctx);
+    return NextResponse.json({ result });
+  } catch (err) {
+    try {
+      const { logEvent } = await import("@/lib/logger");
+      await logEvent({
+        clientId: line.client_id,
+        category: "hollis",
+        level: "error",
+        message: `tool dispatch failed: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    } catch {
+      // Never let logging failures block the caller-facing response.
+    }
+    return NextResponse.json({ result: "Let me take a message and have the team follow up with you." });
+  }
 }

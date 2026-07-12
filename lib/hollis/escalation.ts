@@ -100,7 +100,18 @@ export async function postEscalation(
       const res = await d.postSlack({ botToken: token, channel: input.slackChannel, text: escalationText(input), blocks: buildEscalationBlocks(input) });
       if (res.ok) { await d.updateRow(escId, { slack_ts: res.ts ?? null }); return { ok: true, slackTs: res.ts }; }
       throw new Error("slack not ok");
-    } catch {
+    } catch (err) {
+      try {
+        const { logEvent } = await import("@/lib/logger");
+        await logEvent({
+          clientId: input.clientId,
+          category: "hollis",
+          level: "error",
+          message: `slack escalation post failed: ${err instanceof Error ? err.message : String(err)}`,
+        });
+      } catch {
+        // Never let logging failures break the escalation email fallback.
+      }
       /* fall through to email */
     }
   }

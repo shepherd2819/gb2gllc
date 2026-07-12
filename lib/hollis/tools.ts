@@ -250,7 +250,13 @@ async function logSpiro(ctx: ToolCtx, res: { kind: string; message: string }): P
   }
 }
 
-type ResolveResult = { error?: string; agent?: SpiroAgent | null; order?: OrderCard | null; candidates?: OrderCard[]; spiro?: SpiroCtx };
+// matchedBy records HOW the caller/order was resolved, so callers of
+// resolveAgentAndOrder can gate caller-facing disclosure on trust: a phone
+// match is verified by the carrier's caller-ID, so reading back that agent's
+// own order list is benign. An agent_email match is caller-supplied and
+// unverified, so it must never be used to disclose another order's details
+// (e.g. property addresses) without an additional confirming detail (spec §3.3).
+type ResolveResult = { error?: string; agent?: SpiroAgent | null; order?: OrderCard | null; candidates?: OrderCard[]; spiro?: SpiroCtx; matchedBy?: "phone" | "email" | "tracking" };
 
 async function resolveAgentAndOrder(
   args: { tracking_code?: string; property_address?: string; agent_email?: string },
@@ -266,20 +272,21 @@ async function resolveAgentAndOrder(
     if (byTrack.value.order) {
       let agent: SpiroAgent | null = null;
       if (byTrack.value.agentId) { const ar = await d.findAgentById(spiro, byTrack.value.agentId); if (ar.ok) agent = ar.value; }
-      return { agent, order: byTrack.value.order, spiro };
+      return { agent, order: byTrack.value.order, spiro, matchedBy: "tracking" };
     }
   }
 
   // Otherwise resolve the agent (phone → email), then match their order by address.
   const e164 = normalizeCallerNumber(ctx.callerNumber);
   let agent: SpiroAgent | null = null;
-  if (e164) { const r = await d.findAgentByPhone(spiro, e164); if (!r.ok) { await logSpiro(ctx, r); return { error: CANT_HELP, spiro }; } agent = r.value; }
-  if (!agent && args.agent_email) { const r = await d.findAgentByEmail(spiro, args.agent_email); if (!r.ok) { await logSpiro(ctx, r); return { error: CANT_HELP, spiro }; } agent = r.value; }
+  let matchedBy: "phone" | "email" | undefined;
+  if (e164) { const r = await d.findAgentByPhone(spiro, e164); if (!r.ok) { await logSpiro(ctx, r); return { error: CANT_HELP, spiro }; } agent = r.value; if (agent) matchedBy = "phone"; }
+  if (!agent && args.agent_email) { const r = await d.findAgentByEmail(spiro, args.agent_email); if (!r.ok) { await logSpiro(ctx, r); return { error: CANT_HELP, spiro }; } agent = r.value; if (agent) matchedBy = "email"; }
   if (!agent) return { error: "I couldn't find your account from this number — can you give me the email on the order, or the tracking code?", spiro };
 
   const resolved = await d.resolveOrder(spiro, { agentId: agent.agentId, addressText: args.property_address });
   if (!resolved.ok) { await logSpiro(ctx, resolved); return { error: CANT_HELP, spiro }; }
-  return { agent, order: resolved.value.match, candidates: resolved.value.candidates, spiro };
+  return { agent, order: resolved.value.match, candidates: resolved.value.candidates, spiro, matchedBy };
 }
 
 function speakOrder(o: OrderCard): string {
@@ -293,10 +300,14 @@ export async function handleLookupOrder(
   ctx: ToolCtx, overrides: Partial<OrderToolDeps> = {},
 ): Promise<string> {
   const d = { ...REAL_DEPS, ...overrides };
-  const { error, order, candidates } = await resolveAgentAndOrder(args, ctx, d);
+  const { error, order, candidates, matchedBy } = await resolveAgentAndOrder(args, ctx, d);
   if (error) return error;
   if (!order) {
-    if (candidates && candidates.length > 1) {
+    // Only read back candidate addresses when the caller was verified by their
+    // own caller-ID (phone match) — listing their own orders is benign. On the
+    // email path (caller-supplied, unverified) fall through to ASK_VERIFY
+    // instead of disclosing another agent's order addresses (spec §3.3).
+    if (matchedBy === "phone" && candidates && candidates.length > 1) {
       const list = candidates.slice(0, 3).map((c) => c.addressText).filter(Boolean).join("; ");
       return `I see a few orders on your account${list ? ` — ${list}` : ""}. Which property is it, or what's the tracking code?`;
     }

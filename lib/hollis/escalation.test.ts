@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildEscalationBlocks, buildSummaryText, escalationText, postEscalation } from "./escalation";
+import { buildEscalationBlocks, buildSummaryText, escalationText, postEscalation, safeText } from "./escalation";
 import type { EscalationInput } from "./types";
 
 const base: EscalationInput = {
@@ -60,4 +60,28 @@ test("summary text is one concise line", () => {
   const t = buildSummaryText({ caller: "+18435551234", outcome: "booking_request", asks: ["reschedule o1"] });
   assert.match(t, /\+18435551234/);
   assert.match(t, /reschedule o1/);
+});
+
+test("safeText escapes mrkdwn metacharacters and collapses newlines", () => {
+  assert.equal(safeText("<http://evil|click>\n*Injected:* pwned"), "&lt;http://evil|click&gt; *Injected:* pwned");
+  assert.equal(safeText("a & b"), "a &amp; b");
+  assert.equal(safeText(null), "");
+  assert.equal(safeText(undefined), "");
+  assert.equal(safeText(42), "42");
+});
+
+test("caller-supplied field text cannot inject fake Slack mrkdwn or fabricate lines", () => {
+  const malicious = "<http://evil|click>\n*Injected:* pwned";
+  const input: EscalationInput = { ...base, callerNumber: malicious, fields: { ...base.fields, reason: malicious } };
+  const json = JSON.stringify(buildEscalationBlocks(input));
+
+  // The raw, unescaped payload must never appear verbatim in the rendered blocks.
+  assert.ok(!json.includes("<http://evil|click>"), "raw malicious link markup leaked into blocks");
+
+  // The escaped form is expected to be present instead.
+  assert.ok(json.includes("&lt;http://evil|click&gt;"), "escaped form of the payload is missing");
+
+  // The embedded newline must be collapsed so "*Injected:* pwned" cannot masquerade
+  // as its own `*Field:*` line — it must remain glued to the preceding text on one line.
+  assert.ok(!json.includes("\\n*Injected:*"), "newline-introduced fake field survived as its own segment");
 });

@@ -4,7 +4,8 @@
 // this job needs, reusing lib/hollis/spiro.ts's spiroGet/findAgentById rather
 // than duplicating Spiro's auth/fetch plumbing.
 import { spiroGet, findAgentById } from "@/lib/hollis/spiro";
-import type { SpiroCtx, SpiroResult } from "@/lib/hollis/spiro";
+import type { SpiroCtx } from "@/lib/hollis/types";
+import type { SpiroResult } from "@/lib/hollis/spiro";
 import type { SpiroOrderSummary } from "./types";
 
 type FetchImpl = typeof fetch;

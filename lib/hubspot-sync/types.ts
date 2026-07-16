@@ -4,7 +4,7 @@
 
 export type HubspotResult<T> =
   | { ok: true; value: T }
-  | { ok: false; kind: "auth" | "transient" | "bad"; message: string };
+  | { ok: false; kind: "auth" | "transient" | "bad"; message: string; status?: number };
 
 export interface HubspotCtx {
   baseUrl: string; // always https://api.hubapi.com — kept as a field for testability

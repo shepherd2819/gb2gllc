@@ -27,16 +27,21 @@ async function hubspotFetch(
   }
   if (res.status === 401 || res.status === 403) return { ok: false, kind: "auth", message: `HubSpot ${res.status}` };
   if (res.status >= 500) return { ok: false, kind: "transient", message: `HubSpot ${res.status}` };
-  const text = await res.text();
+  let text: string;
+  try {
+    text = await res.text();
+  } catch (e) {
+    return { ok: false, kind: "transient", message: (e as Error).message };
+  }
   let json: unknown = null;
   if (text.length > 0) {
     try {
       json = JSON.parse(text);
     } catch {
-      return { ok: false, kind: "bad", message: "non-JSON response" };
+      return { ok: false, kind: "bad", message: "non-JSON response", status: res.status };
     }
   }
-  if (!res.ok) return { ok: false, kind: "bad", message: `HubSpot ${res.status}: ${text.slice(0, 200)}` };
+  if (!res.ok) return { ok: false, kind: "bad", message: `HubSpot ${res.status}: ${text.slice(0, 200)}`, status: res.status };
   return { ok: true, value: json };
 }
 
@@ -77,7 +82,7 @@ export async function upsertOrder(
   const patchPath = `/crm/v3/objects/${encodeURIComponent(ctx.objectType)}/${encodeURIComponent(orderIdValue)}?idProperty=${encodeURIComponent(ctx.idProperty)}`;
   const patched = await hubspotFetch(ctx.baseUrl, ctx.token, patchPath, { method: "PATCH", body: JSON.stringify({ properties }) }, fetchImpl);
   if (patched.ok) return { ok: true, value: { id: String(patched.value.id) } };
-  if (patched.kind !== "bad") return patched;
+  if (patched.status !== 404) return patched;
 
   const created = await hubspotFetch(
     ctx.baseUrl,

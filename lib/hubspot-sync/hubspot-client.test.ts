@@ -68,6 +68,38 @@ test("upsertOrder falls back to POST create when the PATCH 404s (record doesn't 
   assert.deepEqual(calls, ["PATCH", "POST"]);
 });
 
+test("upsertOrder does NOT fall back to POST create when the PATCH fails with a non-404 status", async () => {
+  const calls: string[] = [];
+  const fetchImpl = (async (_url: unknown, init?: RequestInit) => {
+    calls.push(init?.method ?? "");
+    return new Response(JSON.stringify({ message: "Property values were not valid" }), { status: 400, headers: { "content-type": "application/json" } });
+  }) as unknown as typeof fetch;
+  const r = await upsertOrder(ctx, "order-789", { status: "bogus" }, fetchImpl);
+  assert.equal(r.ok, false);
+  if (!r.ok) {
+    assert.equal(r.kind, "bad");
+    assert.equal(r.status, 400);
+  }
+  assert.deepEqual(calls, ["PATCH"]);
+});
+
+test("searchContactByEmail maps a res.text() rejection to a clean transient result instead of throwing", async () => {
+  const fetchImpl = (async () =>
+    ({
+      status: 200,
+      ok: true,
+      text: async () => {
+        throw new Error("body stream aborted");
+      },
+    }) as unknown as Response) as unknown as typeof fetch;
+  const r = await searchContactByEmail(ctx, "v@x.com", fetchImpl);
+  assert.equal(r.ok, false);
+  if (!r.ok) {
+    assert.equal(r.kind, "transient");
+    assert.equal(r.message, "body stream aborted");
+  }
+});
+
 test("createAssociation PUTs the association type id", async () => {
   let body: unknown = null;
   const fetchImpl = (async (_url: unknown, init?: RequestInit) => {

@@ -8,11 +8,13 @@ import type { ProviderAdapter } from "@/lib/analytics/types";
 import { spiroAdapter } from "@/lib/analytics/providers/spiro";
 import { spiroMcpAdapter } from "@/lib/analytics/providers/spiro-mcp";
 import { genericMcpAdapter } from "@/lib/analytics/providers/generic-mcp";
+import { hubspotAdapter } from "@/lib/analytics/providers/hubspot";
 
 const REGISTRY: Record<string, ProviderAdapter> = {
   spiro: spiroAdapter,
   spiro_mcp: spiroMcpAdapter,
   generic_mcp: genericMcpAdapter,
+  hubspot: hubspotAdapter,
 };
 
 export function getAdapter(provider: string): ProviderAdapter | null {

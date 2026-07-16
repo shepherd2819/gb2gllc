@@ -24,6 +24,7 @@ const PROVIDERS = [
   { value: "spiro", label: "Spiro (REST)", kind: "rest" as const },
   { value: "spiro_mcp", label: "Spiro (MCP)", kind: "mcp" as const },
   { value: "generic_mcp", label: "Generic MCP", kind: "mcp" as const },
+  { value: "hubspot", label: "HubSpot (REST)", kind: "rest" as const },
 ];
 
 export function AnalyticsManager({ clientId, initialSources, digestEnabled, initialGoalRevenue }: Props) {
@@ -266,6 +267,10 @@ export function AnalyticsManager({ clientId, initialSources, digestEnabled, init
               <option value="apikey">API key header</option>
             </select>
           </div>
+        </div>
+      ) : provider === "hubspot" ? (
+        <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-mute)" }}>
+          HubSpot uses a Private App token only — generate one in HubSpot Settings → Integrations → Private Apps, then paste it below. No base URL or auth mode to configure.
         </div>
       ) : (
         <>

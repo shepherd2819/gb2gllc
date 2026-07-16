@@ -15,6 +15,12 @@ type Params = { params: Promise<{ id: string }> };
 const HUBSPOT_BASE_URL = "https://api.hubapi.com";
 const ORDER_ID_PROPERTY = "spiro_order_id";
 
+function isValidCalendarDate(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(`${s}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+}
+
 async function findHubspotSource(clientId: string): Promise<DataSourceRow | null> {
   const { data } = await supabaseAdmin
     .from("client_data_sources")
@@ -81,7 +87,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     config.spiro_source_id = body.spiro_source_id;
   }
   if ("cutoff_date" in body) {
-    if (typeof body.cutoff_date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(body.cutoff_date)) {
+    if (typeof body.cutoff_date !== "string" || !isValidCalendarDate(body.cutoff_date)) {
       return NextResponse.json({ error: "cutoff_date must be YYYY-MM-DD" }, { status: 400 });
     }
     config.cutoff_date = body.cutoff_date;

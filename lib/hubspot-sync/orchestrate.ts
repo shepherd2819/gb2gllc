@@ -9,11 +9,13 @@
 // analytics-sync cron sweeps every active source regardless of provider).
 //
 // On any per-order infra failure (Spiro/HubSpot network/auth error) that
-// order is left unrecorded (not written to the ledger) and the checkpoint is
-// NOT advanced past this run's start time, so the whole window is retried
-// next run. Already-synced orders in that window are safe to reprocess —
-// the ledger's spiro_status check makes them a no-op — so this fails safe
-// (some extra work) rather than silently skipping a failed order forever.
+// order is left unrecorded (not written to the ledger) and will be retried
+// on every run for as long as it remains within the 30-day trailing rescan
+// window (see computeOrderSyncFloor in window.ts). If a failed order never
+// succeeds within that window, it silently ages out and is not retried after
+// that — an accepted trade-off of the bounded-window design. Already-synced
+// orders in the window are safe to reprocess — the ledger's spiro_status
+// check makes them a no-op.
 import { decryptSecret } from "@/lib/analytics/crypto";
 import { updateSourceConfig } from "@/lib/analytics/store";
 import { loadSpiroCtx } from "@/lib/hollis/spiro";
@@ -106,7 +108,7 @@ export async function runHubspotOrderSync(source: DataSourceRow): Promise<OrderS
     if (!emailResult.ok) {
       failed += 1;
       lastFailureMessage = emailResult.message;
-      continue; // not recorded — retried next run since the checkpoint won't advance past it
+      continue; // not recorded — retried on subsequent runs while within the 30-day window
     }
 
     const searchResult = await searchContactByEmail(hubspotCtx, emailResult.value ?? "");

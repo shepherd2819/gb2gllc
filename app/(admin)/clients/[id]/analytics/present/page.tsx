@@ -22,7 +22,7 @@ export default async function AdminAnalyticsPresent({ params }: Params) {
   }
 
   return (
-    <div className="cc-root">
+    <div className="cc-root cc-root--dark">
       <link rel="stylesheet" href="/analytics/command-center.css" />
       <CcPresent payload={snapshot.payload} briefing={snapshot.briefing ?? ""} />
     </div>

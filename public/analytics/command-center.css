@@ -1,20 +1,47 @@
 /* ============================================================
    GB2G ANALYTICS — command-center.css
-   "LIVE WIRE" — neon broadcast-ops board, scoped to `.cc-root`.
-   Loaded AFTER tokens.css (+ portal.css/admin.css) on the analytics
-   dashboard, its admin mirror, and the presentation route. Purely
-   additive: remaps the semantic --color-* tokens inside `.cc-root`
-   so every existing ds-chart, ds, and stat component re-themes to the
-   neon palette without any component code changes, then layers the
-   command-center-only layout, glow, and motion on top.
+   "LIVE WIRE" — theme-aware neon broadcast-ops board, scoped to
+   `.cc-root`. Loaded AFTER tokens.css (+ portal.css/admin.css) on the
+   analytics dashboard, its admin mirror, and the presentation route.
+
+   `.cc-root` itself is structural only (position/background/color plus
+   light-safe fallbacks for the Live Wire-only tokens, all via or
+   derived from theme tokens) so the admin mirror follows the admin
+   light/dark toggle. The neon Live Wire look (deep-space base,
+   cyan/mint/magenta accents, glow tokens) is a token remap scoped to
+   `[data-theme="dark"] .cc-root, .cc-root--dark` below. Forced-dark
+   surfaces (presentation mode, the portal dashboard) add the
+   `cc-root--dark` class explicitly.
 
    This is the ONLY file allowed to contain literal color values, and
-   ONLY inside the `.cc-root { ... }` token-remap block below —
-   everything else in this file (and every component) consumes those
-   remapped var(--color-*) tokens and the --glow-* tokens defined there.
+   ONLY inside the `.cc-root` structural block (light fallbacks) and
+   the `[data-theme="dark"] .cc-root, .cc-root--dark` token-remap
+   block below — everything else in this file (and every component)
+   consumes the remapped var(--color-*) and --glow-* tokens.
    ============================================================ */
 
+/* Structural — applies in BOTH themes (all values via tokens).
+   The Live Wire-only tokens get light-safe fallbacks here so unscoped
+   cc-* rules that consume them stay valid in admin light mode: amber
+   maps to the admin gold family, glows collapse to invisible shadows.
+   The dark block below overrides all four. */
 .cc-root {
+  --color-amber: #8a6b28;
+  --glow-cyan: 0 0 0 rgba(0, 0, 0, 0);
+  --glow-magenta: 0 0 0 rgba(0, 0, 0, 0);
+  --glow-amber: 0 0 0 rgba(0, 0, 0, 0);
+  position: relative;
+  background-color: var(--color-bg);
+  background-image:
+    radial-gradient(ellipse 900px 480px at 50% -12%, color-mix(in oklch, var(--color-gold) 12%, transparent), transparent 65%),
+    repeating-linear-gradient(0deg, color-mix(in oklch, var(--color-text) 3%, transparent) 0 1px, transparent 1px 64px),
+    repeating-linear-gradient(90deg, color-mix(in oklch, var(--color-text) 3%, transparent) 0 1px, transparent 1px 64px);
+  color: var(--color-text);
+}
+
+/* Dark remap — admin dark mode, or forced (present mode + portal) */
+[data-theme="dark"] .cc-root,
+.cc-root--dark {
   color-scheme: dark;
 
   /* Backgrounds — deep space base, glassy elevated surfaces */
@@ -60,8 +87,8 @@
   --glow-amber: 0 0 16px rgba(255, 194, 75, 0.5);
 
   /* Deep-space ground: twin neon glows + faint grid + vignette over a
-     dark vertical gradient. Moodier and deeper than the old gold wash. */
-  position: relative;
+     dark vertical gradient — overrides the structural token-derived
+     background above for dark surfaces only. */
   background-color: var(--color-bg);
   background-image:
     radial-gradient(1100px 620px at 12% -8%, rgba(255, 61, 129, 0.15), transparent 60%),

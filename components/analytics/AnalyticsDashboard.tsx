@@ -13,14 +13,14 @@ import { InsightCards } from "./InsightCards";
 import { SourceHealth } from "./SourceHealth";
 import { fmtCompactCurrency, fmtCurrency, fmtInt } from "@/lib/analytics/format";
 
-export function AnalyticsDashboard({ snapshot, surface }: { snapshot: SnapshotRow; surface: "portal" | "admin" }) {
+export function AnalyticsDashboard({ snapshot, surface, forceDark }: { snapshot: SnapshotRow; surface: "portal" | "admin"; forceDark?: boolean }) {
   const p = snapshot.payload;
   const companies = p.topCompanies.map((c) => ({ name: c.name, value: c.revenue }));
   const products = p.productMix.filter((m) => m.name !== "Other").map((m) => ({ name: m.name, value: m.revenue }));
   const agents = p.topAgents.map((a) => ({ name: a.name, value: a.revenue }));
 
   return (
-    <div className={`cc-root cc-live ds-analytics ds-analytics--${surface}`}>
+    <div className={`cc-root cc-live${forceDark ? " cc-root--dark" : ""} ds-analytics ds-analytics--${surface}`}>
       <CcAmbient />
       <CounterAnimation />
 

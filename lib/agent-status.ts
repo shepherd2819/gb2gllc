@@ -1,14 +1,17 @@
+// Fail-soft per-agent status for the admin shell rail. Moved out of
+// app/(admin)/agents/layout.tsx so the root (admin) layout can badge the
+// global sidebar. Every branch fails soft — a missing table or migration
+// drift must never break the shell.
 import { supabaseAdmin } from "@/lib/supabase";
-import { AgentsSidebar, type AgentStatus } from "./AgentsSidebar";
-import { AGENTS } from "./agents-manifest";
+import { AGENTS } from "@/app/(admin)/agents/agents-manifest";
 
-export const dynamic = "force-dynamic";
+export type AgentStatus = {
+  state: "live" | "idle" | "paused" | "unconfigured"; // live = connected + recent activity; idle = connected but quiet; paused = explicitly paused; unconfigured = nothing connected
+  badge?: string | null;                              // e.g. "3" for pending count
+};
 
 type Row = { id: string; status?: string | null };
 
-async function safe<T>(p: PromiseLike<T>, fallback: T): Promise<T> {
-  try { return await p; } catch { return fallback; }
-}
 async function rowsOf(p: PromiseLike<{ data: Row[] | null }>): Promise<Row[]> {
   try { return (await p).data ?? []; } catch { return []; }
 }
@@ -16,9 +19,7 @@ async function countOf(p: PromiseLike<{ count: number | null }>): Promise<number
   try { return (await p).count ?? 0; } catch { return 0; }
 }
 
-// One pass to gather per-agent status. Each branch fails-soft so a missing
-// table or migration drift never breaks the rail.
-async function fetchAgentStatuses(): Promise<Record<string, AgentStatus>> {
+export async function fetchAgentStatuses(): Promise<Record<string, AgentStatus>> {
   const statuses: Record<string, AgentStatus> = {};
   for (const a of AGENTS) statuses[a.slug] = { state: "unconfigured" };
 
@@ -64,7 +65,6 @@ async function fetchAgentStatuses(): Promise<Record<string, AgentStatus>> {
   statuses.mark  = mark.length > 0 ? { state: "live" } : { state: "unconfigured" };
   statuses.hollis = mapStatus(hollis, hollisFollowups);
 
-  void safe; // exported helper retained for future use
   return statuses;
 }
 
@@ -74,14 +74,4 @@ function mapStatus(rows: Row[], pending: number): AgentStatus {
   if (allPaused) return { state: "paused" };
   if (pending > 0) return { state: "live", badge: String(pending) };
   return { state: "idle" };
-}
-
-export default async function AgentsLayout({ children }: { children: React.ReactNode }) {
-  const statuses = await fetchAgentStatuses();
-  return (
-    <div className="agents-shell">
-      <AgentsSidebar statuses={statuses} />
-      <div className="agents-content">{children}</div>
-    </div>
-  );
 }

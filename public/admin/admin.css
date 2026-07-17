@@ -8,7 +8,7 @@
 :root {
   /* Backgrounds */
   --bg:       #F7F5F0;
-  --bg-2:     #FFFFFF;
+  --bg-2:     #FCFAF5;   /* was pure #FFFFFF — softened for all-day viewing */
   --bg-3:     #F0EDE5;
 
   /* Borders */
@@ -109,18 +109,9 @@ body { font-family: var(--sans); -webkit-font-smoothing: antialiased; line-heigh
 a { color: inherit; text-decoration: none; }
 
 /* ── 3. NAV ─────────────────────────────────────────────────── */
-.admin-nav {
-  display: flex; align-items: center; gap: 20px;
-  padding: 0 28px; height: 52px;
-  background: var(--bg-2); border-bottom: 1px solid var(--border);
-  position: sticky; top: 0; z-index: 40;
-}
 .admin-mark { font-size: 17px; font-weight: 500; letter-spacing: -0.03em; display: flex; align-items: center; gap: 8px; }
 .a2 { font-family: var(--serif); font-style: italic; color: var(--gold); }
 .admin-badge { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-mute); background: var(--bg-3); border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px; }
-.admin-nav-links { flex: 1; display: flex; gap: 2px; font-family: var(--mono); font-size: 11px; color: var(--text-soft); }
-.admin-nav-links a { padding: 5px 12px; border-radius: 6px; letter-spacing: 0.04em; transition: background .15s; }
-.admin-nav-links a:hover { background: var(--bg-3); }
 .admin-signout { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; color: var(--text-mute); transition: all .15s; }
 .admin-signout:hover { border-color: var(--text-soft); color: var(--text); }
 
@@ -137,7 +128,6 @@ a { color: inherit; text-decoration: none; }
 .theme-toggle-btn svg { width: 14px; height: 14px; display: block; }
 
 /* ── 4. LAYOUT ──────────────────────────────────────────────── */
-.admin-main { max-width: 1100px; margin: 0 auto; padding: 36px 24px 80px; }
 .admin-page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 28px; }
 .admin-page-header h1 { font-size: 26px; font-weight: 400; letter-spacing: -0.03em; margin: 0; }
 .admin-count { font-family: var(--mono); font-size: 11px; color: var(--text-mute); }
@@ -775,207 +765,20 @@ a { color: inherit; text-decoration: none; }
 }
 .timeline-pr:hover { text-decoration: underline; }
 
-/* ── Agents rail ────────────────────────────────────────────────────── */
-/* Persistent left rail rendered by app/(admin)/agents/layout.tsx.
-   Breaks out of .admin-main's centered 1100px column to true full-bleed,
-   so the rail sits flush against the viewport's left edge. */
-
-.agents-shell {
-  display: grid;
-  grid-template-columns: 248px 1fr;
-  gap: 0;
-  /* Escape .admin-main's centered 1100px column to true viewport-edge full-bleed. */
-  width: 100vw;
-  margin-left: calc(-50vw + 50%);
-  margin-top: -36px;
-  margin-bottom: -80px;
-  min-height: calc(100vh - 56px);
-}
-
-.agents-rail {
-  position: sticky;
-  top: 0;
-  align-self: flex-start;
-  height: calc(100vh - 56px);
-  overflow-y: auto;
-  padding: 24px 14px 32px;
-  background: var(--bg-2);
-  border-right: 1px solid var(--border);
-  font-family: var(--sans);
-}
-
-.agents-rail-group {
-  margin-top: 22px;
-}
-
-.agents-rail-group-label {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-mute);
-  padding: 0 10px;
-  margin-bottom: 8px;
-}
-
-.agents-rail-overview,
-.agents-rail-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 9px 10px;
-  border-radius: 8px;
-  text-decoration: none;
-  color: var(--text-soft);
-  transition: background .12s, color .12s;
-  position: relative;
-}
-
-.agents-rail-overview { margin-bottom: 4px; }
-
-.agents-rail-overview:hover,
-.agents-rail-item:hover {
-  background: var(--bg-3);
-  color: var(--text);
-}
-
-.agents-rail-overview.is-active,
-.agents-rail-item.is-active {
-  background: var(--sage-dim);
-  color: var(--text);
-}
-
-.agents-rail-overview.is-active::before,
-.agents-rail-item.is-active::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 8px;
-  bottom: 8px;
-  width: 2px;
-  border-radius: 2px;
-  background: var(--sage);
-}
-
-.agents-rail-glyph {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  background: var(--bg-3);
-  color: var(--text-soft);
-  font-family: var(--mono);
-  font-size: 13px;
-  flex-shrink: 0;
-}
-
-.agents-rail-overview.is-active .agents-rail-glyph,
-.agents-rail-item.is-active .agents-rail-glyph {
-  background: var(--bg-2);
-  color: var(--sage);
-}
-
-.agents-rail-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-}
-
-.agents-rail-name {
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.005em;
-  line-height: 1.25;
-}
-
-.agents-rail-tagline {
-  font-size: 11px;
-  color: var(--text-mute);
-  line-height: 1.3;
-  margin-top: 1px;
-}
-
-.agents-rail-overview.is-active .agents-rail-tagline,
-.agents-rail-item.is-active .agents-rail-tagline { color: var(--text-soft); }
-
-/* Status indicators */
-.agents-rail-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: var(--text-mute);
-}
-.agents-rail-dot.is-live         { background: var(--sage); box-shadow: 0 0 0 3px var(--sage-dim); }
-.agents-rail-dot.is-idle         { background: var(--text-mute); }
-.agents-rail-dot.is-paused       { background: var(--gold); }
-.agents-rail-dot.is-unconfigured { background: transparent; border: 1px dashed var(--text-mute); width: 7px; height: 7px; }
-
-.agents-rail-badge {
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 500;
-  padding: 1px 6px;
-  border-radius: 8px;
-  background: var(--sage);
-  color: var(--bg-2);
-  letter-spacing: 0;
-  line-height: 1.4;
-  flex-shrink: 0;
-  min-width: 16px;
-  text-align: center;
-}
-
-/* Content column inside the agents shell */
-.agents-content {
-  padding: 36px 32px 80px;
-  max-width: 1100px;
-  width: 100%;
-  min-width: 0; /* allow grid child to shrink */
-}
-
-/* Overview-card hover */
+/* Overview-card hover (used by the /agents card links, .admin-card + .agent-card) */
 a.admin-card:hover {
   border-color: var(--sage);
   transform: translateY(-1px);
 }
 
-/* Mobile: stack the rail above content */
-@media (max-width: 900px) {
-  .agents-shell {
-    grid-template-columns: 1fr;
-    width: 100vw;
-    margin-left: calc(-50vw + 50%);
-    margin-top: -36px;
-    margin-bottom: -80px;
-  }
-  .agents-rail {
-    position: static;
-    height: auto;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 4px;
-  }
-  .agents-rail-group { margin-top: 0; grid-column: 1 / -1; display: contents; }
-  .agents-rail-group-label { display: none; }
-  .agents-content { padding: 24px 20px 60px; }
-}
-
 /* ── Agent hover tooltips ────────────────────────────────────────
-   Surfaces: cards on /agents (.agent-card) and rail items in the left
-   sidebar (.agents-rail-item). Description text comes from
-   agents-manifest.ts. Hidden by default, fade in on hover or
+   Surfaces: cards on /agents (.agent-card). Description text comes
+   from agents-manifest.ts. Hidden by default, fade in on hover or
    keyboard focus (focus-visible / focus-within for keyboard users). */
 
 .agent-card { position: relative; }
 
-.agent-card-tooltip,
-.agents-rail-tooltip {
+.agent-card-tooltip {
   position: absolute;
   z-index: 60;
   width: max-content;
@@ -993,10 +796,6 @@ a.admin-card:hover {
   opacity: 0;
   pointer-events: none;
   transition: opacity .14s ease, transform .14s ease;
-}
-
-/* Cards on /agents — tooltip drops below center. */
-.agent-card-tooltip {
   top: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%) translateY(-4px);
@@ -1008,30 +807,182 @@ a.admin-card:hover {
   transform: translateX(-50%) translateY(0);
 }
 
-/* Rail items — tooltip flies out to the right of the sidebar. */
-.agents-rail-tooltip {
-  left: calc(100% + 12px);
-  top: 50%;
-  transform: translateY(-50%) translateX(-4px);
-}
-.agents-rail-item:hover .agents-rail-tooltip,
-.agents-rail-item:focus-visible .agents-rail-tooltip,
-.agents-rail-item:focus-within .agents-rail-tooltip {
-  opacity: 1;
-  transform: translateY(-50%) translateX(0);
+/* ============================================================
+   SHELL — global sidebar layout (redesign phase 1)
+   ============================================================ */
+.shell { display: flex; min-height: 100vh; }
+
+.shell-rail {
+  width: 248px; flex-shrink: 0;
+  position: sticky; top: 0; height: 100vh;
+  display: flex; flex-direction: column;
+  background: var(--bg-2); border-right: 1px solid var(--border);
+  overflow-y: auto; z-index: var(--z-nav);
+  transition: width var(--dur) var(--ease);
+  view-transition-name: shell-rail;
 }
 
-/* Mobile: the rail flips to a horizontal strip — make its tooltips
-   drop below like the card variant so they don't fly off the right edge. */
+.shell-rail-top { display: flex; flex-direction: column; gap: 14px; padding: 18px 16px 12px; }
+.shell-rail-top .admin-mark { font-size: 17px; }
+
+.shell-rail-search {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px; color: var(--text-mute);
+  background: var(--bg-3); border: 1px solid var(--border); border-radius: var(--r-sm);
+  padding: 6px 10px; cursor: pointer;
+  transition: border-color var(--dur-fast), color var(--dur-fast);
+}
+.shell-rail-search:hover { border-color: var(--text-soft); color: var(--text); }
+.shell-rail-search .shell-rail-search-text { flex: 1; text-align: left; }
+.shell-rail-search kbd { font-family: var(--mono); font-size: 10px; color: var(--text-mute); }
+
+.shell-rail-nav { flex: 1; padding: 4px 10px 16px; display: flex; flex-direction: column; gap: 18px; }
+.shell-rail-heading {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-mute); padding: 0 8px; margin-bottom: 6px;
+}
+.shell-rail-sublabel {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-mute); opacity: 0.75; padding: 8px 8px 2px;
+}
+
+.shell-rail-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 8px; border-radius: var(--r-sm);
+  font-size: 13px; color: var(--text-soft); position: relative;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.shell-rail-item:hover { background: var(--bg-3); color: var(--text); }
+.shell-rail-item.is-active { background: var(--sage-dim); color: var(--text); }
+.shell-rail-item.is-active::before {
+  content: ""; position: absolute; left: -10px; top: 6px; bottom: 6px;
+  width: 2px; border-radius: 2px; background: var(--sage);
+}
+.shell-rail-glyph { font-family: var(--mono); font-size: 13px; width: 18px; text-align: center; flex-shrink: 0; }
+.shell-rail-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.shell-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.shell-dot.is-live { background: var(--sage); }
+.shell-dot.is-idle { background: var(--text-mute); }
+.shell-dot.is-paused { background: var(--gold); }
+.shell-dot.is-unconfigured { background: transparent; border: 1px solid var(--border); }
+.shell-badge {
+  font-family: var(--mono); font-size: 10px; color: var(--gold);
+  background: var(--gold-dim); border-radius: var(--r-pill); padding: 1px 7px; flex-shrink: 0;
+}
+
+.shell-rail-foot {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px; border-top: 1px solid var(--border);
+}
+.shell-rail-collapse {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; flex-shrink: 0;
+  background: none; border: 1px solid var(--border); border-radius: var(--r-sm);
+  cursor: pointer; color: var(--text-mute); font-family: var(--mono); font-size: 12px;
+  transition: border-color var(--dur-fast), color var(--dur-fast);
+}
+.shell-rail-collapse:hover { border-color: var(--text-soft); color: var(--text); }
+.shell-rail-foot .admin-signout { margin-left: auto; }
+
+.shell-content { flex: 1; min-width: 0; padding: 36px 32px 80px; }
+.shell-content-inner { max-width: 1100px; margin: 0 auto; }
+
+/* Collapsed rail (html[data-rail="collapsed"], persisted in localStorage) */
+[data-rail="collapsed"] .shell-rail { width: 64px; }
+[data-rail="collapsed"] .shell-rail-label,
+[data-rail="collapsed"] .shell-rail-heading,
+[data-rail="collapsed"] .shell-rail-sublabel,
+[data-rail="collapsed"] .shell-rail-search-text,
+[data-rail="collapsed"] .shell-rail-search kbd,
+[data-rail="collapsed"] .shell-dot,
+[data-rail="collapsed"] .shell-badge,
+[data-rail="collapsed"] .shell-rail-top .admin-badge,
+[data-rail="collapsed"] .shell-rail-foot .admin-signout,
+[data-rail="collapsed"] .shell-rail-foot .theme-toggle-btn { display: none; }
+[data-rail="collapsed"] .shell-rail-item { justify-content: center; padding: 8px 0; }
+[data-rail="collapsed"] .shell-rail-search { justify-content: center; }
+[data-rail="collapsed"] .shell-rail-foot { justify-content: center; }
+
+/* Mobile: rail becomes an overlay drawer (declared after the collapsed rules
+   so drawer width wins over icon-rail width below 900px) */
+.shell-menu-btn { display: none; }
 @media (max-width: 900px) {
-  .agents-rail-tooltip {
-    left: 50%;
-    top: calc(100% + 6px);
-    transform: translateX(-50%) translateY(-4px);
+  .shell-rail,
+  [data-rail="collapsed"] .shell-rail {
+    position: fixed; left: 0; top: 0; width: 248px;
+    transform: translateX(-100%);
+    transition: transform var(--dur) var(--ease);
   }
-  .agents-rail-item:hover .agents-rail-tooltip,
-  .agents-rail-item:focus-visible .agents-rail-tooltip,
-  .agents-rail-item:focus-within .agents-rail-tooltip {
-    transform: translateX(-50%) translateY(0);
+  .shell-rail.is-open, [data-rail="collapsed"] .shell-rail.is-open { transform: translateX(0); box-shadow: var(--el-3); }
+  .shell-menu-btn {
+    display: flex; align-items: center; justify-content: center;
+    position: fixed; top: 14px; left: 14px; z-index: calc(var(--z-nav) + 1);
+    width: 34px; height: 34px;
+    background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--r-sm);
+    color: var(--text-soft); cursor: pointer; font-size: 15px;
   }
+  .shell-backdrop { position: fixed; inset: 0; background: rgba(20, 20, 16, 0.35); z-index: calc(var(--z-nav) - 1); }
+  .shell-content { padding-top: 64px; }
+}
+
+/* ============================================================
+   COMMAND PALETTE (⌘K)
+   ============================================================ */
+.palette-overlay {
+  position: fixed; inset: 0; z-index: var(--z-modal);
+  background: rgba(20, 20, 16, 0.45);
+  display: flex; justify-content: center; align-items: flex-start;
+  padding-top: 14vh;
+  animation: ds-overlay-in var(--dur-fast) var(--ease-out);
+}
+.palette {
+  width: min(560px, calc(100vw - 32px));
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: var(--r-lg); box-shadow: var(--el-3); overflow: hidden;
+  animation: ds-modal-in var(--dur) var(--ease);
+}
+.palette-input {
+  width: 100%; border: none; outline: none; background: transparent;
+  padding: 16px 18px; font-family: var(--sans); font-size: 15px; color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+.palette-input::placeholder { color: var(--text-mute); }
+.palette-list { max-height: 320px; overflow-y: auto; padding: 6px; }
+.palette-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: var(--r-sm); cursor: pointer;
+  font-size: 13px; color: var(--text-soft);
+}
+.palette-item.is-active { background: var(--sage-dim); color: var(--text); }
+.palette-item-glyph { font-family: var(--mono); width: 18px; text-align: center; color: var(--text-mute); }
+.palette-item-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.palette-item-sub { font-family: var(--mono); font-size: 10px; color: var(--text-mute); }
+.palette-empty { padding: 18px; font-family: var(--mono); font-size: 11px; color: var(--text-mute); text-align: center; }
+
+/* ============================================================
+   VIEW TRANSITIONS — section navigation (sidebar link clicks)
+   Old content fades fast; new content fades in + rises gently.
+   The rail is anchored (never animates) so the eye keeps a fixed frame.
+   ============================================================ */
+@keyframes shell-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes shell-rise { from { transform: translateY(8px); } to { transform: none; } }
+
+::view-transition-old(.shell-section) {
+  animation: 120ms var(--ease-out) both shell-fade reverse;
+}
+::view-transition-new(.shell-section) {
+  animation: 210ms var(--ease) 90ms both shell-fade, 300ms var(--ease) both shell-rise;
+}
+
+::view-transition-group(shell-rail) { animation: none; }
+::view-transition-old(shell-rail) { display: none; }
+::view-transition-new(shell-rail) { animation: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*), ::view-transition-new(*), ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+  .shell-rail { transition: none; }
 }

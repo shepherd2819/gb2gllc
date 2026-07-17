@@ -6,6 +6,19 @@ export type HubspotResult<T> =
   | { ok: true; value: T }
   | { ok: false; kind: "auth" | "transient" | "bad"; message: string; status?: number };
 
+// The HubSpot property names this sync writes onto the Orders object (beyond
+// the idProperty itself). Both orchestrate.ts (writer) and the admin route
+// (select_schema validator) must agree on this exact list.
+export const HUBSPOT_ORDER_WRITE_PROPERTIES = [
+  "status",
+  "tracking_code",
+  "address",
+  "date_submitted",
+  "media_title",
+  "photographer",
+  "appointment_date",
+] as const;
+
 export interface HubspotCtx {
   baseUrl: string; // always https://api.hubapi.com — kept as a field for testability
   token: string;

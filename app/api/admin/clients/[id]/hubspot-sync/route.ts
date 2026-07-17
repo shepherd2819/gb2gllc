@@ -6,6 +6,7 @@ import { inngest } from "@/lib/inngest/client";
 import { decryptSecret } from "@/lib/analytics/crypto";
 import { updateSourceConfig } from "@/lib/analytics/store";
 import { listObjectSchemas, introspectAssociationTypeId } from "@/lib/hubspot-sync/hubspot-client";
+import { HUBSPOT_ORDER_WRITE_PROPERTIES } from "@/lib/hubspot-sync/types";
 import type { DataSourceRow } from "@/lib/analytics/types";
 
 export const dynamic = "force-dynamic";
@@ -63,9 +64,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (!schemas.ok) return NextResponse.json({ error: schemas.message }, { status: 502 });
     const picked = schemas.value.find((s) => s.objectTypeId === objectTypeId);
     if (!picked) return NextResponse.json({ error: "That object was not found on re-check" }, { status: 404 });
-    if (!picked.properties.includes(ORDER_ID_PROPERTY)) {
+    const requiredProps = [ORDER_ID_PROPERTY, ...HUBSPOT_ORDER_WRITE_PROPERTIES];
+    const missingProps = requiredProps.filter((p) => !picked.properties.includes(p));
+    if (missingProps.length > 0) {
       return NextResponse.json(
-        { error: `Add a "${ORDER_ID_PROPERTY}" (single-line text) property to the ${picked.labelSingular} object in HubSpot first, then try again.` },
+        { error: `Add these properties to the ${picked.labelSingular} object in HubSpot first, then try again: ${missingProps.join(", ")}` },
         { status: 400 },
       );
     }

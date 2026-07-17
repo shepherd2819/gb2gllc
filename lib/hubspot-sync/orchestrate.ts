@@ -21,6 +21,7 @@ import { fetchOrdersSince, createAgentEmailCache } from "./spiro-orders";
 import { searchContactByEmail, upsertOrder, createAssociation } from "./hubspot-client";
 import { matchContact } from "./match";
 import { getSyncRow, upsertSyncRow } from "./store";
+import { computeOrderSyncFloor } from "./window";
 import type { HubspotCtx } from "./types";
 import type { DataSourceRow } from "@/lib/analytics/types";
 
@@ -69,12 +70,18 @@ export async function runHubspotOrderSync(source: DataSourceRow): Promise<OrderS
     associationTypeId: config.association_type_id,
   };
 
-  const since = config.last_order_sync_at ?? config.cutoff_date;
-  if (!since) {
+  if (!config.cutoff_date) {
     return { matched: 0, unmatched: 0, failed: 0, error: "No cutoff date configured — set a go-live date in the HubSpot Order Sync panel" };
   }
 
   const runStartedAt = new Date().toISOString();
+  // Bounded trailing rescan, not an ever-advancing frontier — see window.ts's
+  // header comment and design spec §8: Spiro's dateSubmitted filter never
+  // changes as an order's status progresses, so re-scanning a trailing
+  // window keeps in-progress orders' status changes reachable even after the
+  // checkpoint has long since passed their submission date. Never before
+  // cutoff_date (no backfill, ever).
+  const since = computeOrderSyncFloor(new Date(runStartedAt), config.cutoff_date);
   const ordersResult = await fetchOrdersSince(spiroCtx, since);
   if (!ordersResult.ok) {
     await updateSourceConfig(source.id, { ...config, last_order_sync_error: ordersResult.message });
@@ -85,6 +92,7 @@ export async function runHubspotOrderSync(source: DataSourceRow): Promise<OrderS
   let matched = 0;
   let unmatched = 0;
   let failed = 0;
+  let lastFailureMessage: string | null = null;
 
   for (const order of ordersResult.value) {
     const existing = await getSyncRow(source.id, order.orderId);
@@ -97,12 +105,14 @@ export async function runHubspotOrderSync(source: DataSourceRow): Promise<OrderS
     const emailResult = await agentEmails.getEmail(order.agentId);
     if (!emailResult.ok) {
       failed += 1;
+      lastFailureMessage = emailResult.message;
       continue; // not recorded — retried next run since the checkpoint won't advance past it
     }
 
     const searchResult = await searchContactByEmail(hubspotCtx, emailResult.value ?? "");
     if (!searchResult.ok) {
       failed += 1;
+      lastFailureMessage = searchResult.message;
       continue;
     }
 
@@ -135,11 +145,13 @@ export async function runHubspotOrderSync(source: DataSourceRow): Promise<OrderS
     const upserted = await upsertOrder(hubspotCtx, order.orderId, properties);
     if (!upserted.ok) {
       failed += 1;
+      lastFailureMessage = upserted.message;
       continue;
     }
     const associated = await createAssociation(hubspotCtx, upserted.value.id, outcome.contact.id);
     if (!associated.ok) {
       failed += 1;
+      lastFailureMessage = associated.message;
       continue;
     }
 
@@ -158,7 +170,7 @@ export async function runHubspotOrderSync(source: DataSourceRow): Promise<OrderS
 
   const nextConfig: HubspotSourceConfig = {
     ...config,
-    last_order_sync_error: failed > 0 ? `${failed} order(s) failed this run — will retry` : null,
+    last_order_sync_error: failed > 0 ? `${failed} order(s) failed this run (last error: ${lastFailureMessage}) — will retry` : null,
   };
   if (failed === 0) nextConfig.last_order_sync_at = runStartedAt;
   // `nextConfig` is typed via the local HubspotSourceConfig interface, which

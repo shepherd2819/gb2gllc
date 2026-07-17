@@ -13,6 +13,8 @@ import { SendInviteButton } from "./SendInviteButton";
 import { ContractManager } from "./ContractManager";
 import { HollisManager } from "./HollisManager";
 import { AnalyticsManager } from "./AnalyticsManager";
+import { HubspotSyncManager } from "./HubspotSyncManager";
+import { countSyncStats } from "@/lib/hubspot-sync/store";
 import { hasStoredTokens } from "@/lib/analytics/oauth";
 import { readSnapshot } from "@/lib/analytics/store";
 
@@ -124,6 +126,10 @@ export default async function ClientDetailPage({ params }: Params) {
   const spiroSources = (dataSources ?? [])
     .filter((s) => s.provider === "spiro")
     .map((s) => ({ id: s.id as string, label: s.label as string }));
+  const hubspotSource = (dataSources ?? []).find((s) => s.provider === "hubspot") ?? null;
+  const hubspotStats = hubspotSource
+    ? await countSyncStats(hubspotSource.id as string).catch(() => ({ matched: 0, unmatched: 0 }))
+    : { matched: 0, unmatched: 0 };
 
   return (
     <>
@@ -258,6 +264,16 @@ export default async function ClientDetailPage({ params }: Params) {
             }))}
             digestEnabled={client.analytics_digest_enabled ?? true}
             initialGoalRevenue={typeof goalSnap?.goal?.revenue === "number" ? goalSnap.goal.revenue : null}
+          />
+
+          <HubspotSyncManager
+            clientId={id}
+            hubspotSourceId={(hubspotSource?.id as string | undefined) ?? null}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            initialConfig={(hubspotSource?.config as any) ?? {}}
+            hasSecret={hubspotSource?.secret_enc != null}
+            spiroSources={spiroSources}
+            stats={hubspotStats}
           />
 
           <DevAgentManager

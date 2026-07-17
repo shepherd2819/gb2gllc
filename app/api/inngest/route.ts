@@ -7,8 +7,9 @@ import { onboardingContractSigned } from "@/lib/inngest/functions/onboarding-con
 import { onboardingInvoicePaid } from "@/lib/inngest/functions/onboarding-invoice-paid";
 import { analyticsSync } from "@/lib/inngest/functions/analytics-sync";
 import { analyticsDigest } from "@/lib/inngest/functions/analytics-digest";
+import { hubspotOrderSync } from "@/lib/inngest/functions/hubspot-order-sync";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [stewardScheduled, devagentRun, hollisCallCompleted, onboardingContractSigned, onboardingInvoicePaid, analyticsSync, analyticsDigest],
+  functions: [stewardScheduled, devagentRun, hollisCallCompleted, onboardingContractSigned, onboardingInvoicePaid, analyticsSync, analyticsDigest, hubspotOrderSync],
 });

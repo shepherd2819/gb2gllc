@@ -34,6 +34,11 @@ export function AnalyticsManager({ clientId, initialSources, digestEnabled, init
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ text: string; tone: "ok" | "err" } | null>(null);
   const [tools, setTools] = useState<Record<string, string[]>>({});
+  // Per-source pending value for the "rotate secret" input below — updates
+  // the source in place (same id) rather than creating a duplicate row, so
+  // anything referencing this source by id (e.g. hollis_lines.spiro_source_id,
+  // a hubspot source's config.spiro_source_id) keeps working after a rotate.
+  const [rotateValues, setRotateValues] = useState<Record<string, string>>({});
 
   const [provider, setProvider] = useState("spiro");
   const [label, setLabel] = useState("");
@@ -162,6 +167,13 @@ export function AnalyticsManager({ clientId, initialSources, digestEnabled, init
     flash(res.ok ? "Monthly goal saved" : "Failed to save goal", res.ok ? "ok" : "err");
   }
 
+  async function rotateSecret(id: string) {
+    const value = (rotateValues[id] ?? "").trim();
+    if (!value) { flash("Enter a new secret first", "err"); return; }
+    await patchSource(id, { secret: value });
+    setRotateValues((r) => ({ ...r, [id]: "" }));
+  }
+
   function toggleAllowlist(src: Source, tool: string) {
     const cur = new Set(src.chat_tool_allowlist ?? []);
     if (cur.has(tool)) cur.delete(tool); else cur.add(tool);
@@ -211,6 +223,26 @@ export function AnalyticsManager({ clientId, initialSources, digestEnabled, init
                   <button className="admin-btn-ghost admin-btn-sm" style={{ color: "var(--red)", borderColor: "var(--red)" }} disabled={!!busy} onClick={() => removeSource(s.id)}>Delete</button>
                 </div>
               </div>
+              {s.config?.authMode !== "oauth" && (
+                <div style={{ display: "flex", gap: 6, marginTop: 8, alignItems: "center" }}>
+                  <input
+                    className="admin-input"
+                    type="password"
+                    autoComplete="new-password"
+                    style={{ marginBottom: 0, fontFamily: "var(--mono)", fontSize: 12, flex: 1 }}
+                    value={rotateValues[s.id] ?? ""}
+                    onChange={(e) => setRotateValues((r) => ({ ...r, [s.id]: e.target.value }))}
+                    placeholder="New secret — rotates this source in place"
+                  />
+                  <button
+                    className="admin-btn-ghost admin-btn-sm"
+                    disabled={!!busy || !(rotateValues[s.id] ?? "").trim()}
+                    onClick={() => rotateSecret(s.id)}
+                  >
+                    {busy === `patch:${s.id}` ? "Rotating…" : "Rotate"}
+                  </button>
+                </div>
+              )}
               {s.last_sync_error && <div style={{ fontSize: 12, color: "var(--red)", marginTop: 6 }}>{s.last_sync_error}</div>}
               {(tools[s.id]?.length ?? 0) > 0 && (
                 <div style={{ marginTop: 10, borderTop: "1px solid var(--border)", paddingTop: 8 }}>

@@ -28,6 +28,7 @@ export function HubspotSyncManager({ clientId, hubspotSourceId, initialConfig, h
   const [cutoffDate, setCutoffDate] = useState(config.cutoff_date ?? new Date().toISOString().slice(0, 10));
   const [schemas, setSchemas] = useState<SchemaOption[] | null>(null);
   const [selectedObjectTypeId, setSelectedObjectTypeId] = useState("");
+  const [relinking, setRelinking] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ text: string; tone: "ok" | "err" } | null>(null);
 
@@ -68,7 +69,7 @@ export function HubspotSyncManager({ clientId, hubspotSourceId, initialConfig, h
     setBusy("select");
     const { ok, data } = await patch({ action: "select_schema", objectTypeId: selectedObjectTypeId });
     setBusy(null);
-    if (ok) { setConfig(data.config); setSchemas(null); flash("Object linked — ready to sync", "ok"); }
+    if (ok) { setConfig(data.config); setSchemas(null); setRelinking(false); flash("Object linked — ready to sync", "ok"); }
     else flash(data.error || "Failed to link object", "err");
   }
 
@@ -116,9 +117,11 @@ export function HubspotSyncManager({ clientId, hubspotSourceId, initialConfig, h
         </div>
       )}
 
-      {hasSecret && paired && !linked && (
+      {hasSecret && paired && (!linked || relinking) && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Paired to a Spiro source. Next: link HubSpot&apos;s existing &quot;Orders&quot; object.</div>
+          <div style={{ fontSize: 12, color: "var(--text-mute)" }}>
+            {linked ? "Re-linking the Orders object." : 'Paired to a Spiro source. Next: link HubSpot’s existing "Orders" object.'}
+          </div>
           <button className="admin-btn admin-btn-sm" disabled={busy === "introspect"} onClick={introspect} style={{ alignSelf: "flex-start" }}>
             {busy === "introspect" ? "Looking…" : "Find Orders object"}
           </button>
@@ -133,10 +136,15 @@ export function HubspotSyncManager({ clientId, hubspotSourceId, initialConfig, h
               </button>
             </div>
           )}
+          {linked && (
+            <button className="admin-btn-ghost admin-btn-sm" onClick={() => { setRelinking(false); setSchemas(null); }} style={{ alignSelf: "flex-start" }}>
+              Cancel
+            </button>
+          )}
         </div>
       )}
 
-      {hasSecret && paired && linked && (
+      {hasSecret && paired && linked && !relinking && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{ fontSize: 12, fontFamily: "var(--mono)", color: "var(--text-mute)" }}>
             {config.last_order_sync_at ? `last synced ${new Date(config.last_order_sync_at).toLocaleString()}` : "never synced"}
@@ -146,9 +154,14 @@ export function HubspotSyncManager({ clientId, hubspotSourceId, initialConfig, h
             <span>{stats.matched} matched</span>
             <span style={{ color: "var(--text-mute)" }}>{stats.unmatched} unmatched</span>
           </div>
-          <button className="admin-btn-ghost admin-btn-sm" disabled={busy === "sync"} onClick={syncNow} style={{ alignSelf: "flex-start" }}>
-            {busy === "sync" ? "Queuing…" : "Sync now"}
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="admin-btn-ghost admin-btn-sm" disabled={busy === "sync"} onClick={syncNow} style={{ alignSelf: "flex-start" }}>
+              {busy === "sync" ? "Queuing…" : "Sync now"}
+            </button>
+            <button className="admin-btn-ghost admin-btn-sm" onClick={() => setRelinking(true)} style={{ alignSelf: "flex-start" }}>
+              Change object
+            </button>
+          </div>
         </div>
       )}
 

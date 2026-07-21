@@ -27,6 +27,7 @@ export interface HubspotCtx {
   objectType: string; // introspected internal name of the "Orders" custom object
   idProperty: string; // e.g. "spiro_order_id" — the upsert key property
   associationTypeId: number; // introspected association type id for order→contact
+  associationCategory: string; // "HUBSPOT_DEFINED" or "USER_DEFINED" — must match associationTypeId, HubSpot validates the pair together
 }
 
 // Normalized subset of a raw Spiro /api/v1/orders row — the fields this sync

@@ -76,7 +76,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const assoc = await introspectAssociationTypeId(HUBSPOT_BASE_URL, token, objectTypeId, "contacts");
     if (!assoc.ok) return NextResponse.json({ error: assoc.message }, { status: 502 });
 
-    const config = { ...source.config, hubspot_object_type: objectTypeId, hubspot_id_property: ORDER_ID_PROPERTY, association_type_id: assoc.value };
+    const config = {
+      ...source.config,
+      hubspot_object_type: objectTypeId,
+      hubspot_id_property: ORDER_ID_PROPERTY,
+      association_type_id: assoc.value.typeId,
+      association_category: assoc.value.category,
+    };
     await updateSourceConfig(source.id, config);
     return NextResponse.json({ ok: true, config });
   }

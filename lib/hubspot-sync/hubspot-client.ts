@@ -105,7 +105,7 @@ export async function createAssociation(
     ctx.baseUrl,
     ctx.token,
     `/crm/v4/objects/${encodeURIComponent(ctx.objectType)}/${encodeURIComponent(orderObjectId)}/associations/contacts/${encodeURIComponent(contactId)}`,
-    { method: "PUT", body: JSON.stringify([{ associationCategory: "USER_DEFINED", associationTypeId: ctx.associationTypeId }]) },
+    { method: "PUT", body: JSON.stringify([{ associationCategory: ctx.associationCategory, associationTypeId: ctx.associationTypeId }]) },
     fetchImpl,
   );
   if (!r.ok) return r;
@@ -159,16 +159,25 @@ export async function listObjectSchemas(
   return { ok: true, value: schemas };
 }
 
+export interface AssociationTypeInfo {
+  typeId: number;
+  category: string;
+}
+
 // One-off introspection to find the association type id backing the
 // existing "Associated Orders" panel — never guess or use HubSpot's generic
-// default association when a specific labeled one already exists.
+// default association when a specific labeled one already exists. The
+// typeId alone isn't enough to create the association with: HubSpot
+// validates the (category, typeId) pair together, and a labeled association
+// like the standard Orders object's "Billing Contact" is HUBSPOT_DEFINED,
+// not USER_DEFINED — category must be carried alongside the id, not assumed.
 export async function introspectAssociationTypeId(
   baseUrl: string,
   token: string,
   fromObjectType: string,
   toObjectType: string,
   fetchImpl: FetchImpl = fetch,
-): Promise<HubspotResult<number>> {
+): Promise<HubspotResult<AssociationTypeInfo>> {
   const r = await hubspotFetch(
     baseUrl,
     token,
@@ -181,5 +190,5 @@ export async function introspectAssociationTypeId(
   const results = Array.isArray(r.value?.results) ? (r.value.results as any[]) : [];
   const withLabel = results.find((l) => typeof l.label === "string" && l.label.length > 0) ?? results[0];
   if (!withLabel) return { ok: false, kind: "bad", message: `No association label found from ${fromObjectType} to ${toObjectType}` };
-  return { ok: true, value: Number(withLabel.typeId) };
+  return { ok: true, value: { typeId: Number(withLabel.typeId), category: String(withLabel.category ?? "USER_DEFINED") } };
 }

@@ -15,6 +15,7 @@ const ctx: HubspotCtx = {
   objectType: "2-12345",
   idProperty: "spiro_order_id",
   associationTypeId: 99,
+  associationCategory: "USER_DEFINED",
 };
 
 function fakeFetch(status: number, body: unknown) {
@@ -100,7 +101,7 @@ test("searchContactByEmail maps a res.text() rejection to a clean transient resu
   }
 });
 
-test("createAssociation PUTs the association type id", async () => {
+test("createAssociation PUTs the association type id and category from ctx", async () => {
   let body: unknown = null;
   const fetchImpl = (async (_url: unknown, init?: RequestInit) => {
     body = JSON.parse(String(init?.body));
@@ -109,6 +110,19 @@ test("createAssociation PUTs the association type id", async () => {
   const r = await createAssociation(ctx, "obj-1", "c1", fetchImpl);
   assert.equal(r.ok, true);
   assert.equal((body as { associationTypeId: number }[])[0].associationTypeId, 99);
+  assert.equal((body as { associationCategory: string }[])[0].associationCategory, "USER_DEFINED");
+});
+
+test("createAssociation sends HUBSPOT_DEFINED when that's the ctx's category — never hardcodes USER_DEFINED", async () => {
+  let body: unknown = null;
+  const hubspotDefinedCtx: HubspotCtx = { ...ctx, associationCategory: "HUBSPOT_DEFINED" };
+  const fetchImpl = (async (_url: unknown, init?: RequestInit) => {
+    body = JSON.parse(String(init?.body));
+    return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+  }) as unknown as typeof fetch;
+  const r = await createAssociation(hubspotDefinedCtx, "obj-1", "c1", fetchImpl);
+  assert.equal(r.ok, true);
+  assert.equal((body as { associationCategory: string }[])[0].associationCategory, "HUBSPOT_DEFINED");
 });
 
 function fakeFetchByPath(byPath: Record<string, { status: number; body: unknown }>) {
@@ -186,14 +200,32 @@ test("listObjectSchemas silently omits the standard Orders object when the porta
   if (r.ok) assert.equal(r.value.length, 1);
 });
 
-test("introspectAssociationTypeId returns the first labeled association type", async () => {
+test("introspectAssociationTypeId returns the first labeled association type's id and category together", async () => {
   const r = await introspectAssociationTypeId(
     "https://api.hubapi.test",
     "test-token",
     "2-12345",
     "contacts",
-    fakeFetch(200, { results: [{ typeId: 99, label: "Associated Orders" }] }) as unknown as typeof fetch,
+    fakeFetch(200, { results: [{ typeId: 99, category: "USER_DEFINED", label: "Associated Orders" }] }) as unknown as typeof fetch,
   );
   assert.equal(r.ok, true);
-  if (r.ok) assert.equal(r.value, 99);
+  if (r.ok) {
+    assert.equal(r.value.typeId, 99);
+    assert.equal(r.value.category, "USER_DEFINED");
+  }
+});
+
+test("introspectAssociationTypeId preserves HUBSPOT_DEFINED for the standard Orders object's built-in association (e.g. 'Billing Contact') — never assumes USER_DEFINED", async () => {
+  const r = await introspectAssociationTypeId(
+    "https://api.hubapi.test",
+    "test-token",
+    "orders",
+    "contacts",
+    fakeFetch(200, { results: [{ typeId: 2694, category: "HUBSPOT_DEFINED", label: "Billing Contact" }] }) as unknown as typeof fetch,
+  );
+  assert.equal(r.ok, true);
+  if (r.ok) {
+    assert.equal(r.value.typeId, 2694);
+    assert.equal(r.value.category, "HUBSPOT_DEFINED");
+  }
 });

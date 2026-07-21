@@ -41,6 +41,7 @@ interface HubspotSourceConfig {
   hubspot_object_type?: string;
   hubspot_id_property?: string;
   association_type_id?: number;
+  association_category?: string;
   cutoff_date?: string;
   last_order_sync_at?: string;
   last_order_sync_error?: string | null;
@@ -55,7 +56,7 @@ export async function runHubspotOrderSync(source: DataSourceRow): Promise<OrderS
   if (!source.secret_enc) {
     return { matched: 0, unmatched: 0, failed: 0, error: "No HubSpot token configured" };
   }
-  if (!config.hubspot_object_type || !config.hubspot_id_property || !config.association_type_id) {
+  if (!config.hubspot_object_type || !config.hubspot_id_property || !config.association_type_id || !config.association_category) {
     return { matched: 0, unmatched: 0, failed: 0, error: "HubSpot object schema not yet introspected — see the HubSpot Order Sync panel" };
   }
 
@@ -70,6 +71,7 @@ export async function runHubspotOrderSync(source: DataSourceRow): Promise<OrderS
     objectType: config.hubspot_object_type,
     idProperty: config.hubspot_id_property,
     associationTypeId: config.association_type_id,
+    associationCategory: config.association_category,
   };
 
   if (!config.cutoff_date) {

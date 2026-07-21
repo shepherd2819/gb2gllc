@@ -17,6 +17,8 @@ export const HUBSPOT_ORDER_WRITE_PROPERTIES = [
   "media_title",
   "photographer",
   "appointment_date",
+  "paid",
+  "package_details",
 ] as const;
 
 export interface HubspotCtx {

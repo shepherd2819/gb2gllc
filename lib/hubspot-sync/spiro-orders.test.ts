@@ -1,6 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toOrderSummary, fetchOrdersSince, createAgentEmailCache } from "./spiro-orders";
+import {
+  toOrderSummary,
+  fetchOrdersSince,
+  createAgentEmailCache,
+  fetchInvoicesForOrder,
+  derivePaidStatus,
+  fetchOrderPackageName,
+} from "./spiro-orders";
 import type { SpiroCtx } from "@/lib/hollis/types";
 
 const ctx: SpiroCtx = { baseUrl: "https://api.spiro.media", apiKey: "k", authScheme: "bearer" };
@@ -63,4 +70,39 @@ test("createAgentEmailCache fetches an agent only once across repeated calls", a
   if (first.ok) assert.equal(first.value, "v@x.com");
   if (second.ok) assert.equal(second.value, "v@x.com");
   assert.equal(calls, 1);
+});
+
+test("fetchInvoicesForOrder maps the raw invoice rows down to their status", async () => {
+  const fetchImpl = (async () =>
+    new Response(JSON.stringify({ data: [{ status: "Paid" }, { status: "Sent" }] }), { status: 200, headers: { "content-type": "application/json" } })) as unknown as typeof fetch;
+  const r = await fetchInvoicesForOrder(ctx, "o1", fetchImpl);
+  assert.equal(r.ok, true);
+  if (r.ok) assert.deepEqual(r.value, [{ status: "Paid" }, { status: "Sent" }]);
+});
+
+test("derivePaidStatus is Paid only when every invoice is Paid", () => {
+  assert.equal(derivePaidStatus([{ status: "Paid" }]), "Paid");
+  assert.equal(derivePaidStatus([{ status: "Paid" }, { status: "Paid" }]), "Paid");
+});
+
+test("derivePaidStatus is Unpaid on a mixed split, a non-Paid invoice, or no invoice at all", () => {
+  assert.equal(derivePaidStatus([{ status: "Paid" }, { status: "Sent" }]), "Unpaid");
+  assert.equal(derivePaidStatus([{ status: "Sent" }]), "Unpaid");
+  assert.equal(derivePaidStatus([]), "Unpaid");
+});
+
+test("fetchOrderPackageName reads and trims the bundle name from order detail", async () => {
+  const fetchImpl = (async () =>
+    new Response(JSON.stringify({ data: { bundle: { name: "Deluxe + Zillow Tour " } } }), { status: 200, headers: { "content-type": "application/json" } })) as unknown as typeof fetch;
+  const r = await fetchOrderPackageName(ctx, "o1", fetchImpl);
+  assert.equal(r.ok, true);
+  if (r.ok) assert.equal(r.value, "Deluxe + Zillow Tour");
+});
+
+test("fetchOrderPackageName returns null when the order has no bundle", async () => {
+  const fetchImpl = (async () =>
+    new Response(JSON.stringify({ data: { bundle: null } }), { status: 200, headers: { "content-type": "application/json" } })) as unknown as typeof fetch;
+  const r = await fetchOrderPackageName(ctx, "o1", fetchImpl);
+  assert.equal(r.ok, true);
+  if (r.ok) assert.equal(r.value, null);
 });

@@ -19,7 +19,7 @@
 import { decryptSecret } from "@/lib/analytics/crypto";
 import { updateSourceConfig } from "@/lib/analytics/store";
 import { loadSpiroCtx } from "@/lib/hollis/spiro";
-import { fetchOrdersSince, createAgentEmailCache } from "./spiro-orders";
+import { fetchOrdersSince, createAgentEmailCache, fetchInvoicesForOrder, derivePaidStatus, fetchOrderPackageName } from "./spiro-orders";
 import { searchContactByEmail, upsertOrder, createAssociation } from "./hubspot-client";
 import { matchContact } from "./match";
 import { getSyncRow, upsertSyncRow } from "./store";
@@ -134,11 +134,26 @@ export async function runHubspotOrderSync(source: DataSourceRow): Promise<OrderS
       continue;
     }
 
+    const invoicesResult = await fetchInvoicesForOrder(spiroCtx, order.orderId);
+    if (!invoicesResult.ok) {
+      failed += 1;
+      lastFailureMessage = invoicesResult.message;
+      continue;
+    }
+    const packageResult = await fetchOrderPackageName(spiroCtx, order.orderId);
+    if (!packageResult.ok) {
+      failed += 1;
+      lastFailureMessage = packageResult.message;
+      continue;
+    }
+
     const properties: Record<string, string> = {
       status: order.status,
       tracking_code: order.trackingCode,
       address: order.addressText,
+      paid: derivePaidStatus(invoicesResult.value),
     };
+    if (packageResult.value) properties.package_details = packageResult.value;
     if (order.dateSubmitted) properties.date_submitted = order.dateSubmitted;
     if (order.mediaTitle) properties.media_title = order.mediaTitle;
     if (order.photographerName) properties.photographer = order.photographerName;

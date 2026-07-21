@@ -51,6 +51,49 @@ export async function fetchOrdersSince(
   }
 }
 
+export interface SpiroInvoiceSummary {
+  status: string;
+}
+
+// Payment status lives on a separate Spiro resource, not the order itself —
+// an order can have more than one invoice (e.g. company vs. agent billing
+// split), so this returns every invoice for the order; derivePaidStatus
+// below reduces that list to a single value.
+export async function fetchInvoicesForOrder(
+  ctx: SpiroCtx,
+  orderId: string,
+  fetchImpl: FetchImpl = fetch,
+): Promise<SpiroResult<SpiroInvoiceSummary[]>> {
+  const path = `/api/v1/invoices?filter[orderId][eq]=${encodeURIComponent(orderId)}&pageSize=50`;
+  const r = await spiroGet(ctx, path, fetchImpl);
+  if (!r.ok) return r;
+  const rows = Array.isArray(r.value?.data) ? r.value.data : [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return { ok: true, value: rows.map((i: any) => ({ status: String(i?.status ?? "") })) };
+}
+
+// "Paid" only when every invoice tied to the order is fully paid — a mixed
+// company/agent split where only one side has paid reads as "Unpaid", and an
+// order with no invoice yet is "Unpaid" too (not an error).
+export function derivePaidStatus(invoices: SpiroInvoiceSummary[]): "Paid" | "Unpaid" {
+  return invoices.length > 0 && invoices.every((i) => i.status === "Paid") ? "Paid" : "Unpaid";
+}
+
+// The chosen package/bundle name (e.g. "Deluxe + Zillow Tour") lives on the
+// per-order detail endpoint, not the list endpoint fetchOrdersSince uses —
+// callers should only fetch this for orders they're about to upsert, not
+// for every order in a rescan window.
+export async function fetchOrderPackageName(
+  ctx: SpiroCtx,
+  orderId: string,
+  fetchImpl: FetchImpl = fetch,
+): Promise<SpiroResult<string | null>> {
+  const r = await spiroGet(ctx, `/api/v1/orders/${encodeURIComponent(orderId)}`, fetchImpl);
+  if (!r.ok) return r;
+  const name = (r.value?.data ?? r.value)?.bundle?.name;
+  return { ok: true, value: typeof name === "string" && name.trim().length > 0 ? name.trim() : null };
+}
+
 // Caches agent→email lookups for the lifetime of one sync run so an agent
 // with many orders in the same batch is fetched from Spiro only once.
 export function createAgentEmailCache(ctx: SpiroCtx, fetchImpl: FetchImpl = fetch) {

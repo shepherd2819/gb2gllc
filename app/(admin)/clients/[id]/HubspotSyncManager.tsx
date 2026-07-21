@@ -59,7 +59,7 @@ export function HubspotSyncManager({ clientId, hubspotSourceId, initialConfig, h
     setBusy("introspect");
     const { ok, data } = await patch({ action: "introspect" });
     setBusy(null);
-    if (ok) { setSchemas(data.schemas); flash(`Found ${data.schemas.length} custom object(s)`, "ok"); }
+    if (ok) { setSchemas(data.schemas); flash(`Found ${data.schemas.length} object(s)`, "ok"); }
     else flash(data.error || "Introspection failed", "err");
   }
 
@@ -118,9 +118,9 @@ export function HubspotSyncManager({ clientId, hubspotSourceId, initialConfig, h
 
       {hasSecret && paired && !linked && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Paired to a Spiro source. Next: link HubSpot&apos;s existing &quot;Orders&quot; custom object.</div>
+          <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Paired to a Spiro source. Next: link HubSpot&apos;s existing &quot;Orders&quot; object.</div>
           <button className="admin-btn admin-btn-sm" disabled={busy === "introspect"} onClick={introspect} style={{ alignSelf: "flex-start" }}>
-            {busy === "introspect" ? "Looking…" : "Find custom objects"}
+            {busy === "introspect" ? "Looking…" : "Find Orders object"}
           </button>
           {schemas && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

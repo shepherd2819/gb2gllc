@@ -111,16 +111,30 @@ test("createAssociation PUTs the association type id", async () => {
   assert.equal((body as { associationTypeId: number }[])[0].associationTypeId, 99);
 });
 
+function fakeFetchByPath(byPath: Record<string, { status: number; body: unknown }>) {
+  return (async (url: unknown) => {
+    const path = String(url).replace("https://api.hubapi.test", "");
+    const entry = byPath[path] ?? { status: 404, body: { message: "not found" } };
+    return new Response(JSON.stringify(entry.body), { status: entry.status, headers: { "content-type": "application/json" } });
+  }) as unknown as typeof fetch;
+}
+
 test("listObjectSchemas returns every custom object with its properties, so the admin can pick 'Orders' from a list", async () => {
   const r = await listObjectSchemas(
     "https://api.hubapi.test",
     "test-token",
-    fakeFetch(200, {
-      results: [
-        { objectTypeId: "2-12345", name: "orders", labels: { singular: "Order", plural: "Orders" }, properties: [{ name: "spiro_order_id" }, { name: "status" }] },
-        { objectTypeId: "2-99999", name: "shoots", labels: { singular: "Shoot", plural: "Shoots" }, properties: [] },
-      ],
-    }) as unknown as typeof fetch,
+    fakeFetchByPath({
+      "/crm/v3/schemas": {
+        status: 200,
+        body: {
+          results: [
+            { objectTypeId: "2-12345", name: "orders", labels: { singular: "Order", plural: "Orders" }, properties: [{ name: "spiro_order_id" }, { name: "status" }] },
+            { objectTypeId: "2-99999", name: "shoots", labels: { singular: "Shoot", plural: "Shoots" }, properties: [] },
+          ],
+        },
+      },
+      "/crm/v3/schemas/orders": { status: 404, body: { message: "not found" } },
+    }),
   );
   assert.equal(r.ok, true);
   if (r.ok) {
@@ -129,6 +143,47 @@ test("listObjectSchemas returns every custom object with its properties, so the 
     assert.equal(r.value[0].labelSingular, "Order");
     assert.deepEqual(r.value[0].properties, ["spiro_order_id", "status"]);
   }
+});
+
+test("listObjectSchemas merges in HubSpot's built-in Commerce Orders object when present, since it never appears in the custom-only list", async () => {
+  const r = await listObjectSchemas(
+    "https://api.hubapi.test",
+    "test-token",
+    fakeFetchByPath({
+      "/crm/v3/schemas": { status: 200, body: { results: [] } },
+      "/crm/v3/schemas/orders": {
+        status: 200,
+        body: {
+          objectTypeId: "0-123",
+          name: "orders",
+          labels: { singular: "Order", plural: "Orders" },
+          properties: [{ name: "spiro_order_id" }, { name: "hs_pipeline_stage" }],
+        },
+      },
+    }),
+  );
+  assert.equal(r.ok, true);
+  if (r.ok) {
+    assert.equal(r.value.length, 1);
+    assert.equal(r.value[0].objectTypeId, "0-123");
+    assert.equal(r.value[0].labelSingular, "Order");
+  }
+});
+
+test("listObjectSchemas silently omits the standard Orders object when the portal doesn't have it (e.g. Commerce Hub disabled)", async () => {
+  const r = await listObjectSchemas(
+    "https://api.hubapi.test",
+    "test-token",
+    fakeFetchByPath({
+      "/crm/v3/schemas": {
+        status: 200,
+        body: { results: [{ objectTypeId: "2-12345", name: "shoots", labels: { singular: "Shoot", plural: "Shoots" }, properties: [] }] },
+      },
+      "/crm/v3/schemas/orders": { status: 404, body: { message: "not found" } },
+    }),
+  );
+  assert.equal(r.ok, true);
+  if (r.ok) assert.equal(r.value.length, 1);
 });
 
 test("introspectAssociationTypeId returns the first labeled association type", async () => {

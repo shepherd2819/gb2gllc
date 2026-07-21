@@ -119,10 +119,29 @@ export interface ObjectSchemaInfo {
   properties: string[];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toSchemaInfo(s: any): ObjectSchemaInfo {
+  return {
+    objectTypeId: String(s.objectTypeId ?? s.name),
+    name: String(s.name ?? ""),
+    labelSingular: String(s.labels?.singular ?? s.name ?? ""),
+    properties: Array.isArray(s.properties) ? s.properties.map((p: { name: string }) => String(p.name)) : [],
+  };
+}
+
 // Lists every custom object schema in the portal (operator setup — Task 10's
 // admin route) so the admin can PICK "Orders" from a dropdown, rather than
 // the system guessing its internal name/id up front — HubSpot's
 // schema-by-name endpoint needs a name we don't have until the admin tells us.
+//
+// Many portals use HubSpot's own built-in Commerce "Orders" object instead of
+// a self-defined custom one (custom objects are Enterprise-tier only; the
+// built-in Orders object isn't). That object has metaType HUBSPOT and never
+// appears in the custom-only list above — /crm/v3/schemas (no type in the
+// path) only ever returns custom-defined schemas, by HubSpot's own design.
+// So it's looked up separately by its fixed standard type name and merged in
+// when present. A failed lookup here (e.g. Commerce Hub not enabled) just
+// means it's absent, not a failure of the whole call.
 export async function listObjectSchemas(
   baseUrl: string,
   token: string,
@@ -132,15 +151,12 @@ export async function listObjectSchemas(
   if (!r.ok) return r;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const results = Array.isArray(r.value?.results) ? (r.value.results as any[]) : [];
-  return {
-    ok: true,
-    value: results.map((s) => ({
-      objectTypeId: String(s.objectTypeId ?? s.name),
-      name: String(s.name ?? ""),
-      labelSingular: String(s.labels?.singular ?? s.name ?? ""),
-      properties: Array.isArray(s.properties) ? s.properties.map((p: { name: string }) => String(p.name)) : [],
-    })),
-  };
+  const schemas = results.map(toSchemaInfo);
+
+  const standardOrders = await hubspotFetch(baseUrl, token, "/crm/v3/schemas/orders", {}, fetchImpl);
+  if (standardOrders.ok) schemas.push(toSchemaInfo(standardOrders.value));
+
+  return { ok: true, value: schemas };
 }
 
 // One-off introspection to find the association type id backing the

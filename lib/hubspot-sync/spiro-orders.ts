@@ -79,19 +79,32 @@ export function derivePaidStatus(invoices: SpiroInvoiceSummary[]): "Paid" | "Unp
   return invoices.length > 0 && invoices.every((i) => i.status === "Paid") ? "Paid" : "Unpaid";
 }
 
-// The chosen package/bundle name (e.g. "Deluxe + Zillow Tour") lives on the
-// per-order detail endpoint, not the list endpoint fetchOrdersSince uses —
-// callers should only fetch this for orders they're about to upsert, not
-// for every order in a rescan window.
-export async function fetchOrderPackageName(
+export interface SpiroOrderExtras {
+  packageName: string | null;
+  totalSalePrice: number | null;
+}
+
+// The chosen package/bundle name (e.g. "Deluxe + Zillow Tour") and the real
+// sale price both live on the per-order detail endpoint, not the list
+// endpoint fetchOrdersSince uses — callers should only fetch this for orders
+// they're about to upsert, not for every order in a rescan window.
+export async function fetchOrderExtras(
   ctx: SpiroCtx,
   orderId: string,
   fetchImpl: FetchImpl = fetch,
-): Promise<SpiroResult<string | null>> {
+): Promise<SpiroResult<SpiroOrderExtras>> {
   const r = await spiroGet(ctx, `/api/v1/orders/${encodeURIComponent(orderId)}`, fetchImpl);
   if (!r.ok) return r;
-  const name = (r.value?.data ?? r.value)?.bundle?.name;
-  return { ok: true, value: typeof name === "string" && name.trim().length > 0 ? name.trim() : null };
+  const data = (r.value?.data ?? r.value) ?? {};
+  const name = data?.bundle?.name;
+  const price = data?.pricing?.totalSalePrice;
+  return {
+    ok: true,
+    value: {
+      packageName: typeof name === "string" && name.trim().length > 0 ? name.trim() : null,
+      totalSalePrice: typeof price === "number" ? price : null,
+    },
+  };
 }
 
 // Caches agent→email lookups for the lifetime of one sync run so an agent

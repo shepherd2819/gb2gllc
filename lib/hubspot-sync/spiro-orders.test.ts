@@ -6,7 +6,7 @@ import {
   createAgentEmailCache,
   fetchInvoicesForOrder,
   derivePaidStatus,
-  fetchOrderPackageName,
+  fetchOrderExtras,
 } from "./spiro-orders";
 import type { SpiroCtx } from "@/lib/hollis/types";
 
@@ -91,18 +91,24 @@ test("derivePaidStatus is Unpaid on a mixed split, a non-Paid invoice, or no inv
   assert.equal(derivePaidStatus([]), "Unpaid");
 });
 
-test("fetchOrderPackageName reads and trims the bundle name from order detail", async () => {
+test("fetchOrderExtras reads and trims the bundle name and the real sale price from order detail", async () => {
   const fetchImpl = (async () =>
-    new Response(JSON.stringify({ data: { bundle: { name: "Deluxe + Zillow Tour " } } }), { status: 200, headers: { "content-type": "application/json" } })) as unknown as typeof fetch;
-  const r = await fetchOrderPackageName(ctx, "o1", fetchImpl);
+    new Response(JSON.stringify({ data: { bundle: { name: "Deluxe + Zillow Tour " }, pricing: { totalSalePrice: 919 } } }), { status: 200, headers: { "content-type": "application/json" } })) as unknown as typeof fetch;
+  const r = await fetchOrderExtras(ctx, "o1", fetchImpl);
   assert.equal(r.ok, true);
-  if (r.ok) assert.equal(r.value, "Deluxe + Zillow Tour");
+  if (r.ok) {
+    assert.equal(r.value.packageName, "Deluxe + Zillow Tour");
+    assert.equal(r.value.totalSalePrice, 919);
+  }
 });
 
-test("fetchOrderPackageName returns null when the order has no bundle", async () => {
+test("fetchOrderExtras returns nulls when the order has no bundle or pricing", async () => {
   const fetchImpl = (async () =>
-    new Response(JSON.stringify({ data: { bundle: null } }), { status: 200, headers: { "content-type": "application/json" } })) as unknown as typeof fetch;
-  const r = await fetchOrderPackageName(ctx, "o1", fetchImpl);
+    new Response(JSON.stringify({ data: { bundle: null, pricing: null } }), { status: 200, headers: { "content-type": "application/json" } })) as unknown as typeof fetch;
+  const r = await fetchOrderExtras(ctx, "o1", fetchImpl);
   assert.equal(r.ok, true);
-  if (r.ok) assert.equal(r.value, null);
+  if (r.ok) {
+    assert.equal(r.value.packageName, null);
+    assert.equal(r.value.totalSalePrice, null);
+  }
 });

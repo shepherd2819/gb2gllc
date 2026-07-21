@@ -19,7 +19,7 @@
 import { decryptSecret } from "@/lib/analytics/crypto";
 import { updateSourceConfig } from "@/lib/analytics/store";
 import { loadSpiroCtx } from "@/lib/hollis/spiro";
-import { fetchOrdersSince, createAgentEmailCache, fetchInvoicesForOrder, derivePaidStatus, fetchOrderPackageName } from "./spiro-orders";
+import { fetchOrdersSince, createAgentEmailCache, fetchInvoicesForOrder, derivePaidStatus, fetchOrderExtras } from "./spiro-orders";
 import { searchContactByEmail, upsertOrder, createAssociation } from "./hubspot-client";
 import { matchContact } from "./match";
 import { getSyncRow, upsertSyncRow } from "./store";
@@ -142,10 +142,10 @@ export async function runHubspotOrderSync(source: DataSourceRow): Promise<OrderS
       lastFailureMessage = invoicesResult.message;
       continue;
     }
-    const packageResult = await fetchOrderPackageName(spiroCtx, order.orderId);
-    if (!packageResult.ok) {
+    const extrasResult = await fetchOrderExtras(spiroCtx, order.orderId);
+    if (!extrasResult.ok) {
       failed += 1;
-      lastFailureMessage = packageResult.message;
+      lastFailureMessage = extrasResult.message;
       continue;
     }
 
@@ -155,7 +155,9 @@ export async function runHubspotOrderSync(source: DataSourceRow): Promise<OrderS
       address: order.addressText,
       paid: derivePaidStatus(invoicesResult.value),
     };
-    if (packageResult.value) properties.package_details = packageResult.value;
+    if (extrasResult.value.packageName) properties.package_details = extrasResult.value.packageName;
+    if (extrasResult.value.totalSalePrice !== null) properties.hs_total_price = String(extrasResult.value.totalSalePrice);
+    if (order.mediaTitle) properties.hs_order_name = order.mediaTitle;
     if (order.dateSubmitted) properties.date_submitted = order.dateSubmitted;
     if (order.mediaTitle) properties.media_title = order.mediaTitle;
     if (order.photographerName) properties.photographer = order.photographerName;

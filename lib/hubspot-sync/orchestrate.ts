@@ -20,10 +20,11 @@ import { decryptSecret } from "@/lib/analytics/crypto";
 import { updateSourceConfig } from "@/lib/analytics/store";
 import { loadSpiroCtx } from "@/lib/hollis/spiro";
 import { fetchOrdersSince, createAgentEmailCache, fetchInvoicesForOrder, derivePaidStatus, fetchOrderExtras } from "./spiro-orders";
-import { searchContactByEmail, upsertOrder, createAssociation } from "./hubspot-client";
+import { searchContactByEmail, upsertOrder, createAssociation, fetchPipelineStages } from "./hubspot-client";
 import { matchContact } from "./match";
 import { getSyncRow, upsertSyncRow } from "./store";
 import { computeOrderSyncFloor } from "./window";
+import { resolveStageId } from "./pipeline-stage";
 import type { HubspotCtx } from "./types";
 import type { DataSourceRow } from "@/lib/analytics/types";
 
@@ -93,6 +94,11 @@ export async function runHubspotOrderSync(source: DataSourceRow): Promise<OrderS
   }
 
   const agentEmails = createAgentEmailCache(spiroCtx);
+  // Best-effort: a failed lookup here just means no order gets a pipeline
+  // stage set this run, not a failed sync — the object write itself doesn't
+  // depend on it.
+  const stagesResult = await fetchPipelineStages(HUBSPOT_BASE_URL, hubspotCtx.token, hubspotCtx.objectType);
+  const stages = stagesResult.ok ? stagesResult.value : [];
   let matched = 0;
   let unmatched = 0;
   let failed = 0;
@@ -158,6 +164,9 @@ export async function runHubspotOrderSync(source: DataSourceRow): Promise<OrderS
     if (extrasResult.value.packageName) properties.package_details = extrasResult.value.packageName;
     if (extrasResult.value.totalSalePrice !== null) properties.hs_total_price = String(extrasResult.value.totalSalePrice);
     if (order.mediaTitle) properties.hs_order_name = order.mediaTitle;
+    if (order.dateSubmitted) properties.hs_external_created_date = order.dateSubmitted;
+    const stageId = resolveStageId(order.status, stages);
+    if (stageId) properties.hs_pipeline_stage = stageId;
     if (order.dateSubmitted) properties.date_submitted = order.dateSubmitted;
     if (order.mediaTitle) properties.media_title = order.mediaTitle;
     if (order.photographerName) properties.photographer = order.photographerName;

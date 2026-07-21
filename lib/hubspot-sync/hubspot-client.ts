@@ -4,6 +4,7 @@
 // https://api.hubapi.com. Never throws across the module boundary — every
 // function returns HubspotResult<T>.
 import type { HubspotContact, HubspotCtx, HubspotResult } from "./types";
+import type { PipelineStage } from "./pipeline-stage";
 
 type FetchImpl = typeof fetch;
 
@@ -191,4 +192,27 @@ export async function introspectAssociationTypeId(
   const withLabel = results.find((l) => typeof l.label === "string" && l.label.length > 0) ?? results[0];
   if (!withLabel) return { ok: false, kind: "bad", message: `No association label found from ${fromObjectType} to ${toObjectType}` };
   return { ok: true, value: { typeId: Number(withLabel.typeId), category: String(withLabel.category ?? "USER_DEFINED") } };
+}
+
+// Flattens every stage across every pipeline configured for objectType.
+// Stage ids are portal-specific, so they're resolved live here rather than
+// hardcoded — see lib/hubspot-sync/pipeline-stage.ts's resolveStageId.
+export async function fetchPipelineStages(
+  baseUrl: string,
+  token: string,
+  objectType: string,
+  fetchImpl: FetchImpl = fetch,
+): Promise<HubspotResult<PipelineStage[]>> {
+  const r = await hubspotFetch(baseUrl, token, `/crm/v3/pipelines/${encodeURIComponent(objectType)}`, {}, fetchImpl);
+  if (!r.ok) return r;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pipelines = Array.isArray(r.value?.results) ? (r.value.results as any[]) : [];
+  const stages: PipelineStage[] = [];
+  for (const p of pipelines) {
+    const ps = Array.isArray(p?.stages) ? p.stages : [];
+    for (const s of ps) {
+      if (typeof s?.label === "string" && typeof s?.id === "string") stages.push({ label: s.label, id: s.id });
+    }
+  }
+  return { ok: true, value: stages };
 }

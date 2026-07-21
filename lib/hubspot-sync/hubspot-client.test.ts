@@ -6,6 +6,7 @@ import {
   createAssociation,
   listObjectSchemas,
   introspectAssociationTypeId,
+  fetchPipelineStages,
 } from "./hubspot-client";
 import type { HubspotCtx } from "./types";
 
@@ -227,5 +228,31 @@ test("introspectAssociationTypeId preserves HUBSPOT_DEFINED for the standard Ord
   if (r.ok) {
     assert.equal(r.value.typeId, 2694);
     assert.equal(r.value.category, "HUBSPOT_DEFINED");
+  }
+});
+
+test("fetchPipelineStages flattens stages across every pipeline for the object type", async () => {
+  const r = await fetchPipelineStages(
+    "https://api.hubapi.test",
+    "test-token",
+    "0-123",
+    fakeFetch(200, {
+      results: [
+        {
+          label: "Order Pipeline",
+          stages: [
+            { label: "Open", id: "s-open" },
+            { label: "Processed", id: "s-processed" },
+          ],
+        },
+      ],
+    }) as unknown as typeof fetch,
+  );
+  assert.equal(r.ok, true);
+  if (r.ok) {
+    assert.deepEqual(r.value, [
+      { label: "Open", id: "s-open" },
+      { label: "Processed", id: "s-processed" },
+    ]);
   }
 });
